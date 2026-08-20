@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useInvoiceApp } from "./invoice-context";
 import { ActionBtn, Empty, Field, TextInput } from "./ui";
+import { InvoicePreview } from "./invoice-preview";
 import { PrintLookPicker } from "./print-look-picker";
 
 export function LookTool() {
@@ -12,7 +13,8 @@ export function LookTool() {
   const S = app.strings;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col-reverse gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(300px,42%)] xl:items-start">
+      <div className="flex flex-col gap-6">
       <p className="text-sm text-[var(--bb-muted)]">
         مظهر الطباعة فقط — شاشة العمل تبقى بثيم المركز. لا نكتب بريسيتات افتراضية إذا كانت
         القائمة فارغة.
@@ -121,6 +123,10 @@ export function LookTool() {
       </fieldset>
 
       <ActionBtn onClick={app.persistLook}>حفظ إعدادات الطباعة</ActionBtn>
+      </div>
+      <div className="xl:sticky xl:top-4">
+        <InvoicePreview />
+      </div>
     </div>
   );
 }
