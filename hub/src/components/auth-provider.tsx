@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { isFirebaseConfigured } from "@/lib/firebase-config";
+import { conflictToastLabel } from "@/lib/cloud-snap";
 import { useToast } from "./toast";
 
 type AuthUser = {
@@ -44,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       configureCloudStoreUi({
         onError: (message) => toast.push(message, "bad"),
         onConflict: (key) =>
-          toast.push(`تم تحديث ${key} من جهاز أو تبويب آخر`, "warn"),
+          toast.push(
+            `تم تحديث ${conflictToastLabel(key)} من جهاز أو تبويب آخر`,
+            "warn",
+          ),
       });
     });
   }, [toast]);

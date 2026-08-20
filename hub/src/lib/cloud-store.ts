@@ -17,6 +17,7 @@ import {
   type BbKey,
 } from "./keys";
 import { TENANT_ID } from "./tenant";
+import { classifyRemoteSnapshot } from "./cloud-snap";
 
 export type CloudStoreErrorHandler = (message: string, key?: string) => void;
 export type CloudStoreConflictHandler = (key: string) => void;
@@ -34,6 +35,7 @@ type UiHooks = {
 };
 
 const pendingWriteIds = new Set<string>();
+const lastAppliedWriteId = new Map<string, string>();
 const unsubscribers = new Map<string, Unsubscribe>();
 const firstSnapDone = new Set<string>();
 const listeners = new Set<(key: string) => void>();
@@ -190,18 +192,22 @@ export const CloudStore = {
           return;
         }
         const payload = snap.data() as CloudKeyDoc;
-        const writeId = payload.clientWriteId;
-        if (writeId && pendingWriteIds.has(writeId)) {
+        const writeId = String(payload.clientWriteId || "");
+        const kind = classifyRemoteSnapshot({
+          exists: true,
+          writeId,
+          pendingHasWriteId: Boolean(writeId && pendingWriteIds.has(writeId)),
+          lastApplied: lastAppliedWriteId.get(key) || "",
+          alreadyWatching: firstSnapDone.has(key),
+          hasPendingWrites: snap.metadata.hasPendingWrites,
+        });
+        if (writeId && pendingWriteIds.has(writeId) && !snap.metadata.hasPendingWrites) {
           pendingWriteIds.delete(writeId);
-          applyRemote(key, payload.data);
-          firstSnapDone.add(key);
-          return;
         }
+        if (writeId) lastAppliedWriteId.set(key, writeId);
         applyRemote(key, payload.data);
-        if (firstSnapDone.has(key)) {
-          hooks.onConflict(key);
-        }
         firstSnapDone.add(key);
+        if (kind === "conflict") hooks.onConflict(key);
       },
       (err) => {
         hooks.onError(`انقطع التزامن (${key}): ${err.message}`, key);
@@ -221,6 +227,7 @@ export const CloudStore = {
     unsubscribers.clear();
     firstSnapDone.clear();
     pendingWriteIds.clear();
+    lastAppliedWriteId.clear();
   },
 };
 
@@ -233,10 +240,10 @@ async function persist(key: string, value: unknown): Promise<void> {
     hooks.onError(`مفتاح غير مدرج في السحابة — حُفظ محلياً فقط: ${key}`, key);
     return;
   }
+  const uid = requireUid();
+  const clientWriteId = newWriteId();
+  pendingWriteIds.add(clientWriteId);
   try {
-    const uid = requireUid();
-    const clientWriteId = newWriteId();
-    pendingWriteIds.add(clientWriteId);
     await setDoc(keyDocRef(key), {
       data: value,
       updatedAt: serverTimestamp(),
@@ -244,7 +251,7 @@ async function persist(key: string, value: unknown): Promise<void> {
       clientWriteId,
     });
   } catch (err) {
-    pendingWriteIds.clear();
+    pendingWriteIds.delete(clientWriteId);
     const message = formatWriteError(err);
     hooks.onError(message, key);
     throw err instanceof Error ? err : new Error(message);
