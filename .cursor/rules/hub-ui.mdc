@@ -1,0 +1,24 @@
+---
+description: Hub responsive chrome, linen brand, and dialog rules
+globs: hub/src/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Hub UI
+
+Reuse `BrandLockup`, `ActionBtn`, `Field`, `Modal`, workspace tabs. Do not add a second logo or gold metallic chrome. Linen `#f4f0ea`, ink `#1f2930`, teal `#0f6e6b` on **actions only**.
+
+Hub + invoices + finance: Arabic RTL. Designer: English chrome, Arabic names as stored.
+
+# Responsive
+
+- Fluid layout. No 1440px traps, no `overflow: hidden` on the page shell.
+- Inputs `16px` / `min-height: 2.75rem`. Tap targets ≥ 44px. `viewportFit: cover` + safe-area padding.
+- Tool tabs scroll horizontally on phone (`bb-tabstrip`). Switching tabs scrolls the window to top (`useWorkspaceTab`).
+- **Modals portal to `document.body`**. `.bb-glass` `backdrop-filter` makes `position: fixed` stick to the panel (customer window sat at the bottom). Center on `sm+`; start near the top on phone.
+
+# Consistency
+
+- Filled buttons: teal, hover teal/white. `.bb-btn.bb-glass` and `data-tone="ghost"` keep **dark text** on hover.
+- Paid / pending: green vs amber chips — also keep the words مدفوعة / معلقة.
+- `prefers-reduced-transparency`: solid panels. Print is high-contrast, separate from hub chrome.

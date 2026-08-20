@@ -130,33 +130,35 @@ Before calling a module “done”, grep the live HTML and tick these.
 
 ### Hub
 
-- [ ] Login (email/password; Google optional)
-- [ ] Three cards: الفواتير / التصميم / المالية والمخزون
-- [ ] Sign out, tenant name in footer
-- [ ] Redirect to login if session missing
+- [x] Login (email/password; Google optional)
+- [x] Three cards: الفواتير / التصميم / المالية والمخزون
+- [x] Sign out, tenant name in footer
+- [x] Redirect to login if session missing
 
 ### Invoices (`balance-bites-invoice-pro.html`)
 
-- [ ] Connect-folder equivalent = CloudStore (no Desktop required in production)
-- [ ] New / save invoice, print, editor accordion
-- [ ] Customers CRUD + customer list print
-- [ ] Categories + products pickers (add one, add whole category, add selected categories)
-- [ ] Manual line + catalog line, packs/weights
-- [ ] Bundles (save invoice lines, multi-copy invoices)
-- [ ] Pending queue — skip `invoice_draft`; complete pending
-- [ ] Invoice history, customer history before proceed
-- [ ] Color presets / theme
-- [ ] Reports: إجمالي، عميل، أفضل منتج، منتج + date filters
-- [ ] Price list print
-- [ ] Totals: subtotal, discount, grand total
-- [ ] Payments flags shared with finance
-- [ ] Returns **display** (finance writes returns)
+Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `docs/JOURNAL.md`. Do not rebuild this app when starting Design.
+
+- [x] Connect-folder equivalent = CloudStore (no Desktop required in production)
+- [x] New / save invoice, print, editor accordion
+- [x] Customers CRUD + customer list print
+- [x] Categories + products pickers (add one, add whole category, add selected categories)
+- [x] Manual line + catalog line, packs/weights
+- [x] Bundles (save invoice lines, multi-copy invoices)
+- [x] Pending queue — skip `invoice_draft`; complete pending
+- [x] Invoice history, customer history before proceed
+- [x] Color presets / theme
+- [x] Reports: إجمالي، عميل، أفضل منتج، منتج + date filters
+- [x] Price list print
+- [x] Totals: subtotal, discount, grand total
+- [x] Payments flags shared with finance
+- [x] Returns **display** (finance writes returns)
 
 ### Design (`balance-bites-sticker.html` + JS)
 
 - [ ] Template library CRUD (`bb_label_templates`)
 - [ ] Legacy `bbLabel-*.json` import if still present
-- [ ] `label_assets/{templateId}/` binary/text assets → Storage
+- [ ] `label_assets/{templateId}/` binary/text assets → Cloudflare R2 (not Firebase Storage)
 - [ ] Prepress (`bb-prepress.js`), composite (`bb-composite-label.js`)
 - [ ] Icon library, Jelly Kids, art presets in `assets/presets/`
 - [ ] Deep link `bb_label_open` from finance stickers
@@ -185,12 +187,12 @@ Before calling a module “done”, grep the live HTML and tick these.
 
 ## Suggested build order
 
-1. Scaffold Next.js App Router in this repo (TypeScript). RTL layout, fonts from BRAND-UI.
-2. Firebase client: Auth + CloudStore (`get`/`set`/`onSnapshot` per `bb_*` key).
-3. Hub `/` + `/invoices` `/design` `/finance` routes (stubs OK).
-4. **Import script** that reads `saved data\*.json` → Firestore (run only when user says; zip backup first).
-5. Port finance first (hardest rules), then invoices, then designer — **or** Phase 1 wrap: copy HTML into `public/` on the same origin and swap FileStore for CloudStore, if that is faster to reach parity. Prefer wrap-then-rewrite over dropping features.
-6. Do not create a Vercel production deploy until Auth + locked Firestore rules exist.
+1. ~~Scaffold Next.js + CloudStore + hub.~~ Done.
+2. ~~Port invoices as native React.~~ Done (`docs/INVOICES.md`).
+3. **Design next** (`feat/design`) from `balance-bites-sticker.html` + JS. Reuse hub chrome; do not duplicate invoice modules.
+4. Finance (hardest formulas) from `bb-stock-costs.html`.
+5. **Import script** (`saved data` → Firestore) only when the user says; zip backup first.
+6. Production is live at https://balance-bites-ops.vercel.app — still staff-only Auth + Firestore rules. Do not dump empty catalogs.
 
 ## Constraints
 
@@ -200,4 +202,4 @@ Before calling a module “done”, grep the live HTML and tick these.
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start by: (1) confirming the workspace folders, (2) scaffolding Next.js + Firebase CloudStore, (3) a short parity backlog file in this repo generated from the live tabs/modules — then implement hub + store.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md`. Hub and invoices are shipped. Next is Design on `feat/design` — grep `costs/balance-bites-sticker.html`, do not duplicate invoice modules, do not dump empty keys.

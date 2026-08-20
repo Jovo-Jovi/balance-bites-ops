@@ -6,7 +6,7 @@ Three entry HTML files share `Store` + `FileStore` and a common JSON tenant. Thi
 
 ## A. Invoice Pro — `balance-bites-invoice-pro.html`
 
-Hub card: **Invoices**
+Hub card: **Invoices** — **ported** to native React. Do not wrap this HTML again. Map and rules: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md).
 
 | Module | Role |
 |---|---|

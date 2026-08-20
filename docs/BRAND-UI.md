@@ -6,7 +6,7 @@
 “Balance Bites” in Playfair Display 900. Tracking tight. Ink on linen paper. Invoice Pro / Stock Costs HTML may still use gold until those apps are wrapped.
 
 **Mark**  
-The rotated square (diamond) from Invoice Pro’s header ornament — not a cartoon bite, not a new mascot. Hub favicon = that diamond, ink fill, linen ground.
+The rotated square (diamond) from Invoice Pro’s header ornament — not a cartoon bite, not a new mascot. Hub favicon = that diamond, ink fill, linen ground (`hub/src/app/icon.svg`). Pasted-link preview: `opengraph-image.tsx`. Home-screen icon: `apple-icon.tsx`.
 
 **Do not** introduce a second logo for Finance or Designer in v1. One mark, three cards.
 

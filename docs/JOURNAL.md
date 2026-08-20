@@ -1,0 +1,105 @@
+# Build journal
+
+Dated notes for later chats. Live behavior still lives in `costs/` HTML. This file is **what we already shipped in the hub**, not a redesign spec.
+
+Production: https://balance-bites-ops.vercel.app  
+Repo: https://github.com/Jovo-Jovi/balance-bites-ops  
+Firebase: project `balance-bites-ops`, Firestore `(default)` `europe-west3`, Spark (no Storage).  
+Binaries: Cloudflare R2 (wired, assets **not** imported until asked).
+
+Related maps:
+
+| File | Use |
+|---|---|
+| [INVOICES.md](INVOICES.md) | Invoice app file map, keys, UX decisions |
+| [PARITY.md](PARITY.md) | Tick-list vs live HTML |
+| [DATA.md](DATA.md) | Who writes which `bb_*` key |
+| [MODULES.md](MODULES.md) | Live HTML module map (source of truth for Design / Finance) |
+| [BRAND-UI.md](BRAND-UI.md) | Linen desk, diamond mark, RTL |
+| `.cursor/rules/` | Workflow, responsive chrome, no duplicate modules |
+
+---
+
+## 2026-08-20 — Hub scaffold
+
+Branch: `main` (`e6beb37`, `bc4a45d`).
+
+- Next.js App Router in `hub/` (Vercel Root Directory `hub`).
+- Firebase Auth + CloudStore (`tenants/balance-bites/keys/{key}`).
+- Hydrate prefers Firestore; empty localStorage cannot wipe cloud.
+- Login, three hub cards only, workspace shells for invoices / design / finance.
+- Locked staff-only Firestore rules. Clients cannot create `staff/{uid}`.
+- Do **not** seed empty catalogs, default products, or HTML color dumps when a cloud key is missing.
+
+---
+
+## 2026-08-20 / 21 — Invoices native app
+
+Merged PR **#1** `feat/invoices` → `main` (`66937a8`).  
+Merged PR **#2** `fix/invoices-ux` → `main` (`ecc0534`).
+
+Native React workspace under `hub/src/components/invoices/` — **not** an HTML wrap. Design and Finance stay shells until their own branches.
+
+### Commits (oldest → newest)
+
+| Hash | What |
+|---|---|
+| `40773d2` | Rebuild invoices as a native hub workspace |
+| `70fb3f2` | Print look choice; saved-data catalogs stay read-only |
+| `36d3fcd` | Redirect throwaway Vercel hosts for Google login (later dropped) |
+| `f3e9fe7` | Drop host redirect; print with saved green `bb_inv2` look |
+| `7e7b8ee` | Live invoice preview on Look while colors / print look change |
+| `02d5986` | Invoice Pro print texture, BB header, page size |
+| `45be123` | Cloudflare R2 for label art + backups (not Firebase Storage) |
+| `5d7ef07` | Load invoices from العملاء; shrink print to one page |
+| `c99c5fe` | Opaque customer windows; paid vs pending color |
+| `3267186` | Center invoice preview; drop COOP header |
+| `ea4835e` | Stop toasting our own look saves as another-tab updates |
+| `03ceaaa` | Keep save-error toasts when a cloud write is rejected |
+| `2462660` | Hover lift on actions; customer cards tinted by unpaid invoices |
+| `0af7371` | Glass / ghost tabs keep dark text on hover; drop header pattern |
+| `30c3f65` | BB lockup diamond march animation |
+| `52b938a` | Viewport dialogs, jump to فاتورة on load, history pay filter, card print, chosen print look |
+
+### Shipped invoice tools
+
+فاتورة · العملاء · الكتالوج (read-only) · الانتظار · السجل · التقارير · المظهر
+
+Pending queue **skips** `kind: 'invoice_draft'` (finance prep). Catalog / returns writes stay finance-owned (`writeInvoiceKey`).
+
+### UX that must not regress
+
+- Dialogs **portal to `document.body`**. `.bb-glass` `backdrop-filter` traps `position: fixed` inside the panel, so customer windows sat at the bottom of a long list.
+- Loading a saved invoice switches to `?tab=editor` and scrolls to top (`useWorkspaceTab`). Do not use `window.confirm` on that path (easy to miss on mobile).
+- السجل filters: الكل / معلقة / مدفوعة. Cards have **طباعة** (saved look, no picker) and **تحميل**.
+- Print look: empty / unknown `bb_inv_print_preset_id` → `__inv2__` (or active color preset if it still exists). Always show a selected value in the dropdown.
+- Hub chrome stays linen. Print may use Invoice Pro `bb_inv2`, a stored preset, or hub linen (`__hub__`).
+- Customer cards: amber if unpaid invoices, green if none pending.
+
+### Cloud / print extras added as Firestore keys
+
+`bb_inv_print_preset_id`, `bb_inv_print_page_size`, `bb_inv_print_margins`, `bb_print_fit_one` (plus prep keys listed in DATA.md).
+
+Vercel preview toolbar / COOP noise: project `enablePreviewFeedback: false` and `VERCEL_PREVIEW_FEEDBACK_ENABLED=0`.
+
+---
+
+## Next slice — Design
+
+Branch: `feat/design`.
+
+Source: `costs/balance-bites-sticker.html` + `bb-prepress.js`, `bb-composite-label.js`, `bb-icon-library.js`, `bb-jelly-kids.js`, `assets/presets/`.
+
+Reuse hub Auth, CloudStore, BrandLockup, workspace tabs. **Do not** copy invoice editor / customers / reports into Design. Designer writes `bb_label_templates`, theme keys, `bb_label_open`, and R2 `label_assets/`. English chrome, Arabic product names.
+
+Do not run `import:apply` or `import:assets` unless asked. Zip `saved data` first.
+
+---
+
+## Still not done (do not tick as shipped)
+
+- Design atelier / prepress / template CRUD
+- Finance tabs and ledger formulas
+- One-shot JSON import of live `saved data`
+- R2 bucket init + `import:assets` (code is wired; bucket/token may still be a human Console step)
+- Wrapping remaining HTML into `hub/public/apps/`

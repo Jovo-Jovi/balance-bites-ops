@@ -37,8 +37,33 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Balance Bites Ops",
-  description: "Invoices, label design, and finance & inventory — one hub.",
+  metadataBase: new URL("https://balance-bites-ops.vercel.app"),
+  title: {
+    default: "Balance Bites Ops",
+    template: "%s · Balance Bites Ops",
+  },
+  description:
+    "Invoices, label design, and finance & inventory — one hub for Balance Bites.",
+  applicationName: "Balance Bites Ops",
+  appleWebApp: {
+    title: "Balance Bites Ops",
+    statusBarStyle: "default",
+  },
+  openGraph: {
+    title: "Balance Bites Ops",
+    description:
+      "Invoices, label design, and finance & inventory — one hub for Balance Bites.",
+    url: "/",
+    siteName: "Balance Bites Ops",
+    locale: "ar_EG",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Balance Bites Ops",
+    description:
+      "Invoices, label design, and finance & inventory — one hub for Balance Bites.",
+  },
 };
 
 export default function RootLayout({
