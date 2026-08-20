@@ -8,8 +8,8 @@
  *   npm run import:dry -- --dir "C:\Users\Marco\Desktop\BALANCE BITES\invoices customers\saved data"
  *   npm run import:apply -- --dir "..."   # writes
  *
- * Auth: set GOOGLE_APPLICATION_CREDENTIALS to a service-account JSON (never commit it),
- * or pass --sa path\to\serviceAccount.json
+ * Auth: hub/.service-account.json (gitignored), or --sa path, or GOOGLE_APPLICATION_CREDENTIALS.
+ * Re-run --apply anytime to refresh Firestore from the Desktop folder.
  *
  * Assets: label_assets/ and bb_backups/ stay on Desktop (Spark has no Storage).
  * Do not pass --assets.
@@ -66,6 +66,27 @@ function loadAdmin() {
   }
 }
 
+function firebaseToolsRefreshJson() {
+  const home = process.env.USERPROFILE || process.env.HOME || "";
+  const candidates = [
+    join(home, ".config", "configstore", "firebase-tools.json"),
+    join(home, "AppData", "Roaming", "configstore", "firebase-tools.json"),
+  ];
+  for (const p of candidates) {
+    if (!existsSync(p)) continue;
+    const cfg = JSON.parse(readFileSync(p, "utf8"));
+    const tokens = cfg.tokens || cfg.user?.tokens || null;
+    if (!tokens?.refresh_token || !tokens.client_id || !tokens.client_secret) continue;
+    return {
+      type: "authorized_user",
+      client_id: tokens.client_id,
+      client_secret: tokens.client_secret,
+      refresh_token: tokens.refresh_token,
+    };
+  }
+  return null;
+}
+
 function listJsonKeys(dir) {
   return readdirSync(dir)
     .filter((name) => name.endsWith(".json") && !name.startsWith("bbLabel-"))
@@ -94,6 +115,10 @@ async function main() {
     console.error("saved data folder not found:", opts.dir);
     process.exit(1);
   }
+  if (!opts.sa) {
+    const localSa = join(process.cwd(), ".service-account.json");
+    if (existsSync(localSa)) opts.sa = localSa;
+  }
 
   const known = new Set(keyManifest.firestoreKeys);
   const files = listJsonKeys(opts.dir);
@@ -111,7 +136,12 @@ async function main() {
       `${inManifest ? "OK " : "SKIP unknown"}  ${f.key.padEnd(28)} ${(f.bytes / 1024).toFixed(1)} KB${warn}`,
     );
     if (inManifest) {
-      JSON.parse(readFileSync(f.path, "utf8"));
+      const raw = readFileSync(f.path, "utf8").trim();
+      if (!raw) {
+        console.log("  skip empty file");
+        continue;
+      }
+      JSON.parse(raw);
     }
   }
 
@@ -136,14 +166,26 @@ async function main() {
   console.log("not imported:", keyManifest.storageOnlyKeys.join(", "));
 
   if (!opts.apply) {
-    console.log("\nDry-run complete. Zip the folder, then re-run with --apply when ready.");
+    console.log("\nDry-run complete. Re-run with --apply to overwrite Firestore from this folder.");
     return;
   }
 
   const admin = loadAdmin();
-  const credential = opts.sa
-    ? admin.app.cert(opts.sa)
-    : admin.app.applicationDefault();
+  let credential;
+  if (opts.sa) {
+    credential = admin.app.cert(opts.sa);
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    credential = admin.app.applicationDefault();
+  } else {
+    const refresh = firebaseToolsRefreshJson();
+    if (!refresh) {
+      console.error(
+        "No Google credentials. Pass --sa path\\to\\serviceAccount.json\nor keep firebase-tools logged in on this machine and retry.",
+      );
+      process.exit(1);
+    }
+    credential = admin.app.refreshToken(refresh);
+  }
   const firebaseApp = admin.app.initializeApp({
     credential,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "balance-bites-ops",
@@ -153,7 +195,12 @@ async function main() {
 
   for (const f of files) {
     if (!known.has(f.key)) continue;
-    const data = JSON.parse(readFileSync(f.path, "utf8"));
+    const raw = readFileSync(f.path, "utf8").trim();
+    if (!raw) {
+      console.log("skip empty", f.key);
+      continue;
+    }
+    const data = JSON.parse(raw);
     const ref = db.doc(`tenants/${opts.tenant}/keys/${f.key}`);
     await ref.set({
       data,

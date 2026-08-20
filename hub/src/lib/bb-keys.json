@@ -31,6 +31,8 @@
     "bb_prep_prod_mode",
     "bb_prep_print_mode",
     "bb_inv_print_preset_id",
+    "bb_inv_print_page_size",
+    "bb_inv_print_margins",
     "bb_print_fit_one",
     "bb_ret_last_customer"
   ],
@@ -48,6 +50,8 @@
       "bb_returns",
       "bb_invoice_bundles",
       "bb_inv_print_preset_id",
+      "bb_inv_print_page_size",
+      "bb_inv_print_margins",
       "bb_print_fit_one"
     ],
     "stockCosts": [

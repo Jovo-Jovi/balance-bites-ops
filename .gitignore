@@ -9,6 +9,8 @@ Desktop.ini
 !.env.example
 serviceAccount*.json
 *-firebase-adminsdk-*.json
+.service-account.json
+.tmp-import/
 
 # Live tenant data — never commit
 saved data/

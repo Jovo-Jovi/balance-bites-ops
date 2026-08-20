@@ -26,6 +26,13 @@ import {
   todayISO,
 } from "@/lib/invoices/helpers";
 import { parseInv2, parsePrintLookId, resolvePrintTheme, themeFromPreset } from "@/lib/invoices/look";
+import {
+  DEFAULT_PRINT_MARGINS,
+  parseMargins,
+  parsePageSize,
+  type PrintMargins,
+  type PrintPageSize,
+} from "@/lib/invoices/print-layout";
 import { visiblePendingQueue } from "@/lib/invoices/pending";
 import {
   printCustomerList,
@@ -96,6 +103,10 @@ type InvoiceContextValue = {
   setStrings: (patch: Partial<InvoiceStrings>) => void;
   persistLook: () => void;
   setFitOne: (on: boolean) => void;
+  pageSize: PrintPageSize;
+  setPageSize: (size: PrintPageSize) => void;
+  margins: PrintMargins;
+  setMargins: (patch: Partial<PrintMargins>) => void;
   printLook: PrintLookId;
   setPrintLook: (look: PrintLookId) => void;
   printInvoice: (mode: "original" | "net", look?: PrintLookId) => void;
@@ -148,6 +159,8 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
   const activePresetId = String(useCloudKey("bb_active_color_preset_id") || "");
   const fitOne = Boolean(useCloudKey("bb_print_fit_one"));
   const printLook = parsePrintLookId(useCloudKey("bb_inv_print_preset_id"));
+  const pageSize = parsePageSize(useCloudKey("bb_inv_print_page_size"));
+  const margins = parseMargins(useCloudKey("bb_inv_print_margins"));
 
   const [draft, setDraftState] = useState<InvoiceDraft>(() => {
     const snap = parseInv2(CloudStore.get("bb_inv2", {}));
@@ -629,6 +642,8 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         returns,
         invoices,
         fitOne,
+        pageSize,
+        margins,
       });
       if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
     }
@@ -721,6 +736,18 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       setFitOne: (on) => {
         void writeInvoiceKey("bb_print_fit_one", on);
       },
+      pageSize,
+      setPageSize: (size: PrintPageSize) => {
+        void writeInvoiceKey("bb_inv_print_page_size", size);
+      },
+      margins,
+      setMargins: (patch: Partial<PrintMargins>) => {
+        void writeInvoiceKey("bb_inv_print_margins", {
+          ...DEFAULT_PRINT_MARGINS,
+          ...margins,
+          ...patch,
+        });
+      },
       printLook,
       setPrintLook: (look: PrintLookId) => {
         void writeInvoiceKey("bb_inv_print_preset_id", look);
@@ -744,6 +771,8 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
     presets,
     activePresetId,
     fitOne,
+    pageSize,
+    margins,
     printLook,
     draft,
     theme,

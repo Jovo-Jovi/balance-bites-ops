@@ -1,5 +1,5 @@
 import { calcTotals, esc, fmt } from "./helpers";
-import { hexA } from "./look";
+import { buildInvoicePrintHtml } from "./print-layout";
 import { enrichInvoice } from "./returns";
 import type {
   Category,
@@ -13,6 +13,7 @@ import type {
   Product,
   ReturnRecord,
 } from "./types";
+import type { PrintMargins, PrintPageSize } from "./print-layout";
 
 export function openPrintWindow(title: string, css: string, body: string) {
   const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
@@ -40,93 +41,21 @@ export function printInvoiceDocument(opts: {
   returns: ReturnRecord[];
   invoices: Invoice[];
   fitOne: boolean;
+  pageSize: PrintPageSize;
+  margins: PrintMargins;
 }) {
-  const { draft, theme: C, strings: S, mode, returns, invoices, fitOne } = opts;
-  const totals = calcTotals(draft.items, draft.discount);
-  const saved = draft.loadedInvoiceId
-    ? invoices.find((i) => i.id === draft.loadedInvoiceId)
-    : null;
-  const enriched = saved ? enrichInvoice(returns, saved) : null;
-  const showNet = mode === "net" && enriched && enriched.salesStatus !== "active";
-  const due = showNet && enriched ? enriched.net : totals.total;
-
-  const rows = draft.items
-    .map((it) => {
-      const line = (it.qty || 0) * (it.price || 0);
-      const meta = [it.packType, it.weight].filter(Boolean).join(" · ");
-      return `<tr>
-        <td><div class="name">${esc(it.name)}</div>${meta ? `<div class="meta">${esc(meta)}</div>` : ""}</td>
-        <td class="c">${esc(fmt(it.qty))}</td>
-        <td class="n">${esc(fmt(it.price))} ${esc(S.cur)}</td>
-        <td class="n">${esc(fmt(line))} ${esc(S.cur)}</td>
-      </tr>`;
-    })
-    .join("");
-
-  let retHtml = "";
-  if (showNet && enriched?.returnInfo) {
-    retHtml = `<div class="tot"><span>${esc("مرتجع · Returned")}</span><span>− ${esc(fmt(enriched.returnInfo.totalRevenue))} ${esc(S.cur)}</span></div>
-      <div class="tot grand"><span>${esc("المطلوب سداده · Due")}</span><span>${esc(fmt(due))} ${esc(S.cur)}</span></div>`;
-  }
-
-  const body = `<div class="doc">
-    <div class="orn"><i></i><b></b><i></i></div>
-    <div class="mono">${esc(S.mono)}</div>
-    <div class="brand">${esc(S.brand)}</div>
-    <div class="title">${esc(S.docTitle)}</div>
-    <div class="meta-bar">
-      <div><label>اسم العميل</label><div>${esc(draft.customerName || "—")}</div></div>
-      <div><label>رقم الفاتورة</label><div>${esc(draft.invoiceNumber || "—")}</div></div>
-      <div><label>التاريخ</label><div>${esc(draft.date || "—")}</div></div>
-      <div><label>التليفون</label><div dir="ltr">${esc(draft.customerPhone || "—")}</div></div>
-    </div>
-    <table><thead><tr>
-      <th>${esc(S.hItem)}</th><th>${esc(S.hQty)}</th><th>${esc(S.hPrice)}</th><th>${esc(S.hSub)}</th>
-    </tr></thead><tbody>${rows || `<tr><td colspan="4">—</td></tr>`}</tbody></table>
-    <div class="totals">
-      <div class="tot"><span>${esc(S.lSubtotal)}</span><span>${esc(fmt(totals.subtotal))} ${esc(S.cur)}</span></div>
-      ${
-        totals.discount
-          ? `<div class="tot"><span>${esc(S.discLabel)}</span><span>− ${esc(fmt(totals.discountAmount))} ${esc(S.cur)} (${esc(String(totals.discount))}%)</span></div>`
-          : ""
-      }
-      <div class="tot grand"><span>${esc(S.lTotal)}</span><span>${esc(fmt(totals.total))} ${esc(S.cur)}</span></div>
-      ${retHtml}
-    </div>
-    ${draft.notes ? `<div class="notes">${esc(draft.notes)}</div>` : ""}
-    <div class="foot">${esc(S.footNote)}${S.web ? `<div class="web">${esc(S.web)}</div>` : ""}</div>
-  </div>`;
-
-  const css = invoiceCss(C, fitOne);
-  return openPrintWindow(`${S.brand} — ${draft.invoiceNumber || "Invoice"}`, css, body);
-}
-
-function invoiceCss(C: InvoiceTheme, fitOne: boolean) {
-  return `
-@page{size:A4;margin:${fitOne ? "8mm" : "12mm 14mm"};}
-html,body{margin:0;padding:0;background:${C.bg};color:${C.txt};-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-body{font-family:Tajawal,sans-serif;direction:rtl;}
-.doc{max-width:720px;margin:0 auto;padding:28px 32px 36px;background:${C.bg};color:${C.txt};${fitOne ? "transform-origin:top center;" : ""}}
-.orn{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.orn i{flex:1;height:1px;background:${C.gold};opacity:.55;}
-.orn b{width:8px;height:8px;background:${C.gold};transform:rotate(45deg);}
-.mono{font-family:Syne,sans-serif;font-size:10px;letter-spacing:5px;color:${C.gold};text-align:center;}
-.brand{font-family:"Playfair Display",serif;font-size:32px;font-weight:900;text-align:center;line-height:1.1;color:${C.txt};}
-.title{font-family:Syne,sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;text-align:center;color:${C.mut};margin-top:8px;}
-.meta-bar{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin:22px 0;padding:14px;background:${C.row};border:1px solid ${hexA(C.gold, 0.25)};}
-.meta-bar label{display:block;font-size:10px;color:${C.mut};margin-bottom:4px;letter-spacing:.4px;}
-table{width:100%;border-collapse:collapse;font-size:12px;}
-th,td{padding:10px 8px;text-align:right;border-bottom:1px solid ${hexA(C.txt, 0.1)};}
-th{font-family:Syne,sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:${C.mut};background:${hexA(C.gold, 0.08)};}
-.name{font-weight:700;} .meta{font-size:10px;color:${C.mut};margin-top:2px;}
-.c{text-align:center;} .n{direction:ltr;text-align:left;white-space:nowrap;}
-.totals{margin:18px 0 8px;margin-inline-start:auto;width:min(320px,100%);background:${C.tot};padding:12px 16px;border:1px solid ${hexA(C.gold, 0.25)};}
-.tot{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13px;}
-.tot.grand{border-top:1px solid ${C.gold};margin-top:6px;padding-top:10px;font-family:"Playfair Display",serif;font-size:18px;font-weight:700;background:${C.grand};}
-.notes{margin-top:18px;padding:12px;border:1px dashed ${hexA(C.gold, 0.35)};white-space:pre-wrap;font-size:12px;}
-.foot{margin-top:28px;text-align:center;color:${C.mut};font-size:11px;}
-.web{color:${C.gold};margin-top:6px;font-family:"DM Sans",sans-serif;}
-`;
+  const liveItems = opts.draft.items.filter((it) => String(it.name || "").trim());
+  const html = buildInvoicePrintHtml({
+    ...opts,
+    items: liveItems,
+    autoPrint: true,
+  });
+  const w = window.open("", "_blank", "width=820,height=960");
+  if (!w) return false;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  return true;
 }
 
 export function groupProducts(

@@ -113,8 +113,17 @@ function newWriteId(): string {
   return `w_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function decodeCloudData(data: unknown): unknown {
+  if (typeof data !== "string") return data;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return data;
+  }
+}
+
 function applyRemote(key: string, data: unknown) {
-  writeLocal(key, data);
+  writeLocal(key, decodeCloudData(data));
   notify(key);
 }
 

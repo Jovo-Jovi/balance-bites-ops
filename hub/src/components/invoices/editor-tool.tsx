@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PRINT_PAGE_SIZES } from "@/lib/invoices/print-layout";
 import { useInvoiceApp } from "./invoice-context";
 import { ActionBtn, Empty, Field, Modal, TextArea, TextInput } from "./ui";
 import { PrintLookPicker } from "./print-look-picker";
@@ -346,6 +347,22 @@ function PrintChooser({
     >
       <p className="mb-3 text-sm text-[var(--bb-muted)]">اختر مظهر الطباعة ثم اطبع</p>
       <PrintLookPicker name="print-look" />
+      <label className="mt-4 block text-sm text-[var(--bb-muted)]">
+        حجم الصفحة
+        <select
+          value={app.pageSize}
+          onChange={(e) =>
+            app.setPageSize(e.target.value as typeof app.pageSize)
+          }
+          className="bb-glass-input mt-1 w-full px-3 py-2 text-[var(--bb-text)] outline-none"
+        >
+          {PRINT_PAGE_SIZES.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </Modal>
   );
 }
