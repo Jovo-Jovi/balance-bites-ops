@@ -112,6 +112,220 @@ body {
   min-height: 2.75rem;
   padding-inline: 1rem;
   touch-action: manipulation;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease,
+    filter 0.16s ease;
+}
+
+.bb-pressable {
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.bb-card-pending {
+  background: color-mix(in srgb, var(--bb-warn) 16%, var(--bb-panel));
+  border-color: color-mix(in srgb, var(--bb-warn) 52%, var(--bb-line));
+  box-shadow:
+    inset -3px 0 0 var(--bb-warn),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent),
+    0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
+}
+
+.bb-card-clear {
+  background: color-mix(in srgb, var(--bb-ok) 11%, var(--bb-panel));
+  border-color: color-mix(in srgb, var(--bb-ok) 42%, var(--bb-line));
+  box-shadow:
+    inset -3px 0 0 var(--bb-ok),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent),
+    0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
+}
+
+[dir="ltr"] .bb-card-pending {
+  box-shadow:
+    inset 3px 0 0 var(--bb-warn),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent),
+    0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
+}
+
+[dir="ltr"] .bb-card-clear {
+  box-shadow:
+    inset 3px 0 0 var(--bb-ok),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent),
+    0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
+}
+
+.bb-brand-lockup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--bb-gold) 28%, var(--bb-line));
+  background: color-mix(in srgb, var(--bb-panel) 78%, transparent);
+}
+
+.bb-brand-lockup-hero {
+  gap: 0.9rem;
+  padding: 0.55rem 1rem 0.55rem 0.75rem;
+}
+
+.bb-brand-pattern {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 9px,
+    color-mix(in srgb, var(--bb-gold) 22%, transparent) 9px,
+    color-mix(in srgb, var(--bb-gold) 22%, transparent) 10px
+  );
+  background-size: 28px 28px;
+  animation: bb-pattern-shift 14s linear infinite;
+  opacity: 0.95;
+}
+
+.bb-brand-mono {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bb-brand-letters {
+  font-family: var(--font-playfair), serif;
+  font-weight: 900;
+  font-size: 1.05rem;
+  letter-spacing: -0.08em;
+  line-height: 1;
+  color: var(--bb-title);
+}
+
+.bb-brand-lockup-hero .bb-brand-letters {
+  font-size: 1.55rem;
+}
+
+.bb-brand-diamond {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  transform: rotate(45deg);
+  background: var(--bb-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bb-gold) 18%, transparent);
+}
+
+.bb-brand-lockup-hero .bb-brand-diamond {
+  width: 9px;
+  height: 9px;
+}
+
+.bb-brand-name {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-playfair), serif;
+  font-weight: 900;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--bb-title);
+}
+
+.bb-brand-lockup-hero .bb-brand-name {
+  font-size: clamp(1.45rem, 5vw, 2.15rem);
+}
+
+@keyframes bb-pattern-shift {
+  to {
+    background-position: 28px 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .bb-brand-name {
+    font-size: 1.125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-brand-pattern {
+    animation: none;
+  }
+  .bb-btn,
+  .bb-pressable {
+    transition: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bb-btn:hover:not(:disabled) {
+    background-color: var(--bb-btn-hover);
+    color: var(--bb-btn-hover-text);
+    border-color: color-mix(in srgb, var(--bb-btn-hover) 80%, var(--bb-line));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--bb-title) 12%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .bb-btn[data-tone="danger"]:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--bb-bad) 16%, var(--bb-panel));
+    color: var(--bb-bad);
+    border-color: var(--bb-bad);
+    box-shadow: none;
+  }
+
+  .bb-btn[aria-selected="true"]:hover,
+  .bb-btn[aria-pressed="true"]:hover {
+    background-color: var(--bb-title);
+    color: var(--bb-panel);
+    border-color: var(--bb-title);
+    filter: brightness(1.08);
+  }
+
+  .bb-btn[aria-current="page"]:hover {
+    background-color: var(--bb-btn-hover);
+    color: var(--bb-btn-hover-text);
+  }
+
+  .bb-btn:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.96);
+  }
+
+  a.bb-glass:hover,
+  button.bb-glass:hover:not(:disabled),
+  .bb-pressable:hover {
+    background: color-mix(in srgb, var(--bb-panel) 86%, transparent);
+    border-color: color-mix(in srgb, var(--bb-gold) 46%, var(--bb-line));
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, #ffffff 75%, transparent),
+      0 12px 28px color-mix(in srgb, var(--bb-title) 12%, transparent);
+  }
+
+  .bb-card-pending.bb-pressable:hover {
+    background: color-mix(in srgb, var(--bb-warn) 22%, var(--bb-panel));
+    border-color: color-mix(in srgb, var(--bb-warn) 68%, var(--bb-line));
+  }
+
+  .bb-card-clear.bb-pressable:hover {
+    background: color-mix(in srgb, var(--bb-ok) 18%, var(--bb-panel));
+    border-color: color-mix(in srgb, var(--bb-ok) 58%, var(--bb-line));
+  }
+
+  .bb-brand-lockup:hover {
+    border-color: color-mix(in srgb, var(--bb-gold) 55%, var(--bb-line));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--bb-gold) 16%, transparent);
+  }
 }
 
 .bb-glass {
@@ -133,12 +347,6 @@ body {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  a.bb-glass:hover {
-    background: color-mix(in srgb, var(--bb-panel) 76%, transparent);
-  }
 }
 
 .bb-glass-input {

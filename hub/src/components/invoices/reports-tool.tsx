@@ -66,9 +66,10 @@ export function ReportsTool() {
             onClick={() => setKind(tab.id)}
             className={`bb-btn rounded-full text-sm ${
               kind === tab.id
-                ? "bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
                 : "bb-glass"
             }`}
+            aria-pressed={kind === tab.id}
           >
             {tab.label}
           </button>

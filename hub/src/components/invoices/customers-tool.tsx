@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInvoiceApp } from "./invoice-context";
 import { CustomerBrief } from "./customer-brief";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "./ui";
+import { customerPendingCount } from "@/lib/invoices/payments";
 import type { Customer } from "@/lib/invoices/types";
 
 const emptyForm = {
@@ -144,11 +145,19 @@ export function CustomersTool() {
         <ul className="grid gap-3 sm:grid-cols-2">
           {visible.map((c) => {
             const n = app.invoices.filter((i) => i.customerId === c.id).length;
+            const pending = customerPendingCount(
+              app.invoices,
+              app.payments,
+              app.returns,
+              c.id,
+            );
             const sel = c.id === app.draft.customerId;
             return (
               <li
                 key={c.id}
-                className={`bb-glass cursor-pointer p-4 ${sel ? "ring-2 ring-[var(--bb-gold)]" : ""}`}
+                className={`bb-glass bb-pressable cursor-pointer p-4 ${
+                  pending ? "bb-card-pending" : "bb-card-clear"
+                } ${sel ? "ring-2 ring-[var(--bb-gold)]" : ""}`}
                 onClick={() => setBriefId(c.id)}
               >
                 <div className="flex items-start gap-3">
@@ -162,7 +171,18 @@ export function CustomersTool() {
                     }
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[var(--bb-title)]">{c.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[var(--bb-title)]">{c.name}</p>
+                      <span
+                        className={`bb-pay-chip ${
+                          pending
+                            ? "bg-[color-mix(in_srgb,var(--bb-warn)_18%,transparent)] text-[var(--bb-warn)]"
+                            : "bg-[color-mix(in_srgb,var(--bb-ok)_18%,transparent)] text-[var(--bb-ok)]"
+                        }`}
+                      >
+                        {pending ? `${pending} معلقة` : "لا معلق"}
+                      </span>
+                    </div>
                     {c.phone ? (
                       <p className="text-sm text-[var(--bb-muted)]" dir="ltr">
                         {c.phone}

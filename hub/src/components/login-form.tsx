@@ -102,7 +102,8 @@ export function LoginForm() {
           type="button"
           disabled={busy}
           onClick={onGoogle}
-          className="bb-btn w-full rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-muted)] hover:border-[var(--bb-gold)] hover:text-[var(--bb-gold)] disabled:opacity-50"
+          className="bb-btn w-full rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-muted)] disabled:opacity-50"
+          data-tone="ghost"
         >
           دخول بجوجل (اختياري)
         </button>

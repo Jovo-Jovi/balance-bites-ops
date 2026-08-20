@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "./auth-provider";
+import { BrandLockup } from "./brand-lockup";
 import { DiamondMark } from "./diamond-mark";
 import { LoginForm } from "./login-form";
 import { TENANT_NAME } from "@/lib/tenant";
@@ -79,16 +80,8 @@ export function HubHome() {
 
   return (
     <div className="bb-shell flex flex-col">
-      <header className="flex items-center justify-center gap-3 pt-2 sm:gap-5 sm:pt-4">
-        <span className="sm:hidden">
-          <DiamondMark size={18} />
-        </span>
-        <span className="hidden sm:inline-block">
-          <DiamondMark size={22} />
-        </span>
-        <h1 className="font-brand text-[clamp(1.5rem,5vw,2.25rem)] text-[var(--bb-title)]">
-          Balance Bites
-        </h1>
+      <header className="flex items-center justify-center pt-2 sm:pt-4">
+        <BrandLockup size="hero" />
       </header>
       <main className="mx-auto mt-8 w-full max-w-3xl flex-1 lg:mt-14 lg:max-w-6xl xl:max-w-7xl">
         <p className="mb-5 text-center text-sm text-[var(--bb-muted)] lg:mb-8">
@@ -102,7 +95,7 @@ export function HubHome() {
             <Link
               key={card.href}
               href={card.href}
-              className="bb-glass flex min-h-24 flex-col justify-between gap-4 p-5 outline-none transition-[background-color] duration-200 focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)] sm:min-h-32 sm:p-6 lg:min-h-60 lg:p-8"
+              className="bb-glass bb-pressable flex min-h-24 flex-col justify-between gap-4 p-5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)] sm:min-h-32 sm:p-6 lg:min-h-60 lg:p-8"
             >
               <div>
                 <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase sm:tracking-[0.28em]">
@@ -134,7 +127,8 @@ export function HubHome() {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-line)] hover:border-[var(--bb-gold)] hover:text-[var(--bb-gold)] sm:w-auto"
+          className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-line)] sm:w-auto"
+          data-tone="ghost"
         >
           خروج
         </button>

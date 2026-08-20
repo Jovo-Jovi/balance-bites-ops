@@ -201,7 +201,8 @@ export function EditorTool() {
                   </p>
                   <button
                     type="button"
-                    className="bb-btn min-h-11 text-[var(--bb-bad)]"
+                    data-tone="danger"
+                    className="bb-btn min-h-11 border border-[var(--bb-bad)] text-[var(--bb-bad)]"
                     onClick={() => app.removeLine(i)}
                     aria-label="حذف السطر"
                   >
@@ -444,7 +445,8 @@ function ProductPicker({ open, onClose }: { open: boolean; onClose: () => void }
         <button
           type="button"
           onClick={() => setCat("")}
-          className={`bb-btn rounded-full text-xs ${cat === "" ? "bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
+          aria-pressed={cat === ""}
+          className={`bb-btn rounded-full text-xs ${cat === "" ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
         >
           الكل
         </button>
@@ -453,7 +455,8 @@ function ProductPicker({ open, onClose }: { open: boolean; onClose: () => void }
             key={c.id}
             type="button"
             onClick={() => setCat(c.id)}
-            className={`bb-btn rounded-full text-xs ${cat === c.id ? "bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
+            aria-pressed={cat === c.id}
+            className={`bb-btn rounded-full text-xs ${cat === c.id ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
           >
             {c.name.split("·")[0].trim()}
           </button>

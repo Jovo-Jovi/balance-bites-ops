@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { fmt } from "@/lib/invoices/helpers";
 import {
+  customerPendingCount,
   invoicePayBadgeClass,
   invoicePayLabel,
   invoicePayRowClass,
@@ -19,7 +20,7 @@ export function CustomerPickList({
   query: string;
   onPick: (id: string) => void;
 }) {
-  const { customers, invoices } = useInvoiceApp();
+  const { customers, invoices, payments, returns } = useInvoiceApp();
   const q = query.toLowerCase();
   const list = customers.filter(
     (c) =>
@@ -32,14 +33,28 @@ export function CustomerPickList({
     <ul className="flex flex-col gap-2">
       {list.map((c) => {
         const n = invoices.filter((i) => i.customerId === c.id).length;
+        const pending = customerPendingCount(invoices, payments, returns, c.id);
         return (
           <li key={c.id}>
             <button
               type="button"
               onClick={() => onPick(c.id)}
-              className="bb-glass w-full px-3 py-3 text-start"
+              className={`bb-glass bb-pressable w-full px-3 py-3 text-start ${
+                pending ? "bb-card-pending" : "bb-card-clear"
+              }`}
             >
-              <span className="block text-[var(--bb-title)]">{c.name}</span>
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-[var(--bb-title)]">{c.name}</span>
+                <span
+                  className={`bb-pay-chip ${
+                    pending
+                      ? "bg-[color-mix(in_srgb,var(--bb-warn)_18%,transparent)] text-[var(--bb-warn)]"
+                      : "bg-[color-mix(in_srgb,var(--bb-ok)_18%,transparent)] text-[var(--bb-ok)]"
+                  }`}
+                >
+                  {pending ? `${pending} معلقة` : "لا معلق"}
+                </span>
+              </span>
               <span className="text-xs text-[var(--bb-muted)]">
                 {c.phone || "بدون هاتف"} · {n} فاتورة
               </span>
@@ -159,7 +174,7 @@ export function CustomerBrief({
                   <button
                     type="button"
                     onClick={() => onLoad(e.inv.id)}
-                    className={`w-full rounded-[var(--bb-radius)] px-3 py-3 text-start ${invoicePayRowClass(pay)}`}
+                    className={`bb-pressable w-full rounded-[var(--bb-radius)] px-3 py-3 text-start ${invoicePayRowClass(pay)}`}
                   >
                     {row}
                   </button>

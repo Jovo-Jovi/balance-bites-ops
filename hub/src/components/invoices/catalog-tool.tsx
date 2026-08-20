@@ -34,7 +34,8 @@ export function CatalogTool() {
         <button
           type="button"
           onClick={() => setCat("")}
-          className={`bb-btn rounded-full text-xs ${cat === "" ? "bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
+          aria-pressed={cat === ""}
+          className={`bb-btn rounded-full text-xs ${cat === "" ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
         >
           الكل
         </button>
@@ -43,7 +44,8 @@ export function CatalogTool() {
             key={c.id}
             type="button"
             onClick={() => setCat(c.id)}
-            className={`bb-btn rounded-full text-xs ${cat === c.id ? "bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
+            aria-pressed={cat === c.id}
+            className={`bb-btn rounded-full text-xs ${cat === c.id ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]" : "bb-glass"}`}
           >
             <span
               className="me-1 inline-block h-2 w-2 rounded-full"

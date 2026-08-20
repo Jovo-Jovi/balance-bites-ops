@@ -47,11 +47,12 @@ export function ActionBtn({
       ? "border border-[var(--bb-bad)] text-[var(--bb-bad)]"
       : tone === "ghost"
         ? "border border-[var(--bb-line)] text-[var(--bb-text)]"
-        : "bg-[var(--bb-btn)] text-[var(--bb-btn-text)]";
+        : "border border-[var(--bb-btn)] bg-[var(--bb-btn)] text-[var(--bb-btn-text)]";
   return (
     <button
       type="button"
       {...props}
+      data-tone={tone}
       className={`bb-btn inline-flex items-center justify-center rounded-[var(--bb-radius)] text-sm disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${props.className ?? ""}`}
     >
       {children}
@@ -82,7 +83,7 @@ export function Accordion({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-start"
+        className="bb-pressable flex w-full items-center gap-3 px-4 py-3 text-start"
       >
         <span className="font-label flex-1 text-[11px] tracking-[0.16em] text-[var(--bb-gold)] uppercase">
           {title}
@@ -129,6 +130,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             className="bb-btn min-h-11 rounded-full px-3 text-sm"
+            data-tone="ghost"
           >
             إغلاق
           </button>
