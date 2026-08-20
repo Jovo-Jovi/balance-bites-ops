@@ -61,7 +61,7 @@ Do this in [Firebase Console](https://console.firebase.google.com/) while logged
 2. Enable **Google Analytics** only if you want it.
 3. **Authentication → Sign-in method → Email/Password** (and Google later if needed).
 4. **Firestore → Create database** (production mode, pick a region close to you, e.g. `europe-west`).
-5. **Skip Storage.** This project stays on the **Spark (free) plan**. Do not upgrade. Label art (`label_assets/`) and `bb_backups/` stay in the Desktop `saved data` folder. Auth + Firestore are enough for the hub, invoices, and finance JSON.
+5. **Skip Firebase Storage.** Stay on the **Spark (free) plan**. Do not upgrade to Blaze. Label art and folder backups use **Cloudflare R2** (see §6).
 6. **Project settings → Your apps → Web** → register app `balance-bites-ops` → copy the `firebaseConfig` object.
 7. Put those values in `hub/.env.local` (never commit). Use `hub/.env.example` as the shape.
 8. **Allowlist:** after you create your Auth user, add Firestore doc `staff/{uid}` with `{ "email": "...", "role": "owner" }`. The app cannot create this document (prevents self-promotion).
@@ -74,19 +74,41 @@ npx -y firebase-tools@latest use
 npx -y firebase-tools@latest deploy --only firestore:rules
 ```
 
-Rules file: `firestore.rules` (staff-only; no public read). Review them before a broad launch. `storage.rules` is unused while Spark has no Cloud Storage.
+Rules file: `firestore.rules` (staff-only; no public read). Review them before a broad launch. `storage.rules` is unused — binaries go to Cloudflare R2, not Firebase Storage.
 
 10. Optional: enable Google sign-in in Console and add `localhost` (and later the Vercel domain) under Authentication → Settings → Authorized domains. Without the Vercel host, login on the live URL fails with `auth/unauthorized-domain`.
 
 Do **not** run `hub` import (`npm run import:apply`) until you zip `saved data` and explicitly ask. Dry-run: `cd hub && npm run import:dry`.
 
-## 4. What stays local until migrate
+## 4. Cloudflare R2 (label art + backups)
+
+R2 is okay for this project: **10 GB + 1M writes + 10M reads / month free**, no egress fee, S3 API, and it does **not** require Firebase Blaze. Live `label_assets/` is ~22 MB.
+
+Cloudflare may ask you to add a payment method to *enable* R2 even if you stay inside the free tier. Create a bucket named `balance-bites-ops`. A new account S3 endpoint can take about 20 minutes before TLS works.
+
+1. Log in at [dash.cloudflare.com](https://dash.cloudflare.com/) → **R2 Object Storage**.
+2. Purchase / enable R2 if the dashboard asks (free-tier usage still applies).
+3. **Create bucket** named `balance-bites-ops`. If the S3 endpoint is `https://<account>.r2.cloudflarestorage.com` (no `.eu.`), set `R2_JURISDICTION=default`. Use `eu` only when the endpoint host is `.eu.r2.cloudflarestorage.com`.
+4. **Manage R2 API Tokens** → Create token with **Object Read & Write** on that bucket only.
+5. Copy **Account ID**, **Access Key ID**, and **Secret Access Key** into `hub/.env.local` (`R2_*` keys in `.env.example`). Set `NEXT_PUBLIC_BB_USE_STORAGE=true`.
+6. Same values in Vercel → Project → Settings → Environment Variables (Preview + Production). Never prefix R2 secrets with `NEXT_PUBLIC_`.
+7. From `hub/`: `npm run storage:init` (checks the bucket and sets GET CORS). If this fails with an SSL handshake error, wait ~20 minutes and retry — Cloudflare is still provisioning the account endpoint certificate.
+8. When you want binaries in the cloud: `npm run import:assets -- --sa "C:\Users\Marco\Desktop\<service-account>.json"`
+
+Object keys:
+
+`tenants/balance-bites/label_assets/{templateId}/…`  
+`tenants/balance-bites/bb_backups/…`
+
+Uploads go through `/api/storage/object` (staff Firebase token required). The bucket stays private.
+
+## 5. What stays local until migrate
 
 - Open HTML from `costs` (or the Desktop copies you already use).
 - Connect **ربط المجلد** to `saved data`.
 - Do not copy live JSON into this git repo.
 
-## 5. After the hub is built
+## 6. After the hub is built
 
 1. Wrap the three HTML apps into `hub/public/apps/` (see [docs/PARITY.md](docs/PARITY.md)).
 2. Point them at CloudStore (`hub/public/bb-cloud-store.js`) instead of the Desktop folder.

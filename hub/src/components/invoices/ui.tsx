@@ -1,0 +1,147 @@
+"use client";
+
+import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+
+export function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1 block text-xs text-[var(--bb-muted)]">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`bb-glass-input w-full px-3 text-[var(--bb-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)] ${props.className ?? ""}`}
+    />
+  );
+}
+
+export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={`bb-glass-input w-full px-3 py-2 text-[var(--bb-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)] ${props.className ?? ""}`}
+    />
+  );
+}
+
+export function ActionBtn({
+  children,
+  tone = "primary",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  tone?: "primary" | "ghost" | "danger";
+}) {
+  const styles =
+    tone === "danger"
+      ? "border border-[var(--bb-bad)] text-[var(--bb-bad)]"
+      : tone === "ghost"
+        ? "border border-[var(--bb-line)] text-[var(--bb-text)]"
+        : "border border-[var(--bb-btn)] bg-[var(--bb-btn)] text-[var(--bb-btn-text)]";
+  return (
+    <button
+      type="button"
+      {...props}
+      data-tone={tone}
+      className={`bb-btn inline-flex items-center justify-center rounded-[var(--bb-radius)] text-sm disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${props.className ?? ""}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function Empty({ children }: { children: ReactNode }) {
+  return (
+    <p className="rounded-[var(--bb-radius)] border border-dashed border-[var(--bb-line)] px-4 py-8 text-center text-sm text-[var(--bb-muted)]">
+      {children}
+    </p>
+  );
+}
+
+export function Accordion({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="bb-glass overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="bb-pressable flex w-full items-center gap-3 px-4 py-3 text-start"
+      >
+        <span className="font-label flex-1 text-[11px] tracking-[0.16em] text-[var(--bb-gold)] uppercase">
+          {title}
+        </span>
+        <span
+          className={`text-sm text-[var(--bb-gold)] transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          ▾
+        </span>
+      </button>
+      <div className={`border-t border-[var(--bb-line)]/50 ${open ? "block" : "hidden"}`}>
+        <div className="p-4">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+export function Modal({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--bb-title)_62%,transparent)] p-3 sm:items-center"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] shadow-[0_18px_48px_color-mix(in_srgb,var(--bb-title)_28%,transparent)]">
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--bb-line)]/60 px-4 py-3">
+          <h2 className="text-base text-[var(--bb-title)]">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="bb-btn min-h-11 rounded-full px-3 text-sm"
+            data-tone="ghost"
+          >
+            إغلاق
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        {footer ? (
+          <div className="flex flex-wrap gap-2 border-t border-[var(--bb-line)]/60 p-4">
+            {footer}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

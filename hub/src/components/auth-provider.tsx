@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { isFirebaseConfigured } from "@/lib/firebase-config";
+import { conflictToastLabel } from "@/lib/cloud-snap";
 import { useToast } from "./toast";
 
 type AuthUser = {
@@ -44,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       configureCloudStoreUi({
         onError: (message) => toast.push(message, "bad"),
         onConflict: (key) =>
-          toast.push(`تم تحديث ${key} من جهاز أو تبويب آخر`, "warn"),
+          toast.push(
+            `تم تحديث ${conflictToastLabel(key)} من جهاز أو تبويب آخر`,
+            "warn",
+          ),
       });
     });
   }, [toast]);
@@ -177,7 +181,7 @@ function mapAuthError(err: unknown): string {
     return "محاولات كثيرة. انتظر ثم أعد المحاولة";
   }
   if (code === "auth/unauthorized-domain") {
-    return "النطاق غير مصرّح في Firebase Auth (أضف localhost أو نطاق Vercel)";
+    return "النطاق غير مصرّح في Firebase Auth";
   }
   if (code === "auth/popup-closed-by-user") {
     return "أُغلق نافذة جوجل";

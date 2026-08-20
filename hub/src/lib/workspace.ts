@@ -44,12 +44,12 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         summary:
           "إنشاء فاتورة، الأسطر، المجاميع، والحفظ والطباعة. سطر يدوي أو من الكتالوج مع العبوة والوزن.",
         actions: [
-          { label: "فاتورة جديدة", soon: true },
-          { label: "حفظ", soon: true },
-          { label: "طباعة", soon: true },
+          { label: "فاتورة جديدة" },
+          { label: "حفظ" },
+          { label: "طباعة" },
         ],
         features: [
-          "أكورديون المحرر واختيار العميل والمنتج",
+          "تبويبات المركز واختيار العميل والمنتج",
           "مجاميع: فرعي، خصم، إجمالي",
           "لقطة المحرر bb_inv2",
         ],
@@ -60,8 +60,8 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         en: "Customers",
         summary: "سجل العملاء وطباعة القائمة قبل فتح فاتورة جديدة.",
         actions: [
-          { label: "عميل جديد", soon: true },
-          { label: "طباعة القائمة", soon: true },
+          { label: "عميل جديد" },
+          { label: "طباعة القائمة" },
         ],
         features: ["إضافة / تعديل / أرشفة", "سجل العميل قبل المتابعة"],
       },
@@ -71,8 +71,8 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         en: "Catalog",
         summary: "التصنيفات والمنتجات وقائمة الأسعار للطباعة.",
         actions: [
-          { label: "إضافة منتج", soon: true },
-          { label: "طباعة الأسعار", soon: true },
+          { label: "إضافة منتج" },
+          { label: "طباعة الأسعار" },
         ],
         features: [
           "إضافة واحد / تصنيف كامل / تصنيفات محددة",
@@ -86,8 +86,8 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         summary:
           "مسودات التحضير من المالية. تجاهل invoice_draft حتى الاعتماد. الحزم لنسخ أسطر متكررة.",
         actions: [
-          { label: "إكمال معلق", soon: true },
-          { label: "الحزم", soon: true },
+          { label: "إكمال معلق" },
+          { label: "الحزم" },
         ],
         features: ["تخطي kind: invoice_draft", "حفظ أسطر الفاتورة كنسخة متعددة"],
       },
@@ -96,7 +96,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "السجل",
         en: "History",
         summary: "الفواتير السابقة وحالة الدفع المشتركة مع المالية.",
-        actions: [{ label: "فتح السجل", soon: true }],
+        actions: [{ label: "فتح السجل" }],
         features: ["علامات مدفوع / معلق", "عرض المرتجعات التي تكتبها المالية"],
       },
       {
@@ -104,7 +104,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "التقارير",
         en: "Reports",
         summary: "إجمالي، عميل، أفضل منتج، ومنتج مع فلتر تاريخ.",
-        actions: [{ label: "تقرير", soon: true }],
+        actions: [{ label: "تقرير" }],
         features: ["فلتر تاريخ", "طباعة التقرير"],
       },
       {
@@ -112,7 +112,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "المظهر",
         en: "Look",
         summary: "ثيمات الألوان المشتركة مع التصميم والمالية.",
-        actions: [{ label: "الثيمات", soon: true }],
+        actions: [{ label: "الثيمات" }],
         features: ["bb_color_presets", "إعداد طباعة الصفحة"],
       },
     ],
@@ -274,7 +274,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
           { label: "تكلفة تشغيل", soon: true },
           { label: "نسخة احتياطية", soon: true },
         ],
-        features: ["bb_operation_costs", "bb_backups على Desktop"],
+        features: ["bb_operation_costs", "bb_backups على Cloudflare R2"],
       },
     ],
   },

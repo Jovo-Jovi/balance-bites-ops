@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "./auth-provider";
-import { DiamondMark } from "./diamond-mark";
+import { BrandLockup } from "./brand-lockup";
 import { TENANT_NAME } from "@/lib/tenant";
 import { RequireStaff } from "./require-staff";
 import {
@@ -13,6 +13,7 @@ import {
   getWorkspaceApp,
   type AppId,
 } from "@/lib/workspace";
+import { InvoiceApp } from "./invoices/invoice-app";
 
 export function WorkspaceScreen({ appId }: { appId: AppId }) {
   const app = getWorkspaceApp(appId);
@@ -51,12 +52,10 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <Link
             href="/"
-            className="flex min-h-11 w-fit items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)]"
+            aria-label="Balance Bites — الرئيسية"
+            className="w-fit rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)]"
           >
-            <DiamondMark size={14} />
-            <span className="font-brand text-base text-[var(--bb-title)] sm:text-lg">
-              Balance Bites
-            </span>
+            <BrandLockup />
           </Link>
           <nav
             aria-label={app.lang === "ar" ? "التطبيقات" : "Apps"}
@@ -71,9 +70,10 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
                   aria-current={current ? "page" : undefined}
                   className={`bb-btn flex items-center justify-center rounded-[var(--bb-radius)] px-2 text-center text-xs leading-tight sm:text-sm ${
                     current
-                      ? "bg-[var(--bb-btn)] text-[var(--bb-btn-text)]"
+                      ? "border border-[var(--bb-btn)] bg-[var(--bb-btn)] text-[var(--bb-btn-text)]"
                       : "border border-[var(--bb-line)] text-[var(--bb-text)]"
                   }`}
+                  data-tone={current ? undefined : "ghost"}
                 >
                   <span className="block truncate">{item.title}</span>
                 </Link>
@@ -105,9 +105,10 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
                 onClick={() => openTab(item.id)}
                 className={`bb-btn shrink-0 rounded-full px-4 text-sm ${
                   selected
-                    ? "bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                    ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
                     : "bb-glass text-[var(--bb-text)]"
                 }`}
+                data-tone={selected ? undefined : "ghost"}
               >
                 {item.label}
               </button>
@@ -116,48 +117,62 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
         </div>
       </div>
 
-      <main className="mx-auto mt-4 flex w-full max-w-3xl flex-1 flex-col gap-4 lg:max-w-6xl lg:flex-row lg:gap-6">
-        <section className="bb-glass min-w-0 flex-1 p-5 sm:p-6">
-          <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
-            {tool.en}
-          </p>
-          <h1 className="mt-2 text-[clamp(1.5rem,3vw,2rem)] text-[var(--bb-title)]">
-            {tool.label}
-          </h1>
-          <p className="mt-3 max-w-2xl text-[var(--bb-text)]">{tool.summary}</p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {tool.actions.map((action) => (
-              <button
-                key={action.label}
-                type="button"
-                disabled={action.soon}
-                className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-gold)] bg-[var(--bb-btn)] text-sm text-[var(--bb-btn-text)] disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                {action.label}
-                {action.soon ? (
-                  <span className="ms-2 text-[11px] opacity-80">
-                    {app.lang === "ar" ? "قريباً" : "Soon"}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        </section>
-        <aside className="bb-glass w-full shrink-0 p-5 lg:w-80">
-          <h2 className="text-sm text-[var(--bb-muted)]">
-            {app.lang === "ar" ? "في هذه الأداة" : "In this tool"}
-          </h2>
-          <ul className="mt-3 space-y-2 text-sm text-[var(--bb-text)]">
-            {tool.features.map((feature) => (
-              <li
-                key={feature}
-                className="border-b border-[var(--bb-line)]/60 py-2 last:border-b-0"
-              >
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </aside>
+      <main className="mx-auto mt-4 flex w-full max-w-3xl min-h-0 flex-1 flex-col gap-4 lg:max-w-6xl lg:flex-row lg:gap-6">
+        {appId === "invoices" ? (
+          <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">
+            <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
+              {tool.en}
+            </p>
+            <h1 className="mt-1 mb-4 text-[clamp(1.35rem,2.6vw,1.85rem)] text-[var(--bb-title)]">
+              {tool.label}
+            </h1>
+            <InvoiceApp tab={tool.id} />
+          </section>
+        ) : (
+          <>
+            <section className="bb-glass min-w-0 flex-1 p-5 sm:p-6">
+              <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
+                {tool.en}
+              </p>
+              <h1 className="mt-2 text-[clamp(1.5rem,3vw,2rem)] text-[var(--bb-title)]">
+                {tool.label}
+              </h1>
+              <p className="mt-3 max-w-2xl text-[var(--bb-text)]">{tool.summary}</p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {tool.actions.map((action) => (
+                  <button
+                    key={action.label}
+                    type="button"
+                    disabled={action.soon}
+                    className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-gold)] bg-[var(--bb-btn)] text-sm text-[var(--bb-btn-text)] disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    {action.label}
+                    {action.soon ? (
+                      <span className="ms-2 text-[11px] opacity-80">
+                        {app.lang === "ar" ? "قريباً" : "Soon"}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <aside className="bb-glass w-full shrink-0 p-5 lg:w-80">
+              <h2 className="text-sm text-[var(--bb-muted)]">
+                {app.lang === "ar" ? "في هذه الأداة" : "In this tool"}
+              </h2>
+              <ul className="mt-3 space-y-2 text-sm text-[var(--bb-text)]">
+                {tool.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="border-b border-[var(--bb-line)]/60 py-2 last:border-b-0"
+                  >
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          </>
+        )}
       </main>
 
       <footer className="bb-glass mt-4 flex flex-col items-stretch gap-3 px-4 py-3 text-sm text-[var(--bb-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -165,14 +180,16 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Link
             href="/"
-            className="bb-btn inline-flex items-center justify-center rounded-[var(--bb-radius)] sm:w-auto"
+            className="bb-btn inline-flex items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] sm:w-auto"
+            data-tone="ghost"
           >
             {app.lang === "ar" ? "الرئيسية" : "Hub"}
           </Link>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="bb-btn rounded-[var(--bb-radius)] hover:text-[var(--bb-gold)] sm:w-auto"
+            className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-line)] sm:w-auto"
+            data-tone="ghost"
           >
             {app.signOutLabel}
           </button>

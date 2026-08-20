@@ -28,8 +28,8 @@ Stock on-hand is **not** a typed count. It is:
 
 ## Cloud target
 
-- **Hub:** Next.js in `hub/` — login + three cards (apps still stubs)
-- **Database:** Firebase (Auth + Firestore + Storage)
+- **Hub:** Next.js in `hub/` — login + three cards; Invoices is a live React app
+- **Database:** Firebase (Auth + Firestore). Binaries on Cloudflare R2 — not Firebase Storage / not Blaze.
 - **Git:** GitHub private repo `Jovo-Jovi/balance-bites-ops`
 - **Not deployed** until Auth + locked rules exist
 
@@ -78,7 +78,7 @@ balance-bites-ops/
   hub/                 Next.js App Router (Vercel root directory)
   docs/                Architecture, modules, data, brand, parity backlog
   firestore.rules      Locked staff-only rules (prototype — review before launch)
-  storage.rules        Unused while Spark has no Cloud Storage
+  storage.rules        Unused — binaries use Cloudflare R2
 ```
 
 Local hub:
@@ -94,7 +94,7 @@ Setup (GitHub / Vercel / Firebase): [SETUP.md](SETUP.md)
 
 ## Status
 
-Hub scaffold is in `hub/`: login, linen UI, workspace tabs, CloudStore client. Invoice / Design / Finance are organized tool shells (logic not ported yet).
+Hub scaffold is in `hub/`: login, linen UI, CloudStore. **Invoices** is a native workspace (editor, customers, catalog, queue, history, reports, print look). Design and Finance are still tool shells.
 
 - **GitHub:** https://github.com/Jovo-Jovi/balance-bites-ops  
 - **Vercel:** https://balance-bites-ops.vercel.app  

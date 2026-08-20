@@ -8,13 +8,18 @@
     "start": "next start",
     "lint": "eslint",
     "import:dry": "node scripts/import-saved-data.mjs --dry-run",
-    "import:apply": "node scripts/import-saved-data.mjs --apply"
+    "import:apply": "node scripts/import-saved-data.mjs --apply",
+    "import:assets": "node scripts/import-saved-data.mjs --apply --assets",
+    "storage:init": "node scripts/r2-init.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1115.0",
+    "@aws-sdk/s3-request-presigner": "^3.1115.0",
     "firebase": "^12.18.0",
     "next": "16.3.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -23,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "firebase-admin": "^14.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

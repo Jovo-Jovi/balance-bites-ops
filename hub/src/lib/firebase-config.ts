@@ -1,4 +1,4 @@
-/** Spark/free tier: Auth + Firestore only. Cloud Storage is not used. */
+/** Object storage is Cloudflare R2, not Firebase Storage. */
 export function isStorageEnabled(): boolean {
   return process.env.NEXT_PUBLIC_BB_USE_STORAGE === "true";
 }

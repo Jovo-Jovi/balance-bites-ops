@@ -34,10 +34,10 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] `Store.set` / `CloudStore.set` surfaces write errors (no silent fail)
 - [x] `onSnapshot` + `clientWriteId` so another tab toasts instead of silent clobber
 - [x] Prep / print keys that were localStorage-only now listed as Firestore keys
-- [ ] One-shot import of `saved data` (script exists; **do not run** until asked; zip first)
-- [ ] Label binaries stay in Desktop `label_assets/` (no Cloud Storage on Spark)
-- [ ] Backup snapshots stay in Desktop `bb_backups/`
-- [ ] HTML wrap: swap FileStore for `public/bb-cloud-store.js`
+- [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
+- [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
+- [ ] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
+- [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; invoices were rebuilt as React instead)
 
 ### Keys imported from disk today
 
@@ -49,24 +49,24 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 
 ---
 
-## Invoices (`balance-bites-invoice-pro.html`)
+## Invoices (`balance-bites-invoice-pro.html` → Next.js modules)
 
-Live modules: FileStore, Store, State (`C`/`S`), color presets, helpers, customers, categories, products, price-list print, customer-list print, pending (skip `kind === 'invoice_draft'`), bundles, invoice manager, returns **read**, theme, pattern canvas, item renderer, totals, sync/`bb_inv2`, editor accordion/pickers, look presets, reports (إجمالي / عميل / أفضل منتج / منتج + dates), folder connection, init.
+Native React workspace (not an HTML wrap). Live modules mapped to hub tabs: editor, customers, catalog, queue (pending skip `kind === 'invoice_draft'` + bundles), history, reports (إجمالي / عميل / أفضل منتج / منتج + dates), look (print theme). Catalog is read-only. No default products / categories / presets written on empty cloud.
 
-- [ ] CloudStore instead of Desktop folder
-- [ ] New / save invoice, print, editor accordion
-- [ ] Customers CRUD + customer list print
-- [ ] Categories + products pickers (one / whole category / selected categories)
-- [ ] Manual line + catalog line, packs/weights
-- [ ] Bundles (save lines, multi-copy invoices)
-- [ ] Pending queue — skip `invoice_draft`; complete pending
-- [ ] Invoice history, customer history before proceed
-- [ ] Color presets / theme
-- [ ] Reports: إجمالي، عميل، أفضل منتج، منتج + date filters
-- [ ] Price list print
-- [ ] Totals: subtotal, discount, grand total
-- [ ] Payments flags shared with finance
-- [ ] Returns display (finance writes)
+- [x] CloudStore instead of Desktop folder
+- [x] New / save invoice, print, editor
+- [x] Customers CRUD + customer list print
+- [x] Categories + products pickers (one / whole category / selected categories)
+- [x] Manual line + catalog line, packs/weights
+- [x] Bundles (save lines, multi-copy invoices)
+- [x] Pending queue — skip `invoice_draft`; complete pending
+- [x] Invoice history, customer history before proceed
+- [x] Color presets / theme (print look; no seed of HTML defaults)
+- [x] Reports: إجمالي، عميل، أفضل منتج، منتج + date filters
+- [x] Price list print
+- [x] Totals: subtotal, discount, grand total
+- [x] Payments flags shared with finance
+- [x] Returns display (finance writes)
 
 ---
 
@@ -74,7 +74,7 @@ Live modules: FileStore, Store, State (`C`/`S`), color presets, helpers, custome
 
 - [ ] Template library CRUD (`bb_label_templates`)
 - [ ] Legacy `bbLabel-*.json` import (files still present in `saved data`)
-- [ ] `label_assets/{templateId}/` → Firebase Storage
+- [ ] `label_assets/{templateId}/` → Cloudflare R2
 - [ ] Prepress (`bb-prepress.js`)
 - [ ] Composite (`bb-composite-label.js`)
 - [ ] Icon library, Jelly Kids, art presets in `assets/presets/` (repo, not tenant)
@@ -162,20 +162,17 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- Three apps are **stubs** (next: wrap live HTML on the same origin, then replace FileStore).
+- Design and Finance are still **stubs**. Invoices is a native React app on the same keys.
 - Import script is dry-run by default and was **not executed**.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
 - Cloud Storage is **not used** (Spark / free tier). Designer assets and finance backup files stay on Desktop.
-- Firebase Auth user + `staff/{uid}` owner doc are in place for Marco.
-- No production Vercel deploy until rules are published.
-- Writer-map exceptions (prep-approve `writeAnyKey` on `bb_invoices`) are not in the hub yet — they live in finance HTML when wrapped.
+- On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
+- Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 
 ---
 
 ## Suggested next slice
 
-1. Human: Firebase Console (Auth email/password, Firestore, web config → `hub/.env.local`). Skip Storage.
-2. Human: create `staff/{yourUid}` `{ email, role: "owner" }` after first Auth user exists.
-3. Deploy rules: `npx -y firebase-tools@latest deploy --only firestore:rules`.
-4. Wrap the three HTML files into `hub/public/apps/` and point them at CloudStore.
-5. Run import only after a zip backup, when you say so.
+1. Import `saved data` only after a zip backup, when you say so — invoices will then show live customers/catalog.
+2. Build Finance (stock ledger, prep, P&L) or wrap `bb-stock-costs.html`.
+3. Build Design or wrap `balance-bites-sticker.html`.
