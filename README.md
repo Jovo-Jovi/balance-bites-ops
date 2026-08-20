@@ -29,7 +29,7 @@ Stock on-hand is **not** a typed count. It is:
 ## Cloud target
 
 - **Hub:** Next.js in `hub/` — login + three cards; Invoices is a live React app
-- **Database:** Firebase (Auth + Firestore; Storage unused on Spark)
+- **Database:** Firebase (Auth + Firestore). Binaries on Cloudflare R2 — not Firebase Storage / not Blaze.
 - **Git:** GitHub private repo `Jovo-Jovi/balance-bites-ops`
 - **Not deployed** until Auth + locked rules exist
 
@@ -78,7 +78,7 @@ balance-bites-ops/
   hub/                 Next.js App Router (Vercel root directory)
   docs/                Architecture, modules, data, brand, parity backlog
   firestore.rules      Locked staff-only rules (prototype — review before launch)
-  storage.rules        Unused while Spark has no Cloud Storage
+  storage.rules        Unused — binaries use Cloudflare R2
 ```
 
 Local hub:

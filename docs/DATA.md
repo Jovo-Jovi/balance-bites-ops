@@ -48,8 +48,8 @@ Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore 
 
 | Path | App | Cloud target |
 |---|---|---|
-| `label_assets/{templateId}/` | Designer | **Desktop folder only** (no Cloud Storage on Spark) |
-| `bb_backups/` | Stock Costs | **Desktop folder only** (no Cloud Storage on Spark) |
+| `label_assets/{templateId}/` | Designer | Cloudflare R2 `tenants/{tenant}/label_assets/` |
+| `bb_backups/` | Stock Costs | Cloudflare R2 `tenants/{tenant}/bb_backups/` |
 | `assets/presets/` | Designer (repo) | Stay in git (art presets, not live data) |
 
 ## Import rule
@@ -60,4 +60,4 @@ Never commit live `bb_invoices.json` or customer files. Zip `saved data` private
 
 Desktop FileStore skipped these; they are now Firestore keys so they survive a new browser: `bb_prep_lines`, `bb_prep_ing_view`, `bb_prep_prod_mode`, `bb_prep_print_mode`, `bb_inv_print_preset_id`, `bb_print_fit_one`, `bb_ret_last_customer`.
 
-`bb_backup_locals` stays out of Firestore (full snapshots). Keep folder backups in Desktop `bb_backups/`.
+`bb_backup_locals` stays out of Firestore (full snapshots). Named folder backups go to Cloudflare R2 `bb_backups/`.

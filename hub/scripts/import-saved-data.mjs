@@ -11,14 +11,20 @@
  * Auth: hub/.service-account.json (gitignored), or --sa path, or GOOGLE_APPLICATION_CREDENTIALS.
  * Re-run --apply anytime to refresh Firestore from the Desktop folder.
  *
- * Assets: label_assets/ and bb_backups/ stay on Desktop (Spark has no Storage).
- * Do not pass --assets.
+ * Assets: pass --assets after Cloudflare R2 is configured in hub/.env.local
+ * to upload label_assets/ and bb_backups/ (not Firebase Storage / not Blaze).
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  createR2Client,
+  guessContentType,
+  loadEnvLocal,
+} from "./r2-shared.mjs";
 
 const require = createRequire(import.meta.url);
 const keyManifest = JSON.parse(
@@ -41,12 +47,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === "--apply") out.apply = true;
     else if (a === "--dry-run") out.apply = false;
-    else if (a === "--assets") {
-      console.error(
-        "--assets is disabled: this project stays on Spark (no Cloud Storage).\nKeep label_assets/ and bb_backups/ in the Desktop saved data folder.",
-      );
-      process.exit(1);
-    }
+    else if (a === "--assets") out.assets = true;
     else if (a === "--dir") out.dir = argv[++i];
     else if (a === "--tenant") out.tenant = argv[++i];
     else if (a === "--sa") out.sa = argv[++i];
@@ -110,6 +111,7 @@ function walkFiles(dir, acc = []) {
 }
 
 async function main() {
+  loadEnvLocal();
   const opts = parseArgs(process.argv);
   if (!existsSync(opts.dir)) {
     console.error("saved data folder not found:", opts.dir);
@@ -161,9 +163,14 @@ async function main() {
   const backupsDir = join(opts.dir, "bb_backups");
   const assets = walkFiles(assetsDir);
   const backups = walkFiles(backupsDir);
-  console.log(`\nlabel_assets files: ${assets.length} (stay on Desktop — no Cloud Storage)`);
-  console.log(`bb_backups files: ${backups.length} (stay on Desktop — no Cloud Storage)`);
+  console.log(`\nlabel_assets files: ${assets.length}`);
+  console.log(`bb_backups files: ${backups.length}`);
   console.log("not imported:", keyManifest.storageOnlyKeys.join(", "));
+  if (opts.assets) {
+    console.log("assets: will upload to Cloudflare R2 after JSON keys");
+  } else {
+    console.log("assets: skipped (pass --assets when R2 is configured)");
+  }
 
   if (!opts.apply) {
     console.log("\nDry-run complete. Re-run with --apply to overwrite Firestore from this folder.");
@@ -211,7 +218,35 @@ async function main() {
     console.log("wrote", f.key);
   }
 
-  console.log("\nImport finished (JSON keys only). Confirm in Firebase Console before using production.");
+  if (opts.assets) {
+    const { cfg, client } = createR2Client();
+    const tenant = opts.tenant;
+    const uploads = [
+      ...assets.map((f) => ({
+        key: `tenants/${tenant}/label_assets/${f.rel}`,
+        path: f.path,
+      })),
+      ...backups.map((f) => ({
+        key: `tenants/${tenant}/bb_backups/${f.rel}`,
+        path: f.path,
+      })),
+    ];
+    console.log(`\nUploading ${uploads.length} files to R2 bucket ${cfg.bucket}…`);
+    for (const u of uploads) {
+      const body = readFileSync(u.path);
+      await client.send(
+        new PutObjectCommand({
+          Bucket: cfg.bucket,
+          Key: u.key.replaceAll("\\", "/"),
+          Body: body,
+          ContentType: guessContentType(u.path),
+        }),
+      );
+      console.log("uploaded", u.key.replaceAll("\\", "/"));
+    }
+  }
+
+  console.log("\nImport finished. Confirm in Firebase Console before using production.");
 }
 
 main().catch((err) => {

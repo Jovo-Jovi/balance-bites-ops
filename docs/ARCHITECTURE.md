@@ -12,7 +12,8 @@ Balance Bites is three products that must look like **one company system**: same
 ├─────────────────────────────────────────────┤
 │  3. CloudStore SDK   same JSON keys as now  │
 ├─────────────────────────────────────────────┤
-│  4. Firebase  Auth · Firestore · Storage    │
+│  4. Firebase Auth + Firestore (Spark)       │
+│     Cloudflare R2  label art + backups      │
 ├─────────────────────────────────────────────┤
 │  5. Vercel    Next.js + static HTML/JS      │
 ├─────────────────────────────────────────────┤
@@ -30,7 +31,7 @@ Balance Bites is three products that must look like **one company system**: same
 | Hub | One bookmark. Staff do not hunt three HTML files on the Desktop. |
 | Apps | Invoice print, label prepress, and inventory math are different products. Do not merge them into one mega-page. |
 | CloudStore | Today `Store.set` writes localStorage then a JSON file. CloudStore writes localStorage then Firestore. Same call sites. |
-| Firebase | Documents match `bb_*.json`. Spark has no Storage — `label_assets/` and `bb_backups/` stay on Desktop. |
+| Firebase | Documents match `bb_*.json`. Binaries go to Cloudflare R2 (Spark has no Storage). |
 | Vercel | HTTPS, preview URLs, env vars, no Desktop path. |
 | GitHub | Version the code. Never commit live invoices or customer lists. |
 
@@ -61,8 +62,8 @@ Binary art:
 
 ```
 Designer save PNG / SVG / font snippet
-    → Firebase Storage  tenants/{tenant}/label_assets/{templateId}/…
-    → Firestore template record stores Storage paths, not huge base64
+    → Cloudflare R2  tenants/{tenant}/label_assets/{templateId}/…
+    → Firestore template record stores object keys, not huge base64
 ```
 
 ## Firebase vs Supabase

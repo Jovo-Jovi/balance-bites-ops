@@ -34,9 +34,9 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] `Store.set` / `CloudStore.set` surfaces write errors (no silent fail)
 - [x] `onSnapshot` + `clientWriteId` so another tab toasts instead of silent clobber
 - [x] Prep / print keys that were localStorage-only now listed as Firestore keys
-- [ ] One-shot import of `saved data` (script exists; **do not run** until asked; zip first)
-- [ ] Label binaries stay in Desktop `label_assets/` (no Cloud Storage on Spark)
-- [ ] Backup snapshots stay in Desktop `bb_backups/`
+- [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
+- [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
+- [ ] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
 - [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; invoices were rebuilt as React instead)
 
 ### Keys imported from disk today
@@ -74,7 +74,7 @@ Native React workspace (not an HTML wrap). Live modules mapped to hub tabs: edit
 
 - [ ] Template library CRUD (`bb_label_templates`)
 - [ ] Legacy `bbLabel-*.json` import (files still present in `saved data`)
-- [ ] `label_assets/{templateId}/` → Firebase Storage
+- [ ] `label_assets/{templateId}/` → Cloudflare R2
 - [ ] Prepress (`bb-prepress.js`)
 - [ ] Composite (`bb-composite-label.js`)
 - [ ] Icon library, Jelly Kids, art presets in `assets/presets/` (repo, not tenant)

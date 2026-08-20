@@ -274,7 +274,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
           { label: "تكلفة تشغيل", soon: true },
           { label: "نسخة احتياطية", soon: true },
         ],
-        features: ["bb_operation_costs", "bb_backups على Desktop"],
+        features: ["bb_operation_costs", "bb_backups على Cloudflare R2"],
       },
     ],
   },

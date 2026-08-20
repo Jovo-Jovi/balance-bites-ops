@@ -77,8 +77,10 @@ Keep the blob in `data` so CloudStore is a drop-in for `FileStore.writeKey`. Spl
 
 ```
 tenants/balance-bites/label_assets/{templateId}/
-tenants/balance-bites/backups/{timestamp}.json
+tenants/balance-bites/bb_backups/{filename}.json
 ```
+
+Binaries are **Cloudflare R2** (S3 API), not Firebase Storage.
 
 ### Rules (sketch)
 
