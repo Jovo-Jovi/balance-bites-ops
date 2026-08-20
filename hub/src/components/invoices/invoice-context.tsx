@@ -25,7 +25,7 @@ import {
   normalizeLine,
   todayISO,
 } from "@/lib/invoices/helpers";
-import { parseInv2, themeFromPreset } from "@/lib/invoices/look";
+import { parseInv2, parsePrintLookId, resolvePrintTheme, themeFromPreset } from "@/lib/invoices/look";
 import { visiblePendingQueue } from "@/lib/invoices/pending";
 import {
   printCustomerList,
@@ -33,6 +33,7 @@ import {
   printPriceList,
 } from "@/lib/invoices/print";
 import { writeInvoiceKey } from "@/lib/invoices/write";
+import type { PrintLookId } from "@/lib/invoices/look";
 import { INVOICE_HISTORY_MAX, type InvoiceDraft } from "@/lib/invoices/types";
 import type {
   Category,
@@ -95,7 +96,9 @@ type InvoiceContextValue = {
   setStrings: (patch: Partial<InvoiceStrings>) => void;
   persistLook: () => void;
   setFitOne: (on: boolean) => void;
-  printInvoice: (mode: "original" | "net") => void;
+  printLook: PrintLookId;
+  setPrintLook: (look: PrintLookId) => void;
+  printInvoice: (mode: "original" | "net", look?: PrintLookId) => void;
   printPrices: (productIds: string[], note: string) => void;
   printCustomers: (
     customerIds: string[],
@@ -144,6 +147,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
   const presets = asArray<ColorPreset>(useCloudKey("bb_color_presets"));
   const activePresetId = String(useCloudKey("bb_active_color_preset_id") || "");
   const fitOne = Boolean(useCloudKey("bb_print_fit_one"));
+  const printLook = parsePrintLookId(useCloudKey("bb_inv_print_preset_id"));
 
   const [draft, setDraftState] = useState<InvoiceDraft>(() => {
     const snap = parseInv2(CloudStore.get("bb_inv2", {}));
@@ -605,7 +609,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       persistInv2();
       toast.push("تم حفظ إعدادات الطباعة", "ok");
     }
-    function printInvoice(mode: "original" | "net") {
+    function printInvoice(mode: "original" | "net", look?: PrintLookId) {
       if (mode === "net") {
         const inv = draft.loadedInvoiceId
           ? readInvoices().find((i) => i.id === draft.loadedInvoiceId)
@@ -615,9 +619,11 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
           return;
         }
       }
+      const resolved = look ?? printLook;
+      void writeInvoiceKey("bb_inv_print_preset_id", resolved);
       const ok = printInvoiceDocument({
         draft,
-        theme,
+        theme: resolvePrintTheme(resolved, theme),
         strings,
         mode,
         returns,
@@ -715,6 +721,10 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       setFitOne: (on) => {
         void writeInvoiceKey("bb_print_fit_one", on);
       },
+      printLook,
+      setPrintLook: (look: PrintLookId) => {
+        void writeInvoiceKey("bb_inv_print_preset_id", look);
+      },
       printInvoice,
       printPrices,
       printCustomers,
@@ -734,6 +744,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
     presets,
     activePresetId,
     fitOne,
+    printLook,
     draft,
     theme,
     strings,

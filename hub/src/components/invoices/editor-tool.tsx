@@ -32,6 +32,7 @@ export function EditorTool() {
   const [custOpen, setCustOpen] = useState(false);
   const [prodOpen, setProdOpen] = useState(false);
   const [histId, setHistId] = useState<string | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [q, setQ] = useState("");
 
   return (
@@ -44,14 +45,9 @@ export function EditorTool() {
         {draft.pendingId ? (
           <ActionBtn onClick={() => void app.completePending()}>إصدار المسودة</ActionBtn>
         ) : null}
-        <ActionBtn tone="ghost" onClick={() => app.printInvoice("original")}>
-          طباعة أصلية
+        <ActionBtn tone="ghost" onClick={() => setPrintOpen(true)}>
+          طباعة
         </ActionBtn>
-        {enriched && enriched.salesStatus !== "active" ? (
-          <ActionBtn tone="ghost" onClick={() => app.printInvoice("net")}>
-            طباعة للدفع
-          </ActionBtn>
-        ) : null}
       </div>
 
       {pending ? (
@@ -285,6 +281,11 @@ export function EditorTool() {
       </Modal>
 
       <ProductPicker open={prodOpen} onClose={() => setProdOpen(false)} />
+      <PrintChooser
+        open={printOpen}
+        showNet={Boolean(enriched && enriched.salesStatus !== "active")}
+        onClose={() => setPrintOpen(false)}
+      />
       <CustomerHistory
         customerId={histId}
         onClose={() => setHistId(null)}
@@ -300,6 +301,78 @@ export function EditorTool() {
         }}
       />
     </div>
+  );
+}
+
+function PrintChooser({
+  open,
+  showNet,
+  onClose,
+}: {
+  open: boolean;
+  showNet: boolean;
+  onClose: () => void;
+}) {
+  const app = useInvoiceApp();
+  return (
+    <Modal
+      open={open}
+      title="طباعة الفاتورة"
+      onClose={onClose}
+      footer={
+        <>
+          <ActionBtn
+            onClick={() => {
+              app.printInvoice("original", app.printLook);
+              onClose();
+            }}
+          >
+            أصلية
+          </ActionBtn>
+          {showNet ? (
+            <ActionBtn
+              tone="ghost"
+              onClick={() => {
+                app.printInvoice("net", app.printLook);
+                onClose();
+              }}
+            >
+              للدفع
+            </ActionBtn>
+          ) : null}
+        </>
+      }
+    >
+      <p className="mb-3 text-sm text-[var(--bb-muted)]">اختر مظهر الطباعة</p>
+      <label className="bb-glass mb-2 flex cursor-pointer items-start gap-3 p-3">
+        <input
+          type="radio"
+          name="print-look"
+          checked={app.printLook === "__inv2__"}
+          onChange={() => app.setPrintLook("__inv2__")}
+        />
+        <span>
+          <span className="block text-[var(--bb-title)]">المظهر القديم</span>
+          <span className="text-xs text-[var(--bb-muted)]">
+            ألوان فاتورة Invoice Pro المحفوظة في البيانات (bb_inv2 / بريسيت الفاتورة)
+          </span>
+        </span>
+      </label>
+      <label className="bb-glass flex cursor-pointer items-start gap-3 p-3">
+        <input
+          type="radio"
+          name="print-look"
+          checked={app.printLook === "__hub__"}
+          onChange={() => app.setPrintLook("__hub__")}
+        />
+        <span>
+          <span className="block text-[var(--bb-title)]">مظهر التطبيق</span>
+          <span className="text-xs text-[var(--bb-muted)]">
+            كتان الويب: حبر على ورق وتمييز بالأخضر المزرق
+          </span>
+        </span>
+      </label>
+    </Modal>
   );
 }
 

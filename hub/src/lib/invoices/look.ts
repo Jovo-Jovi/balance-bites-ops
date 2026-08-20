@@ -17,6 +17,19 @@ export const FALLBACK_THEME: InvoiceTheme = {
   grand: "#1e1a0f",
 };
 
+/** Linen hub look — used only when the user picks web-app print. */
+export const HUB_PRINT_THEME: InvoiceTheme = {
+  bg: "#f4f0ea",
+  gold: "#0f6e6b",
+  txt: "#1f2930",
+  mut: "#6b645c",
+  row: "#fffbf7",
+  tot: "#fffbf7",
+  grand: "#ebe4da",
+};
+
+export type PrintLookId = "__inv2__" | "__hub__";
+
 export const FALLBACK_STRINGS: InvoiceStrings = {
   mono: "BB",
   brand: "Balance Bites",
@@ -88,6 +101,17 @@ export function parseInv2(value: unknown): {
     S: mergeStrings(snap.S),
     items: Array.isArray(snap.items) ? snap.items.map((it) => normalizeLine(it)) : [],
   };
+}
+
+export function resolvePrintTheme(
+  look: PrintLookId,
+  invoiceTheme: InvoiceTheme,
+): InvoiceTheme {
+  return look === "__hub__" ? HUB_PRINT_THEME : invoiceTheme;
+}
+
+export function parsePrintLookId(value: unknown): PrintLookId {
+  return value === "__hub__" ? "__hub__" : "__inv2__";
 }
 
 export function themeFromPreset(p: ColorPreset): InvoiceTheme {

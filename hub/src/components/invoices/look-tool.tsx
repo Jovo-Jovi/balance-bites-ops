@@ -114,6 +114,28 @@ export function LookTool() {
         ملاءمة الفاتورة في صفحة واحدة عند الطباعة
       </label>
 
+      <fieldset className="bb-glass flex flex-col gap-2 p-4">
+        <legend className="px-1 text-sm text-[var(--bb-muted)]">مظهر الطباعة الافتراضي</legend>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="radio"
+            name="look-print"
+            checked={app.printLook === "__inv2__"}
+            onChange={() => app.setPrintLook("__inv2__")}
+          />
+          <span>المظهر القديم — من بيانات الفاتورة المحفوظة</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="radio"
+            name="look-print"
+            checked={app.printLook === "__hub__"}
+            onChange={() => app.setPrintLook("__hub__")}
+          />
+          <span>مظهر التطبيق — كتان الويب</span>
+        </label>
+      </fieldset>
+
       <ActionBtn onClick={app.persistLook}>حفظ إعدادات الطباعة</ActionBtn>
     </div>
   );
