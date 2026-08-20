@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
 
 export function Field({
   label,
@@ -115,15 +116,39 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
-  if (!open) return null;
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, [open]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--bb-title)_62%,transparent)] p-3 sm:items-center"
+      className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-[color-mix(in_srgb,var(--bb-title)_62%,transparent)] p-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] shadow-[0_18px_48px_color-mix(in_srgb,var(--bb-title)_28%,transparent)]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="my-0 flex max-h-[min(88dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] shadow-[0_18px_48px_color-mix(in_srgb,var(--bb-title)_28%,transparent)] sm:my-auto"
+      >
         <div className="flex items-center justify-between gap-3 border-b border-[var(--bb-line)]/60 px-4 py-3">
           <h2 className="text-base text-[var(--bb-title)]">{title}</h2>
           <button
@@ -142,6 +167,7 @@ export function Modal({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

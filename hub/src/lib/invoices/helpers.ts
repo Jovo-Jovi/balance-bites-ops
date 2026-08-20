@@ -118,6 +118,21 @@ export function emptyDraft(invoiceNumber: string, date = todayISO()) {
   };
 }
 
+export function draftFromInvoice(inv: Invoice) {
+  return {
+    loadedInvoiceId: inv.id,
+    pendingId: null as string | null,
+    customerId: inv.customerId || null,
+    customerName: inv.customerName || "",
+    customerPhone: inv.customerPhone || "",
+    invoiceNumber: inv.invoiceNumber || "",
+    date: inv.date || todayISO(),
+    notes: inv.notes || "",
+    discount: inv.discount || 0,
+    items: cloneLines(inv.items),
+  };
+}
+
 export function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }

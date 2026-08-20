@@ -117,8 +117,16 @@ export function resolvePrintTheme(
   return invoiceTheme;
 }
 
-export function parsePrintLookId(value: unknown): PrintLookId {
-  if (typeof value === "string" && value.trim()) return value.trim();
+export function parsePrintLookId(
+  value: unknown,
+  presets: ColorPreset[] = [],
+  activePresetId = "",
+): PrintLookId {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (raw === "__inv2__" || raw === "__hub__") return raw;
+  if (raw && presets.some((p) => p.id === raw)) return raw;
+  const active = activePresetId.trim();
+  if (active && presets.some((p) => p.id === active)) return active;
   return "__inv2__";
 }
 

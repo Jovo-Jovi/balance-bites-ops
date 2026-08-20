@@ -43,7 +43,8 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
   function openTab(id: string) {
     const next = new URLSearchParams(params.toString());
     next.set("tab", id);
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    router.replace(`${pathname}?${next.toString()}`);
+    window.scrollTo(0, 0);
   }
 
   return (

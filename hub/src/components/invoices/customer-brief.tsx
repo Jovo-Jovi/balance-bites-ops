@@ -170,21 +170,26 @@ export function CustomerBrief({
             );
             return (
               <li key={e.inv.id}>
-                {onLoad ? (
-                  <button
-                    type="button"
-                    onClick={() => onLoad(e.inv.id)}
-                    className={`bb-pressable w-full rounded-[var(--bb-radius)] px-3 py-3 text-start ${invoicePayRowClass(pay)}`}
-                  >
-                    {row}
-                  </button>
-                ) : (
-                  <div
-                    className={`w-full rounded-[var(--bb-radius)] px-3 py-3 text-start ${invoicePayRowClass(pay)}`}
-                  >
-                    {row}
+                <div
+                  className={`rounded-[var(--bb-radius)] px-3 py-3 ${invoicePayRowClass(pay)}`}
+                >
+                  {row}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {onLoad ? (
+                      <ActionBtn
+                        onClick={() => onLoad(e.inv.id)}
+                      >
+                        تحميل
+                      </ActionBtn>
+                    ) : null}
+                    <ActionBtn
+                      tone="ghost"
+                      onClick={() => app.printSavedInvoice(e.inv.id)}
+                    >
+                      طباعة
+                    </ActionBtn>
                   </div>
-                )}
+                </div>
               </li>
             );
           })}
