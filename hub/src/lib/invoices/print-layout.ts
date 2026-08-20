@@ -181,8 +181,8 @@ body{font-family:"DM Sans",Tajawal,sans-serif;direction:rtl;-webkit-print-color-
 @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}html,body,.inv-doc{width:auto;min-height:auto;margin:0;box-shadow:none;background:var(--inv-bg);}.inv-page{padding:0;max-width:100%;}}
 html.inv-fit-one,html.inv-fit-one body{overflow:hidden;}
 @media print{html.inv-fit-one,html.inv-fit-one body{overflow:hidden!important;}html.inv-fit-one .inv-page{transform-origin:top right!important;}html.inv-fit-one .inv-doc{min-height:auto;overflow:hidden;}}
-html.inv-preview,html.inv-preview body{width:100%!important;height:100%!important;min-height:0!important;margin:0!important;overflow:hidden!important;background:#d4cfc4;}
-html.inv-preview .inv-doc{margin:0 auto!important;}
+html.inv-preview,html.inv-preview body{direction:ltr;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;overflow:hidden!important;background:#d4cfc4;position:relative;}
+html.inv-preview .inv-doc{direction:rtl;position:absolute;top:0;left:0;margin:0!important;box-shadow:none;}
 `;
 }
 
@@ -327,7 +327,7 @@ export function buildInvoicePrintHtml(opts: {
     : opts.fitOne || opts.autoPrint
       ? fitOnePrintScript(opts.autoPrint)
       : "";
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"${htmlClass ? ` class="${htmlClass}"` : ""} data-print-w="${px.w.toFixed(1)}" data-print-h="${px.h.toFixed(1)}"><head><meta charset="UTF-8">
+  return `<!DOCTYPE html><html lang="ar" dir="${opts.previewFit ? "ltr" : "rtl"}"${htmlClass ? ` class="${htmlClass}"` : ""} data-print-w="${px.w.toFixed(1)}" data-print-h="${px.h.toFixed(1)}"><head><meta charset="UTF-8">
 <title>${esc(opts.strings.brand)} — ${esc(opts.draft.invoiceNumber || "Invoice")}</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>${css}</style></head>
@@ -378,15 +378,20 @@ function previewFitScript() {
     var doc=document.querySelector('.inv-doc');
     if(!doc) return;
     doc.style.transform='none';
-    var pad=12;
-    var availW=Math.max(40, html.clientWidth-pad);
-    var availH=Math.max(40, html.clientHeight-pad);
+    doc.style.left='0';
+    doc.style.top='0';
+    var availW=Math.max(40, html.clientWidth);
+    var availH=Math.max(40, html.clientHeight);
     var w=doc.scrollWidth;
     var h=doc.scrollHeight;
     if(!w||!h) return;
     var scale=Math.min(availW/w, availH/h, 1);
-    doc.style.transformOrigin='top center';
+    var left=Math.max(0, (availW-w*scale)/2);
+    var top=Math.max(0, (availH-h*scale)/2);
+    doc.style.transformOrigin='top left';
     doc.style.transform='scale('+scale.toFixed(4)+')';
+    doc.style.left=left+'px';
+    doc.style.top=top+'px';
   }
   function go(){
     fit();

@@ -14,7 +14,10 @@ export function LookTool() {
   const S = app.strings;
 
   return (
-    <div className="flex flex-col-reverse gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(300px,42%)] xl:items-start">
+    <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(300px,42%)_minmax(0,1fr)] xl:items-start">
+      <div className="xl:sticky xl:top-4">
+        <InvoicePreview />
+      </div>
       <div className="flex flex-col gap-6">
       <p className="text-sm text-[var(--bb-muted)]">
         مظهر الطباعة فقط — شاشة العمل تبقى بثيم المركز. لا نكتب بريسيتات افتراضية إذا كانت
@@ -169,9 +172,6 @@ export function LookTool() {
       </fieldset>
 
       <ActionBtn onClick={app.persistLook}>حفظ إعدادات الطباعة</ActionBtn>
-      </div>
-      <div className="xl:sticky xl:top-4">
-        <InvoicePreview />
       </div>
     </div>
   );
