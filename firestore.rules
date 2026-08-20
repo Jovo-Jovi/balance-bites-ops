@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed data model (v1 — lift JSON blobs as-is)
+    // ===============================================================
+    //
+    // Collection: staff
+    // Document ID: Firebase Auth uid
+    // Fields:
+    //   - email: string (required, 3–200 chars)
+    //   - role: 'owner' | 'staff' (required)
+    //   - createdAt: timestamp (optional)
+    // Access: bootstrap ONLY from Firebase Console / Admin SDK.
+    // Clients must not create or change staff docs (no self-escalation).
+    //
+    // Collection: tenants
+    // Document ID: 'balance-bites' (single company in v1)
+    // Fields:
+    //   - name: string
+    //
+    // Collection: tenants/{tid}/keys
+    // Document ID: one of the known bb_* keys (see isKnownKey)
+    // Fields:
+    //   - data: opaque JSON value (list, map, string, number, bool, or null)
+    //   - updatedAt: timestamp (required)
+    //   - updatedBy: string uid (required, must equal request.auth.uid)
+    //   - clientWriteId: string 8–80 chars (required, conflict token)
+    // `data` is not deeply validated: live files are heterogeneous blobs
+    // (invoice arrays, label template state). Firestore's 1 MiB doc limit
+    // is the size cap. Split keys if that limit is hit.
+    //
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function isKnownKey(key) {
+      return key in [
+        'bb_invoices',
+        'bb_inv2',
+        'bb_customers',
+        'bb_products',
+        'bb_categories',
+        'bb_invoice_payments',
+        'bb_customer_payments',
+        'bb_pending_invoices',
+        'bb_invoice_bundles',
+        'bb_returns',
+        'bb_materials',
+        'bb_packages',
+        'bb_stickers',
+        'bb_recipes',
+        'bb_purchases',
+        'bb_production',
+        'bb_operation_costs',
+        'bb_investors',
+        'bb_investor_target',
+        'bb_label_templates',
+        'bb_label_open',
+        'bb_color_presets',
+        'bb_active_color_preset_id',
+        'bb_active_theme',
+        'bb_backup_index',
+        'bb_prep_lines',
+        'bb_prep_ing_view',
+        'bb_prep_prod_mode',
+        'bb_prep_print_mode',
+        'bb_inv_print_preset_id',
+        'bb_print_fit_one',
+        'bb_ret_last_customer'
+      ];
+    }
+
+    function isValidKeyDoc() {
+      return request.resource.data.keys().hasOnly([
+          'data',
+          'updatedAt',
+          'updatedBy',
+          'clientWriteId'
+        ])
+        && request.resource.data.keys().hasAll([
+          'data',
+          'updatedAt',
+          'updatedBy',
+          'clientWriteId'
+        ])
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedBy is string
+        && request.resource.data.updatedBy.size() > 0
+        && request.resource.data.updatedBy.size() <= 128
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.clientWriteId is string
+        && request.resource.data.clientWriteId.size() >= 8
+        && request.resource.data.clientWriteId.size() <= 80;
+    }
+
+    match /staff/{uid} {
+      allow get: if isAuthenticated() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /tenants/{tid} {
+      allow read: if isStaff() && tid == 'balance-bites';
+      allow write: if false;
+
+      match /keys/{key} {
+        allow read: if isStaff() && tid == 'balance-bites' && isKnownKey(key);
+        allow create, update: if isStaff()
+          && tid == 'balance-bites'
+          && isKnownKey(key)
+          && isValidKeyDoc();
+        allow delete: if isStaff() && tid == 'balance-bites' && isKnownKey(key);
+      }
+    }
+  }
+}

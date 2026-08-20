@@ -26,13 +26,14 @@ Stock on-hand is **not** a typed count. It is:
 
 **purchases − ingredients implied by invoices**
 
-## Cloud target (planned)
+## Cloud target
 
-- **Hub:** Next.js on Vercel — one URL, three cards after login
+- **Hub:** Next.js in `hub/` — login + three cards (apps still stubs)
 - **Database:** Firebase (Auth + Firestore + Storage)
-- **Git:** GitHub private repo
-- **Why Firebase:** current records are already JSON documents; Storage holds label art. Postgres/Supabase is a later option for SQL reports.
+- **Git:** GitHub private repo `Jovo-Jovi/balance-bites-ops`
+- **Not deployed** until Auth + locked rules exist
 
+Parity: [docs/PARITY.md](docs/PARITY.md)  
 Full plan: [docs/CLOUD-PLAN.md](docs/CLOUD-PLAN.md)  
 Layers and brand: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
 Module map: [docs/MODULES.md](docs/MODULES.md)
@@ -46,10 +47,10 @@ Module map: [docs/MODULES.md](docs/MODULES.md)
 
 ## Brand
 
-- Wordmark: Playfair Display 900, gold on charcoal
+- Wordmark: Playfair Display 900, ink on linen paper
 - Mark: rotated square (diamond) already used on invoices
 - Type: Playfair, Syne, DM Sans, Tajawal
-- Gold `#c9a84c` on `#060603`
+- Hub: linen `#f4f0ea`, ink `#1f2930`, teal `#0f6e6b` on actions; frosted-glass cards
 
 Details: [docs/BRAND-UI.md](docs/BRAND-UI.md)
 
@@ -74,16 +75,26 @@ Live app files (leave them in `costs` until migrate):
 
 ```
 balance-bites-ops/
-  README.md
-  SETUP.md
-  docs/
+  hub/                 Next.js App Router (Vercel root directory)
+  docs/                Architecture, modules, data, brand, parity backlog
+  firestore.rules      Locked staff-only rules (prototype — review before launch)
+  storage.rules        Unused while Spark has no Cloud Storage
 ```
 
+Local hub:
+
+```bash
+cd hub
+npm install
+npm run dev
+```
+
+Parity checklist: [docs/PARITY.md](docs/PARITY.md)  
 Setup (GitHub / Vercel / Firebase): [SETUP.md](SETUP.md)
 
 ## Status
 
-Desktop-first. Cloud hub is planned, not deployed. Do not treat GitHub as the live database.
+Hub scaffold is in `hub/`: login, linen UI, workspace tabs, CloudStore client. Invoice / Design / Finance are organized tool shells (logic not ported yet). GitHub is code only — not the live database. Do not run the import script until you ask and have a zip of `saved data`.
 
 ## License
 

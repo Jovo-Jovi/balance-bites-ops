@@ -1,0 +1,48 @@
+rules_version = '2';
+// Unused on Spark: this project does not enable Cloud Storage.
+// Keep the file for a later Blaze cutover; do not deploy it.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isAuthenticated()
+        && firestore.exists(/databases/(default)/documents/staff/$(request.auth.uid));
+    }
+
+    function isTenant(tid) {
+      return tid == 'balance-bites';
+    }
+
+    match /tenants/{tid}/label_assets/{templateId}/{fileName} {
+      allow read: if isStaff()
+        && isTenant(tid)
+        && templateId.size() > 0
+        && templateId.size() < 80
+        && fileName.size() > 0
+        && fileName.size() < 200;
+      allow write: if isStaff()
+        && isTenant(tid)
+        && templateId.size() > 0
+        && templateId.size() < 80
+        && fileName.size() > 0
+        && fileName.size() < 200
+        && request.resource.size < 32 * 1024 * 1024;
+    }
+
+    match /tenants/{tid}/backups/{fileName} {
+      allow read: if isStaff()
+        && isTenant(tid)
+        && fileName.matches('.*\\.json$')
+        && fileName.size() < 200;
+      allow write: if isStaff()
+        && isTenant(tid)
+        && fileName.matches('.*\\.json$')
+        && fileName.size() < 200
+        && request.resource.size < 32 * 1024 * 1024;
+    }
+  }
+}

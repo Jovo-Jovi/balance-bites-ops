@@ -30,7 +30,7 @@ Balance Bites is three products that must look like **one company system**: same
 | Hub | One bookmark. Staff do not hunt three HTML files on the Desktop. |
 | Apps | Invoice print, label prepress, and inventory math are different products. Do not merge them into one mega-page. |
 | CloudStore | Today `Store.set` writes localStorage then a JSON file. CloudStore writes localStorage then Firestore. Same call sites. |
-| Firebase | Documents match `bb_*.json`. Storage matches `label_assets/` and `bb_backups/`. |
+| Firebase | Documents match `bb_*.json`. Spark has no Storage — `label_assets/` and `bb_backups/` stay on Desktop. |
 | Vercel | HTTPS, preview URLs, env vars, no Desktop path. |
 | GitHub | Version the code. Never commit live invoices or customer lists. |
 

@@ -1,6 +1,6 @@
 # Setup — GitHub, Vercel, Firebase
 
-This repo is **docs + future hub**. Live invoices, stock, and templates stay in `C:\Users\Marco\Desktop\costs` and:
+This repo is **docs + the Next.js hub** (`hub/`). Live invoices, stock, and templates stay in `C:\Users\Marco\Desktop\costs` and:
 
 `C:\Users\Marco\Desktop\BALANCE BITES\invoices customers\saved data`
 
@@ -33,10 +33,17 @@ When the Next.js hub exists, link the GitHub repo:
 - Project name: `balance-bites-ops`
 - Repo: `Jovo-Jovi/balance-bites-ops`
 
-Until there is an app, **do not deploy** (markdown-only would produce an empty site). After `npx create-next-app`, ask Cursor to run Vercel MCP `create_git_project` or:
+The Next.js app lives in `hub/`. Firestore rules are published. A **protected** Vercel deploy is allowed for testing (Vercel Authentication on). Do not make the URL public. Do not run JSON import until asked.
+
+When you are ready for a **protected preview**:
+
+- Vercel Root Directory: `hub`
+- Team: `jiovanny's projects` / `team_axcyEdkIz5RpW3pHt9gtuWuq`
+- Project name: `balance-bites-ops`
+- Copy `hub/.env.example` → Vercel env (Preview + Production)
 
 ```bash
-cd C:\Users\Marco\Desktop\balance-bites-ops
+cd C:\Users\Marco\Desktop\balance-bites-ops\hub
 npx vercel link --yes --scope jiovannys-projects-0219772b
 ```
 
@@ -50,19 +57,24 @@ Do this in [Firebase Console](https://console.firebase.google.com/) while logged
 2. Enable **Google Analytics** only if you want it.
 3. **Authentication → Sign-in method → Email/Password** (and Google later if needed).
 4. **Firestore → Create database** (production mode, pick a region close to you, e.g. `europe-west`).
-5. **Storage → Get started** (same region if prompted).
+5. **Skip Storage.** This project stays on the **Spark (free) plan**. Do not upgrade. Label art (`label_assets/`) and `bb_backups/` stay in the Desktop `saved data` folder. Auth + Firestore are enough for the hub, invoices, and finance JSON.
 6. **Project settings → Your apps → Web** → register app `balance-bites-ops` → copy the `firebaseConfig` object.
-7. Put those values in `.env.local` (never commit). Use `.env.example` as the shape.
-8. Firestore rules: start locked (authenticated read/write only). Storage: authenticated upload under `label_assets/{uid}/`.
-9. Optional CLI on this PC:
+7. Put those values in `hub/.env.local` (never commit). Use `hub/.env.example` as the shape.
+8. **Allowlist:** after you create your Auth user, add Firestore doc `staff/{uid}` with `{ "email": "...", "role": "owner" }`. The app cannot create this document (prevents self-promotion).
+9. Publish rules from this repo (edit `.firebaserc` if your project id differs):
 
 ```bash
-npm i -g firebase-tools
-firebase login
-firebase init
+cd C:\Users\Marco\Desktop\balance-bites-ops
+npx -y firebase-tools@latest login
+npx -y firebase-tools@latest use
+npx -y firebase-tools@latest deploy --only firestore:rules
 ```
 
-Skip `firebase init` until the Next.js app exists; Console steps 1–7 are enough to have a project ID.
+Rules file: `firestore.rules` (staff-only; no public read). Review them before a broad launch. `storage.rules` is unused while Spark has no Cloud Storage.
+
+10. Optional: enable Google sign-in in Console and add `localhost` (and later the Vercel domain) under Authentication → Settings → Authorized domains. Without the Vercel host, login on the live URL fails with `auth/unauthorized-domain`.
+
+Do **not** run `hub` import (`npm run import:apply`) until you zip `saved data` and explicitly ask. Dry-run: `cd hub && npm run import:dry`.
 
 ## 4. What stays local until migrate
 
@@ -72,7 +84,7 @@ Skip `firebase init` until the Next.js app exists; Console steps 1–7 are enoug
 
 ## 5. After the hub is built
 
-1. Copy or wrap the three HTML apps into this repo.
-2. Point them at Firestore instead of the Desktop folder.
-3. Run a one-time import of `saved data` JSON.
+1. Wrap the three HTML apps into `hub/public/apps/` (see [docs/PARITY.md](docs/PARITY.md)).
+2. Point them at CloudStore (`hub/public/bb-cloud-store.js`) instead of the Desktop folder.
+3. Run a one-time import of `saved data` JSON **only when you say so**.
 4. Keep `costs` as a rollback copy until you trust the cloud.

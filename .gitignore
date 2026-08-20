@@ -21,5 +21,13 @@ bb_inv2.json
 node_modules/
 .vercel
 .next
+**/.next/
 dist/
 *.log
+*.tsbuildinfo
+
+# Firebase CLI cache
+.firebase/
+firebase-debug.log
+ui-debug.log
+firestore-debug.log

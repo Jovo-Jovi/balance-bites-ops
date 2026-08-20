@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+:root {
+  --bb-charcoal: #f4f0ea;
+  --bb-panel: #fffbf7;
+  --bb-panel-hover: #ebe4da;
+  --bb-gold: #0f6e6b;
+  --bb-title: #1f2930;
+  --bb-line: #d9d0c4;
+  --bb-muted: #6b645c;
+  --bb-text: #2c2824;
+  --bb-ok: #3f7d4e;
+  --bb-warn: #b76e32;
+  --bb-bad: #b4453a;
+  --bb-btn: #0f6e6b;
+  --bb-btn-text: #ffffff;
+  --bb-btn-hover: #0b5856;
+  --bb-btn-hover-text: #ffffff;
+  --bb-radius: 14px;
+}
+
+@theme inline {
+  --color-bb-charcoal: var(--bb-charcoal);
+  --color-bb-panel: var(--bb-panel);
+  --color-bb-gold: var(--bb-gold);
+  --color-bb-muted: var(--bb-muted);
+  --color-bb-text: var(--bb-text);
+  --color-bb-ok: var(--bb-ok);
+  --color-bb-warn: var(--bb-warn);
+  --color-bb-bad: var(--bb-bad);
+  --font-brand: var(--font-playfair);
+  --font-label: var(--font-syne);
+  --font-ui: var(--font-dm);
+  --font-ar: var(--font-tajawal);
+}
+
+html,
+body {
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+body {
+  color: var(--bb-text);
+  font-family: var(--font-tajawal), var(--font-dm), sans-serif;
+  background-color: var(--bb-charcoal);
+  background-image:
+    radial-gradient(
+      ellipse 70% 55% at 8% -10%,
+      color-mix(in srgb, var(--bb-gold) 16%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 100% 110%,
+      color-mix(in srgb, var(--bb-title) 10%, transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 40% 30% at 70% 20%,
+      color-mix(in srgb, #ffffff 55%, transparent),
+      transparent 60%
+    );
+}
+
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
+  }
+}
+
+.font-brand {
+  font-family: var(--font-playfair), serif;
+  font-weight: 900;
+}
+
+.font-label {
+  font-family: var(--font-syne), sans-serif;
+}
+
+.bb-shell {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .bb-shell {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+}
+
+@media (min-width: 1024px) {
+  .bb-shell {
+    padding-left: max(2.5rem, env(safe-area-inset-left));
+    padding-right: max(2.5rem, env(safe-area-inset-right));
+  }
+}
+
+.bb-tabstrip {
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bb-btn {
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  touch-action: manipulation;
+}
+
+.bb-glass {
+  background: color-mix(in srgb, var(--bb-panel) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, #ffffff 62%, var(--bb-line));
+  border-radius: var(--bb-radius);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 75%, transparent),
+    0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.bb-glass:hover {
+    background: color-mix(in srgb, var(--bb-panel) 76%, transparent);
+  }
+}
+
+.bb-glass-input {
+  background: color-mix(in srgb, var(--bb-panel) 70%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, #ffffff 50%, var(--bb-line));
+  border-radius: var(--bb-radius);
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bb-glass,
+  .bb-glass-input {
+    background: var(--bb-panel);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .bb-glass,
+  .bb-glass-input {
+    background: var(--bb-panel);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

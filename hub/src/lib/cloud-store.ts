@@ -1,0 +1,276 @@
+"use client";
+
+import {
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  serverTimestamp,
+  type Unsubscribe,
+} from "firebase/firestore";
+import { getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from "./firebase";
+import {
+  BB_KEYS,
+  EMPTY_DEFAULTS,
+  isBbKey,
+  type BbKey,
+} from "./keys";
+import { TENANT_ID } from "./tenant";
+
+export type CloudStoreErrorHandler = (message: string, key?: string) => void;
+export type CloudStoreConflictHandler = (key: string) => void;
+
+export type CloudKeyDoc = {
+  data: unknown;
+  updatedAt: unknown;
+  updatedBy: string;
+  clientWriteId: string;
+};
+
+type UiHooks = {
+  onError: CloudStoreErrorHandler;
+  onConflict: CloudStoreConflictHandler;
+};
+
+const pendingWriteIds = new Set<string>();
+const unsubscribers = new Map<string, Unsubscribe>();
+const firstSnapDone = new Set<string>();
+
+let hooks: UiHooks = {
+  onError: (message) => {
+    console.error("[CloudStore]", message);
+  },
+  onConflict: (key) => {
+    console.info("[CloudStore] remote update", key);
+  },
+};
+
+export function configureCloudStoreUi(next: Partial<UiHooks>) {
+  hooks = { ...hooks, ...next };
+}
+
+export function keyDocRef(key: string) {
+  return doc(getFirebaseDb(), "tenants", TENANT_ID, "keys", key);
+}
+
+function readLocal<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null || raw === "") return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocal(key: string, value: unknown) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "تعذر الكتابة في التخزين المحلي";
+    hooks.onError(`فشل الحفظ المحلي: ${message}`, key);
+    throw err;
+  }
+}
+
+function clearLocal(key: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function requireUid(): string {
+  const uid = getFirebaseAuth().currentUser?.uid;
+  if (!uid) {
+    throw new Error("غير مسجّل الدخول — لا يمكن الحفظ في السحابة");
+  }
+  return uid;
+}
+
+function newWriteId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `w_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function applyRemote(key: string, data: unknown) {
+  writeLocal(key, data);
+}
+
+export const CloudStore = {
+  get<T>(key: string, fallback: T): T {
+    return readLocal(key, fallback);
+  },
+
+  /**
+   * Drop-in for live `Store.set`: cache locally, then write Firestore.
+   * Callers that ignore the promise still get a visible error via `onError`.
+   */
+  set(key: string, value: unknown): Promise<void> {
+    writeLocal(key, value);
+    return persist(key, value);
+  },
+
+  remove(key: string): Promise<void> {
+    clearLocal(key);
+    return persistDelete(key);
+  },
+
+  async hydrate(keys: readonly string[] = BB_KEYS): Promise<void> {
+    if (!isFirebaseConfigured() || typeof window === "undefined") return;
+    if (!getFirebaseAuth().currentUser) {
+      throw new Error("سجّل الدخول قبل مزامنة البيانات");
+    }
+
+    const results = await Promise.allSettled(
+      keys.map(async (key) => {
+        const snap = await getDoc(keyDocRef(key));
+        if (!snap.exists()) return;
+        const payload = snap.data() as CloudKeyDoc;
+        if (payload && "data" in payload) {
+          applyRemote(key, payload.data);
+        }
+      }),
+    );
+
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length) {
+      const first = failed[0] as PromiseRejectedResult;
+      const reason =
+        first.reason instanceof Error
+          ? first.reason.message
+          : "تعذر قراءة Firestore";
+      hooks.onError(`فشل التحميل من السحابة: ${reason}`);
+      throw first.reason;
+    }
+  },
+
+  watchKey(key: string): Unsubscribe {
+    if (!isFirebaseConfigured()) return () => undefined;
+    unsubscribers.get(key)?.();
+    firstSnapDone.delete(key);
+
+    const unsub = onSnapshot(
+      keyDocRef(key),
+      (snap) => {
+        if (!snap.exists()) {
+          firstSnapDone.add(key);
+          return;
+        }
+        const payload = snap.data() as CloudKeyDoc;
+        const writeId = payload.clientWriteId;
+        if (writeId && pendingWriteIds.has(writeId)) {
+          pendingWriteIds.delete(writeId);
+          applyRemote(key, payload.data);
+          firstSnapDone.add(key);
+          return;
+        }
+        applyRemote(key, payload.data);
+        if (firstSnapDone.has(key)) {
+          hooks.onConflict(key);
+        }
+        firstSnapDone.add(key);
+      },
+      (err) => {
+        hooks.onError(`انقطع التزامن (${key}): ${err.message}`, key);
+      },
+    );
+    unsubscribers.set(key, unsub);
+    return unsub;
+  },
+
+  watchAll(keys: readonly string[] = BB_KEYS): () => void {
+    const stops = keys.map((key) => CloudStore.watchKey(key));
+    return () => stops.forEach((stop) => stop());
+  },
+
+  stopAll() {
+    unsubscribers.forEach((stop) => stop());
+    unsubscribers.clear();
+    firstSnapDone.clear();
+    pendingWriteIds.clear();
+  },
+};
+
+async function persist(key: string, value: unknown): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    hooks.onError("Firebase غير مضبوط — الحفظ محلي فقط", key);
+    return;
+  }
+  if (!isBbKey(key)) {
+    hooks.onError(`مفتاح غير مدرج في السحابة — حُفظ محلياً فقط: ${key}`, key);
+    return;
+  }
+  try {
+    const uid = requireUid();
+    const clientWriteId = newWriteId();
+    pendingWriteIds.add(clientWriteId);
+    await setDoc(keyDocRef(key), {
+      data: value,
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+      clientWriteId,
+    });
+  } catch (err) {
+    pendingWriteIds.clear();
+    const message = formatWriteError(err);
+    hooks.onError(message, key);
+    throw err instanceof Error ? err : new Error(message);
+  }
+}
+
+async function persistDelete(key: string): Promise<void> {
+  if (!isFirebaseConfigured()) return;
+  try {
+    requireUid();
+    await deleteDoc(keyDocRef(key));
+  } catch (err) {
+    const message = formatWriteError(err);
+    hooks.onError(message, key);
+    throw err instanceof Error ? err : new Error(message);
+  }
+}
+
+function formatWriteError(err: unknown): string {
+  const code =
+    typeof err === "object" && err && "code" in err
+      ? String((err as { code: string }).code)
+      : "";
+  const message = err instanceof Error ? err.message : String(err);
+  if (code.includes("permission-denied") || message.includes("permission")) {
+    return "رُفض الحفظ: الحساب غير مدرج كموظف أو القواعد غير منشورة";
+  }
+  if (code.includes("unauthenticated")) {
+    return "انتهت الجلسة — سجّل الدخول ثم احفظ مرة أخرى";
+  }
+  if (message.toLowerCase().includes("exceed") || message.includes("1 MiB")) {
+    return "المستند أكبر من حد Firestore (1 ميغابايت) — يجب تقسيم المفتاح";
+  }
+  return `فشل الحفظ في السحابة: ${message}`;
+}
+
+/** Live-app shaped Store: get is sync; set writes local then cloud. */
+export const Store = {
+  get<T>(key: string, fallback: T): T {
+    if (isBbKey(key) && fallback === undefined) {
+      return CloudStore.get(key, EMPTY_DEFAULTS[key] as T);
+    }
+    return CloudStore.get(key, fallback);
+  },
+  set(key: string, value: unknown) {
+    void CloudStore.set(key, value);
+  },
+  remove(key: string) {
+    void CloudStore.remove(key);
+  },
+};
+
+export type { BbKey };
