@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import { useInvoiceApp } from "./invoice-context";
 import { ActionBtn, Empty, TextInput } from "./ui";
 import { fmt } from "@/lib/invoices/helpers";
+import {
+  invoicePayBadgeClass,
+  invoicePayLabel,
+  invoicePayRowClass,
+  invoicePayStatus,
+} from "@/lib/invoices/payments";
 import { enrichInvoice, salesStatusLabel } from "@/lib/invoices/returns";
 
 export function HistoryTool() {
@@ -34,16 +40,29 @@ export function HistoryTool() {
         <ul className="flex flex-col gap-3">
           {list.map((inv) => {
             const e = enrichInvoice(app.returns, inv);
-            const pay = app.payments[inv.id]?.status === "paid" ? "paid" : "pending";
+            const pay = invoicePayStatus(app.payments, inv.id);
             return (
-              <li key={inv.id} className="bb-glass p-4">
+              <li
+                key={inv.id}
+                className={`rounded-[var(--bb-radius)] p-4 ${invoicePayRowClass(pay)}`}
+              >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-[var(--bb-title)]">{inv.invoiceNumber}</span>
+                  <span className={`bb-pay-chip ${invoicePayBadgeClass(pay)}`}>
+                    {invoicePayLabel(pay)}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-[var(--bb-muted)]">
+                  {inv.customerName || "—"} · {inv.date} · {inv.items?.length || 0} منتج
+                  {e.salesStatus !== "active"
+                    ? ` · ${salesStatusLabel(e.salesStatus)}`
+                    : ""}
+                  {" · "}
                   <span dir="ltr">
                     {e.salesStatus === "partial" ? (
                       <>
                         {fmt(e.net)} {app.strings.cur}{" "}
-                        <span className="text-xs text-[var(--bb-muted)] line-through">
+                        <span className="text-xs line-through">
                           {fmt(e.gross)}
                         </span>
                       </>
@@ -55,13 +74,6 @@ export function HistoryTool() {
                       `${fmt(e.gross)} ${app.strings.cur}`
                     )}
                   </span>
-                </div>
-                <p className="mt-1 text-sm text-[var(--bb-muted)]">
-                  {inv.customerName || "—"} · {inv.date} · {inv.items?.length || 0} منتج
-                  {e.salesStatus !== "active"
-                    ? ` · ${salesStatusLabel(e.salesStatus)}`
-                    : ""}
-                  {` · ${pay === "paid" ? "مدفوعة" : "معلقة"}`}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <ActionBtn

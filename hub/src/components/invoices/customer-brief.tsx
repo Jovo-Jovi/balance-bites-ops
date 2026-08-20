@@ -2,7 +2,12 @@
 
 import { useMemo } from "react";
 import { fmt } from "@/lib/invoices/helpers";
-import { invoicePayLabel, invoicePayStatus } from "@/lib/invoices/payments";
+import {
+  invoicePayBadgeClass,
+  invoicePayLabel,
+  invoicePayRowClass,
+  invoicePayStatus,
+} from "@/lib/invoices/payments";
 import { enrichInvoice, salesStatusLabel } from "@/lib/invoices/returns";
 import { useInvoiceApp } from "./invoice-context";
 import { ActionBtn, Empty, Modal } from "./ui";
@@ -131,11 +136,16 @@ export function CustomerBrief({
             const pay = invoicePayStatus(app.payments, e.inv.id);
             const row = (
               <>
-                <span className="block text-[var(--bb-title)]">
-                  {e.inv.invoiceNumber} · {e.inv.date}
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[var(--bb-title)]">
+                    {e.inv.invoiceNumber} · {e.inv.date}
+                  </span>
+                  <span className={`bb-pay-chip ${invoicePayBadgeClass(pay)}`}>
+                    {invoicePayLabel(pay)}
+                  </span>
                 </span>
-                <span className="text-xs text-[var(--bb-muted)]">
-                  {fmt(e.net)} {app.strings.cur} · {invoicePayLabel(pay)}
+                <span className="mt-1 block text-xs text-[var(--bb-muted)]">
+                  {fmt(e.net)} {app.strings.cur}
                   {e.salesStatus !== "active"
                     ? ` · ${salesStatusLabel(e.salesStatus)}`
                     : ""}
@@ -149,12 +159,16 @@ export function CustomerBrief({
                   <button
                     type="button"
                     onClick={() => onLoad(e.inv.id)}
-                    className="bb-glass w-full px-3 py-3 text-start"
+                    className={`w-full rounded-[var(--bb-radius)] px-3 py-3 text-start ${invoicePayRowClass(pay)}`}
                   >
                     {row}
                   </button>
                 ) : (
-                  <div className="bb-glass w-full px-3 py-3 text-start">{row}</div>
+                  <div
+                    className={`w-full rounded-[var(--bb-radius)] px-3 py-3 text-start ${invoicePayRowClass(pay)}`}
+                  >
+                    {row}
+                  </div>
                 )}
               </li>
             );

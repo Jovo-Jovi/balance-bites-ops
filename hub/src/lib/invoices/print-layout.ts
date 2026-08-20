@@ -181,6 +181,8 @@ body{font-family:"DM Sans",Tajawal,sans-serif;direction:rtl;-webkit-print-color-
 @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}html,body,.inv-doc{width:auto;min-height:auto;margin:0;box-shadow:none;background:var(--inv-bg);}.inv-page{padding:0;max-width:100%;}}
 html.inv-fit-one,html.inv-fit-one body{overflow:hidden;}
 @media print{html.inv-fit-one,html.inv-fit-one body{overflow:hidden!important;}html.inv-fit-one .inv-page{transform-origin:top right!important;}html.inv-fit-one .inv-doc{min-height:auto;overflow:hidden;}}
+html.inv-preview,html.inv-preview body{width:100%!important;height:100%!important;min-height:0!important;margin:0!important;overflow:hidden!important;background:#d4cfc4;}
+html.inv-preview .inv-doc{margin:0 auto!important;}
 `;
 }
 
@@ -309,13 +311,23 @@ export function buildInvoicePrintHtml(opts: {
   margins: PrintMargins;
   fitOne: boolean;
   autoPrint: boolean;
+  previewFit?: boolean;
 }) {
   const css = invoiceProCss(opts.theme, opts.pageSize, opts.margins, opts.fitOne);
   const body = buildInvoicePageHtml(opts);
   const px = printablePx(opts.pageSize, opts.margins);
-  const printScript =
-    opts.fitOne || opts.autoPrint ? fitOnePrintScript(opts.autoPrint) : "";
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"${opts.fitOne ? ' class="inv-fit-one"' : ""} data-print-w="${px.w.toFixed(1)}" data-print-h="${px.h.toFixed(1)}"><head><meta charset="UTF-8">
+  const htmlClass = [
+    opts.previewFit ? "inv-preview" : "",
+    opts.fitOne && !opts.previewFit ? "inv-fit-one" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const printScript = opts.previewFit
+    ? previewFitScript()
+    : opts.fitOne || opts.autoPrint
+      ? fitOnePrintScript(opts.autoPrint)
+      : "";
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"${htmlClass ? ` class="${htmlClass}"` : ""} data-print-w="${px.w.toFixed(1)}" data-print-h="${px.h.toFixed(1)}"><head><meta charset="UTF-8">
 <title>${esc(opts.strings.brand)} — ${esc(opts.draft.invoiceNumber || "Invoice")}</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>${css}</style></head>
@@ -353,6 +365,37 @@ function fitOnePrintScript(autoPrint: boolean) {
   }
   if(document.readyState==='complete') go();
   else window.addEventListener('load', go);
+})();
+<\/script>`;
+}
+
+function previewFitScript() {
+  return `<script>
+(function(){
+  function fit(){
+    var html=document.documentElement;
+    if(!html.classList.contains('inv-preview')) return;
+    var doc=document.querySelector('.inv-doc');
+    if(!doc) return;
+    doc.style.transform='none';
+    var pad=12;
+    var availW=Math.max(40, html.clientWidth-pad);
+    var availH=Math.max(40, html.clientHeight-pad);
+    var w=doc.scrollWidth;
+    var h=doc.scrollHeight;
+    if(!w||!h) return;
+    var scale=Math.min(availW/w, availH/h, 1);
+    doc.style.transformOrigin='top center';
+    doc.style.transform='scale('+scale.toFixed(4)+')';
+  }
+  function go(){
+    fit();
+    requestAnimationFrame(fit);
+  }
+  if(document.readyState==='complete') go();
+  else window.addEventListener('load', go);
+  window.addEventListener('resize', fit);
+  if(window.ResizeObserver) new ResizeObserver(fit).observe(document.documentElement);
 })();
 <\/script>`;
 }

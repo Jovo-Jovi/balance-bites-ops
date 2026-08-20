@@ -52,6 +52,7 @@ export function InvoicePreview() {
         margins: app.margins,
         fitOne: app.fitOne,
         autoPrint: false,
+        previewFit: true,
       }),
     [
       app.draft,
@@ -76,12 +77,17 @@ export function InvoicePreview() {
         قالب Invoice Pro: نسيج قطري ذهبي، ترويسة BB، وحجم الصفحة
         {sample ? " · أصناف تجريبية حتى تُضاف بنود" : ""}
       </p>
-      <iframe
-        title="معاينة الفاتورة"
-        srcDoc={html}
-        sandbox="allow-scripts"
-        className="h-[min(78vh,920px)] w-full rounded-[10px] border-0 bg-[var(--bb-panel)] shadow-[0_8px_28px_rgba(0,0,0,.18)]"
-      />
+      <div
+        className="mx-auto w-full overflow-hidden rounded-[10px] shadow-[0_8px_28px_rgba(0,0,0,.18)]"
+        style={{ maxWidth: "min(100%, calc(min(78vh, 920px) * 210 / 297))" }}
+      >
+        <iframe
+          title="معاينة الفاتورة"
+          srcDoc={html}
+          sandbox="allow-scripts"
+          className="aspect-[210/297] block h-auto w-full border-0 bg-[#d4cfc4]"
+        />
+      </div>
     </section>
   );
 }

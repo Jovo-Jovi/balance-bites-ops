@@ -117,12 +117,12 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--bb-title)_35%,transparent)] p-3 sm:items-center"
+      className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--bb-title)_62%,transparent)] p-3 sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bb-glass flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden">
+      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] shadow-[0_18px_48px_color-mix(in_srgb,var(--bb-title)_28%,transparent)]">
         <div className="flex items-center justify-between gap-3 border-b border-[var(--bb-line)]/60 px-4 py-3">
           <h2 className="text-base text-[var(--bb-title)]">{title}</h2>
           <button
