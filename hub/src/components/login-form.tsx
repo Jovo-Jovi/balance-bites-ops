@@ -1,13 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { DiamondMark } from "./diamond-mark";
 import { useAuth } from "./auth-provider";
-import {
-  INVOICES_PREVIEW_HOST,
-  PRODUCTION_HOST,
-  isStableAuthHost,
-} from "@/lib/stable-host";
 
 export function LoginForm() {
   const { signInEmail, signInGoogle } = useAuth();
@@ -15,15 +10,6 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [host, setHost] = useState("");
-  const [path, setPath] = useState("/");
-
-  useEffect(() => {
-    setHost(window.location.hostname);
-    setPath(window.location.pathname || "/");
-  }, []);
-
-  const throwawayHost = Boolean(host) && !isStableAuthHost(host);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -100,21 +86,6 @@ export function LoginForm() {
             className="bb-glass-input w-full px-3 py-2 text-[var(--bb-text)] outline-none focus:border-[var(--bb-gold)] focus:ring-1 focus:ring-[var(--bb-gold)]"
           />
         </label>
-        {throwawayHost ? (
-          <p className="text-sm text-[var(--bb-warn)]" role="status">
-            هذا الرابط يتغيّر مع كل نشر ولا يعمل مع جوجل. افتح الرابط الثابت:{" "}
-            <a
-              className="underline"
-              href={`https://${INVOICES_PREVIEW_HOST}${path}`}
-            >
-              معاينة الفواتير
-            </a>
-            {" · "}
-            <a className="underline" href={`https://${PRODUCTION_HOST}/`}>
-              الإنتاج
-            </a>
-          </p>
-        ) : null}
         {message ? (
           <p className="text-sm text-[var(--bb-bad)]" role="alert">
             {message}
@@ -129,7 +100,7 @@ export function LoginForm() {
         </button>
         <button
           type="button"
-          disabled={busy || throwawayHost}
+          disabled={busy}
           onClick={onGoogle}
           className="bb-btn w-full rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-muted)] hover:border-[var(--bb-gold)] hover:text-[var(--bb-gold)] disabled:opacity-50"
         >

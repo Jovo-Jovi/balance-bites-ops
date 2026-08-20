@@ -623,7 +623,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       void writeInvoiceKey("bb_inv_print_preset_id", resolved);
       const ok = printInvoiceDocument({
         draft,
-        theme: resolvePrintTheme(resolved, theme),
+        theme: resolvePrintTheme(resolved, theme, readPresets()),
         strings,
         mode,
         returns,

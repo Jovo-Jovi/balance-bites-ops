@@ -7,14 +7,15 @@ import type {
 } from "./types";
 import { normalizeLine } from "./helpers";
 
+/** Live Invoice Pro look from saved data (`green` / bb_inv2). Not Dark Gold. */
 export const FALLBACK_THEME: InvoiceTheme = {
-  bg: "#0a0804",
-  gold: "#c9a84c",
-  txt: "#e8e0cc",
-  mut: "#6b5e3a",
-  row: "#12100a",
-  tot: "#12100a",
-  grand: "#1e1a0f",
+  bg: "#ffffff",
+  gold: "#1b882d",
+  txt: "#000000",
+  mut: "#4a5a4a",
+  row: "#ebe5d0",
+  tot: "#ffffff",
+  grand: "#e4f0e4",
 };
 
 /** Linen hub look — used only when the user picks web-app print. */
@@ -28,7 +29,7 @@ export const HUB_PRINT_THEME: InvoiceTheme = {
   grand: "#ebe4da",
 };
 
-export type PrintLookId = "__inv2__" | "__hub__";
+export type PrintLookId = string;
 
 export const FALLBACK_STRINGS: InvoiceStrings = {
   mono: "BB",
@@ -106,12 +107,19 @@ export function parseInv2(value: unknown): {
 export function resolvePrintTheme(
   look: PrintLookId,
   invoiceTheme: InvoiceTheme,
+  presets: ColorPreset[] = [],
 ): InvoiceTheme {
-  return look === "__hub__" ? HUB_PRINT_THEME : invoiceTheme;
+  if (look === "__hub__") return HUB_PRINT_THEME;
+  if (look && look !== "__inv2__") {
+    const preset = presets.find((p) => p.id === look);
+    if (preset) return themeFromPreset(preset);
+  }
+  return invoiceTheme;
 }
 
 export function parsePrintLookId(value: unknown): PrintLookId {
-  return value === "__hub__" ? "__hub__" : "__inv2__";
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return "__inv2__";
 }
 
 export function themeFromPreset(p: ColorPreset): InvoiceTheme {

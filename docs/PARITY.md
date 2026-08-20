@@ -166,7 +166,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Import script is dry-run by default and was **not executed**.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
 - Cloud Storage is **not used** (Spark / free tier). Designer assets and finance backup files stay on Desktop.
-- On-screen invoice chrome is the linen hub (not the old gold HTML canvas). Print asks: **old Invoice Pro look** (`bb_inv2` colors from saved data) or **web-app linen look**.
+- On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 
 ---

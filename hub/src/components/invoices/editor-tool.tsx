@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useInvoiceApp } from "./invoice-context";
 import { ActionBtn, Empty, Field, Modal, TextArea, TextInput } from "./ui";
+import { PrintLookPicker } from "./print-look-picker";
 import { calcTotals, fmt, fmtQty, itemRetKey } from "@/lib/invoices/helpers";
 import {
   enrichInvoice,
@@ -343,35 +344,8 @@ function PrintChooser({
         </>
       }
     >
-      <p className="mb-3 text-sm text-[var(--bb-muted)]">اختر مظهر الطباعة</p>
-      <label className="bb-glass mb-2 flex cursor-pointer items-start gap-3 p-3">
-        <input
-          type="radio"
-          name="print-look"
-          checked={app.printLook === "__inv2__"}
-          onChange={() => app.setPrintLook("__inv2__")}
-        />
-        <span>
-          <span className="block text-[var(--bb-title)]">المظهر القديم</span>
-          <span className="text-xs text-[var(--bb-muted)]">
-            ألوان فاتورة Invoice Pro المحفوظة في البيانات (bb_inv2 / بريسيت الفاتورة)
-          </span>
-        </span>
-      </label>
-      <label className="bb-glass flex cursor-pointer items-start gap-3 p-3">
-        <input
-          type="radio"
-          name="print-look"
-          checked={app.printLook === "__hub__"}
-          onChange={() => app.setPrintLook("__hub__")}
-        />
-        <span>
-          <span className="block text-[var(--bb-title)]">مظهر التطبيق</span>
-          <span className="text-xs text-[var(--bb-muted)]">
-            كتان الويب: حبر على ورق وتمييز بالأخضر المزرق
-          </span>
-        </span>
-      </label>
+      <p className="mb-3 text-sm text-[var(--bb-muted)]">اختر مظهر الطباعة ثم اطبع</p>
+      <PrintLookPicker name="print-look" />
     </Modal>
   );
 }
