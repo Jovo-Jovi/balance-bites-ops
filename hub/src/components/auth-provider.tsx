@@ -177,7 +177,7 @@ function mapAuthError(err: unknown): string {
     return "محاولات كثيرة. انتظر ثم أعد المحاولة";
   }
   if (code === "auth/unauthorized-domain") {
-    return "النطاق غير مصرّح في Firebase Auth (أضف localhost أو نطاق Vercel)";
+    return "هذا الرابط غير مصرّح في Firebase. افتح balance-bites-ops.vercel.app أو رابط الفرع الثابت (…-git-feat-invoices-…)";
   }
   if (code === "auth/popup-closed-by-user") {
     return "أُغلق نافذة جوجل";
