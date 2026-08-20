@@ -164,41 +164,16 @@ body {
 }
 
 .bb-brand-lockup {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  overflow: hidden;
-  border-radius: 999px;
-  padding: 0.35rem 0.7rem 0.35rem 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--bb-gold) 28%, var(--bb-line));
-  background: color-mix(in srgb, var(--bb-panel) 78%, transparent);
+  gap: 0.65rem;
 }
 
 .bb-brand-lockup-hero {
-  gap: 0.9rem;
-  padding: 0.55rem 1rem 0.55rem 0.75rem;
-}
-
-.bb-brand-pattern {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 9px,
-    color-mix(in srgb, var(--bb-gold) 22%, transparent) 9px,
-    color-mix(in srgb, var(--bb-gold) 22%, transparent) 10px
-  );
-  background-size: 28px 28px;
-  animation: bb-pattern-shift 14s linear infinite;
-  opacity: 0.95;
+  gap: 0.85rem;
 }
 
 .bb-brand-mono {
-  position: relative;
-  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -223,7 +198,6 @@ body {
   flex-shrink: 0;
   transform: rotate(45deg);
   background: var(--bb-gold);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bb-gold) 18%, transparent);
 }
 
 .bb-brand-lockup-hero .bb-brand-diamond {
@@ -232,8 +206,6 @@ body {
 }
 
 .bb-brand-name {
-  position: relative;
-  z-index: 1;
   font-family: var(--font-playfair), serif;
   font-weight: 900;
   font-size: 1rem;
@@ -245,12 +217,6 @@ body {
   font-size: clamp(1.45rem, 5vw, 2.15rem);
 }
 
-@keyframes bb-pattern-shift {
-  to {
-    background-position: 28px 0;
-  }
-}
-
 @media (min-width: 640px) {
   .bb-brand-name {
     font-size: 1.125rem;
@@ -258,9 +224,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bb-brand-pattern {
-    animation: none;
-  }
   .bb-btn,
   .bb-pressable {
     transition: none;
@@ -269,11 +232,22 @@ body {
 
 @media (hover: hover) and (pointer: fine) {
   .bb-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--bb-title) 12%, transparent);
+  }
+
+  .bb-btn:not([data-tone="ghost"]):not([data-tone="danger"]):not(.bb-glass):hover:not(:disabled) {
     background-color: var(--bb-btn-hover);
     color: var(--bb-btn-hover-text);
     border-color: color-mix(in srgb, var(--bb-btn-hover) 80%, var(--bb-line));
-    box-shadow: 0 8px 18px color-mix(in srgb, var(--bb-title) 12%, transparent);
-    transform: translateY(-1px);
+  }
+
+  .bb-btn[data-tone="ghost"]:hover:not(:disabled),
+  .bb-btn.bb-glass:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--bb-gold) 12%, var(--bb-panel));
+    color: var(--bb-title);
+    border-color: var(--bb-gold);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--bb-title) 10%, transparent);
   }
 
   .bb-btn[data-tone="danger"]:hover:not(:disabled) {
@@ -305,6 +279,7 @@ body {
   button.bb-glass:hover:not(:disabled),
   .bb-pressable:hover {
     background: color-mix(in srgb, var(--bb-panel) 86%, transparent);
+    color: var(--bb-title);
     border-color: color-mix(in srgb, var(--bb-gold) 46%, var(--bb-line));
     transform: translateY(-1px);
     box-shadow:
@@ -320,11 +295,6 @@ body {
   .bb-card-clear.bb-pressable:hover {
     background: color-mix(in srgb, var(--bb-ok) 18%, var(--bb-panel));
     border-color: color-mix(in srgb, var(--bb-ok) 58%, var(--bb-line));
-  }
-
-  .bb-brand-lockup:hover {
-    border-color: color-mix(in srgb, var(--bb-gold) 55%, var(--bb-line));
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--bb-gold) 16%, transparent);
   }
 }
 

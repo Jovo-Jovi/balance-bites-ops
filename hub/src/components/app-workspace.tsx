@@ -73,6 +73,7 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
                       ? "border border-[var(--bb-btn)] bg-[var(--bb-btn)] text-[var(--bb-btn-text)]"
                       : "border border-[var(--bb-line)] text-[var(--bb-text)]"
                   }`}
+                  data-tone={current ? undefined : "ghost"}
                 >
                   <span className="block truncate">{item.title}</span>
                 </Link>
@@ -107,6 +108,7 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
                     ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
                     : "bb-glass text-[var(--bb-text)]"
                 }`}
+                data-tone={selected ? undefined : "ghost"}
               >
                 {item.label}
               </button>
