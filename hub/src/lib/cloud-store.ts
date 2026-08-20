@@ -240,10 +240,10 @@ async function persist(key: string, value: unknown): Promise<void> {
     hooks.onError(`مفتاح غير مدرج في السحابة — حُفظ محلياً فقط: ${key}`, key);
     return;
   }
-  const uid = requireUid();
   const clientWriteId = newWriteId();
-  pendingWriteIds.add(clientWriteId);
   try {
+    const uid = requireUid();
+    pendingWriteIds.add(clientWriteId);
     await setDoc(keyDocRef(key), {
       data: value,
       updatedAt: serverTimestamp(),
