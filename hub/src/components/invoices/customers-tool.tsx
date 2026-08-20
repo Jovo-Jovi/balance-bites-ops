@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInvoiceApp } from "./invoice-context";
+import { CustomerBrief } from "./customer-brief";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "./ui";
 import type { Customer } from "@/lib/invoices/types";
 
@@ -15,10 +17,14 @@ const emptyForm = {
 
 export function CustomersTool() {
   const app = useInvoiceApp();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState(emptyForm);
   const [formOpen, setFormOpen] = useState(false);
+  const [briefId, setBriefId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [cols, setCols] = useState({
     includeInvDate: true,
@@ -54,6 +60,13 @@ export function CustomersTool() {
         : emptyForm,
     );
     setFormOpen(true);
+  }
+
+  function goToInvoice(customerId: string) {
+    app.selectCustomer(customerId);
+    const next = new URLSearchParams(params.toString());
+    next.set("tab", "editor");
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   }
 
   return (
@@ -135,13 +148,15 @@ export function CustomersTool() {
             return (
               <li
                 key={c.id}
-                className={`bb-glass p-4 ${sel ? "ring-2 ring-[var(--bb-gold)]" : ""}`}
+                className={`bb-glass cursor-pointer p-4 ${sel ? "ring-2 ring-[var(--bb-gold)]" : ""}`}
+                onClick={() => setBriefId(c.id)}
               >
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     className="mt-1"
                     checked={!!selected[c.id]}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) =>
                       setSelected((prev) => ({ ...prev, [c.id]: e.target.checked }))
                     }
@@ -159,18 +174,26 @@ export function CustomersTool() {
                     <p className="mt-1 text-xs text-[var(--bb-muted)]">{n} فاتورة</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <ActionBtn
-                        onClick={() => {
-                          app.selectCustomer(c.id);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goToInvoice(c.id);
                         }}
                       >
                         اختر للفاتورة
                       </ActionBtn>
-                      <ActionBtn tone="ghost" onClick={() => openForm(c)}>
+                      <ActionBtn
+                        tone="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openForm(c);
+                        }}
+                      >
                         تعديل
                       </ActionBtn>
                       <ActionBtn
                         tone="danger"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (window.confirm(`حذف "${c.name}"؟`)) app.removeCustomer(c.id);
                         }}
                       >
@@ -185,6 +208,23 @@ export function CustomersTool() {
         </ul>
       )}
       <ActionBtn onClick={() => openForm()}>عميل جديد</ActionBtn>
+
+      <CustomerBrief
+        customerId={briefId}
+        onClose={() => setBriefId(null)}
+        onUseForInvoice={goToInvoice}
+        onLoad={(id) => {
+          if (
+            window.confirm("تحميل هذه الفاتورة؟ ستُستبدل البيانات الحالية.")
+          ) {
+            app.loadInvoice(id);
+            setBriefId(null);
+            const next = new URLSearchParams(params.toString());
+            next.set("tab", "editor");
+            router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+          }
+        }}
+      />
 
       <Modal
         open={formOpen}

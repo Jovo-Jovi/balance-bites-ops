@@ -27,8 +27,8 @@ export function r2ConfigFromEnv() {
   const bucket = process.env.R2_BUCKET?.trim() || "";
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() || "";
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim() || "";
-  const raw = (process.env.R2_JURISDICTION || "eu").trim().toLowerCase();
-  const jurisdiction = raw === "us" || raw === "default" ? raw : "eu";
+  const raw = (process.env.R2_JURISDICTION || "default").trim().toLowerCase();
+  const jurisdiction = raw === "us" || raw === "eu" ? raw : "default";
   if (!accountId || !bucket || !accessKeyId || !secretAccessKey) return null;
   const host =
     jurisdiction === "eu"
@@ -58,6 +58,7 @@ export function createR2Client() {
     client: new S3Client({
       region: "auto",
       endpoint: cfg.endpoint,
+      forcePathStyle: true,
       credentials: {
         accessKeyId: cfg.accessKeyId,
         secretAccessKey: cfg.secretAccessKey,

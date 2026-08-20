@@ -79,7 +79,7 @@ export function InvoicePreview() {
       <iframe
         title="معاينة الفاتورة"
         srcDoc={html}
-        sandbox=""
+        sandbox="allow-scripts"
         className="h-[min(78vh,920px)] w-full rounded-[10px] border-0 bg-[var(--bb-panel)] shadow-[0_8px_28px_rgba(0,0,0,.18)]"
       />
     </section>

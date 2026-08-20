@@ -1,11 +1,6 @@
 "use client";
 
-import type {
-  ButtonHTMLAttributes,
-  InputHTMLAttributes,
-  ReactNode,
-  TextareaHTMLAttributes,
-} from "react";
+import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 
 export function Field({
   label,
@@ -69,6 +64,40 @@ export function Empty({ children }: { children: ReactNode }) {
     <p className="rounded-[var(--bb-radius)] border border-dashed border-[var(--bb-line)] px-4 py-8 text-center text-sm text-[var(--bb-muted)]">
       {children}
     </p>
+  );
+}
+
+export function Accordion({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="bb-glass overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-start"
+      >
+        <span className="font-label flex-1 text-[11px] tracking-[0.16em] text-[var(--bb-gold)] uppercase">
+          {title}
+        </span>
+        <span
+          className={`text-sm text-[var(--bb-gold)] transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          ▾
+        </span>
+      </button>
+      <div className={`border-t border-[var(--bb-line)]/50 ${open ? "block" : "hidden"}`}>
+        <div className="p-4">{children}</div>
+      </div>
+    </section>
   );
 }
 

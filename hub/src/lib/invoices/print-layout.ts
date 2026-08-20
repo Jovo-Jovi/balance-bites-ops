@@ -57,6 +57,37 @@ function paperBox(id: PrintPageSize) {
   return { w: "210mm", h: "297mm" };
 }
 
+const MM_TO_PX = 96 / 25.4;
+
+function paperMm(id: PrintPageSize): { w: number; h: number | null } {
+  if (id === "A5") return { w: 148, h: 210 };
+  if (id === "letter") return { w: 215.9, h: 279.4 };
+  if (id === "80mm") return { w: 80, h: null };
+  return { w: 210, h: 297 };
+}
+
+function printMargins(pageSize: PrintPageSize, margins: PrintMargins) {
+  if (pageSize === "80mm") {
+    return {
+      t: Math.min(margins.t, 6),
+      r: Math.min(margins.r, 5),
+      b: Math.min(margins.b, 6),
+      l: Math.min(margins.l, 5),
+    };
+  }
+  return margins;
+}
+
+/** Printable area in CSS pixels — used by fit-one-page scale. */
+export function printablePx(pageSize: PrintPageSize, margins: PrintMargins) {
+  const paper = paperMm(pageSize);
+  const mg = printMargins(pageSize, margins);
+  return {
+    w: Math.max(40, (paper.w - mg.l - mg.r) * MM_TO_PX),
+    h: paper.h == null ? 0 : Math.max(40, (paper.h - mg.t - mg.b) * MM_TO_PX),
+  };
+}
+
 export function invoiceProCss(
   C: InvoiceTheme,
   pageSize: PrintPageSize,
@@ -65,9 +96,7 @@ export function invoiceProCss(
 ) {
   const slim = pageSize === "80mm";
   const paper = paperBox(pageSize);
-  const mg = slim
-    ? { t: Math.min(margins.t, 6), r: Math.min(margins.r, 5), b: Math.min(margins.b, 6), l: Math.min(margins.l, 5) }
-    : margins;
+  const mg = printMargins(pageSize, margins);
   return `
 :root{
   --inv-bg:${C.bg};--inv-gold:${C.gold};--inv-txt:${C.txt};--inv-mut:${C.mut};
@@ -80,7 +109,7 @@ html,body{margin:0;padding:0;background:var(--inv-bg);color:var(--inv-txt);}
 body{font-family:"DM Sans",Tajawal,sans-serif;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .inv-doc{background:var(--inv-bg);color:var(--inv-txt);position:relative;min-height:100vh;}
 .inv-pattern{position:absolute;inset:0;pointer-events:none;opacity:1;background:repeating-linear-gradient(-45deg,transparent,transparent 27px,var(--inv-pattern) 27px,var(--inv-pattern) 28px);}
-.inv-page{position:relative;z-index:1;max-width:${slim ? "80mm" : "820px"};margin:0 auto;padding:${slim ? "14px 10px 22px" : "52px 44px 68px"};page-break-after:always;break-after:page;${fitOne ? "transform-origin:top center;" : ""}}
+.inv-page{position:relative;z-index:1;max-width:${slim ? "80mm" : "820px"};margin:0 auto;padding:${slim ? "14px 10px 22px" : "52px 44px 68px"};page-break-after:always;break-after:page;${fitOne ? "transform-origin:top right;" : ""}}
 .inv-page:last-child{page-break-after:auto;break-after:auto;}
 .header{text-align:center;margin-bottom:${slim ? "16px" : "36px"};}
 .orn-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;}
@@ -150,6 +179,8 @@ body{font-family:"DM Sans",Tajawal,sans-serif;direction:rtl;-webkit-print-color-
   .inv-doc{width:${paper.w};min-height:${paper.h === "auto" ? "120mm" : paper.h};margin:16px auto;box-shadow:0 10px 32px rgba(0,0,0,.22);overflow:hidden;}
 }
 @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}html,body,.inv-doc{width:auto;min-height:auto;margin:0;box-shadow:none;background:var(--inv-bg);}.inv-page{padding:0;max-width:100%;}}
+html.inv-fit-one,html.inv-fit-one body{overflow:hidden;}
+@media print{html.inv-fit-one,html.inv-fit-one body{overflow:hidden!important;}html.inv-fit-one .inv-page{transform-origin:top right!important;}html.inv-fit-one .inv-doc{min-height:auto;overflow:hidden;}}
 `;
 }
 
@@ -281,12 +312,47 @@ export function buildInvoicePrintHtml(opts: {
 }) {
   const css = invoiceProCss(opts.theme, opts.pageSize, opts.margins, opts.fitOne);
   const body = buildInvoicePageHtml(opts);
-  const printScript = opts.autoPrint
-    ? `<script>window.onload=function(){setTimeout(function(){window.print();},200);};<\/script>`
-    : "";
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  const px = printablePx(opts.pageSize, opts.margins);
+  const printScript =
+    opts.fitOne || opts.autoPrint ? fitOnePrintScript(opts.autoPrint) : "";
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"${opts.fitOne ? ' class="inv-fit-one"' : ""} data-print-w="${px.w.toFixed(1)}" data-print-h="${px.h.toFixed(1)}"><head><meta charset="UTF-8">
 <title>${esc(opts.strings.brand)} — ${esc(opts.draft.invoiceNumber || "Invoice")}</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>${css}</style></head>
 <body><div class="inv-doc"><div class="inv-pattern"></div>${body}</div>${printScript}</body></html>`;
+}
+
+function fitOnePrintScript(autoPrint: boolean) {
+  return `<script>
+(function(){
+  function shrink(){
+    var html=document.documentElement;
+    if(!html.classList.contains('inv-fit-one')) return;
+    var page=document.querySelector('.inv-page');
+    if(!page) return;
+    var availW=parseFloat(html.getAttribute('data-print-w')||'0');
+    var availH=parseFloat(html.getAttribute('data-print-h')||'0');
+    if(!availH) return;
+    page.style.transform='none';
+    var contentH=page.scrollHeight;
+    var contentW=page.scrollWidth||availW;
+    var scale=Math.min(availH/contentH, availW/contentW, 1);
+    if(scale>=0.995) return;
+    scale=Math.max(scale, 0.18);
+    page.style.transformOrigin='top right';
+    page.style.transform='scale('+scale.toFixed(4)+')';
+    var body=document.body;
+    body.style.width=Math.ceil(contentW*scale)+'px';
+    body.style.height=Math.ceil(contentH*scale+4)+'px';
+    body.style.overflow='hidden';
+    html.style.overflow='hidden';
+  }
+  function go(){
+    shrink();
+    ${autoPrint ? "setTimeout(function(){ window.print(); }, 80);" : ""}
+  }
+  if(document.readyState==='complete') go();
+  else window.addEventListener('load', go);
+})();
+<\/script>`;
 }

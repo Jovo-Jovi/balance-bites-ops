@@ -84,15 +84,15 @@ Do **not** run `hub` import (`npm run import:apply`) until you zip `saved data` 
 
 R2 is okay for this project: **10 GB + 1M writes + 10M reads / month free**, no egress fee, S3 API, and it does **not** require Firebase Blaze. Live `label_assets/` is ~22 MB.
 
-Cloudflare may ask you to add a payment method to *enable* R2 even if you stay inside the free tier. Create an **EU** bucket (Firestore is already `europe-west3`).
+Cloudflare may ask you to add a payment method to *enable* R2 even if you stay inside the free tier. Create a bucket named `balance-bites-ops`. A new account S3 endpoint can take about 20 minutes before TLS works.
 
 1. Log in at [dash.cloudflare.com](https://dash.cloudflare.com/) → **R2 Object Storage**.
 2. Purchase / enable R2 if the dashboard asks (free-tier usage still applies).
-3. **Create bucket** named `balance-bites-ops`. Location: **European Union**.
+3. **Create bucket** named `balance-bites-ops`. If the S3 endpoint is `https://<account>.r2.cloudflarestorage.com` (no `.eu.`), set `R2_JURISDICTION=default`. Use `eu` only when the endpoint host is `.eu.r2.cloudflarestorage.com`.
 4. **Manage R2 API Tokens** → Create token with **Object Read & Write** on that bucket only.
 5. Copy **Account ID**, **Access Key ID**, and **Secret Access Key** into `hub/.env.local` (`R2_*` keys in `.env.example`). Set `NEXT_PUBLIC_BB_USE_STORAGE=true`.
 6. Same values in Vercel → Project → Settings → Environment Variables (Preview + Production). Never prefix R2 secrets with `NEXT_PUBLIC_`.
-7. From `hub/`: `npm run storage:init` (checks the bucket and sets GET CORS).
+7. From `hub/`: `npm run storage:init` (checks the bucket and sets GET CORS). If this fails with an SSL handshake error, wait ~20 minutes and retry — Cloudflare is still provisioning the account endpoint certificate.
 8. When you want binaries in the cloud: `npm run import:assets -- --sa "C:\Users\Marco\Desktop\<service-account>.json"`
 
 Object keys:

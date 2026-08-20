@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { PRINT_PAGE_SIZES } from "@/lib/invoices/print-layout";
 import { useInvoiceApp } from "./invoice-context";
-import { ActionBtn, Empty, Field, Modal, TextArea, TextInput } from "./ui";
+import { CustomerBrief, CustomerPickList } from "./customer-brief";
+import { Accordion, ActionBtn, Empty, Field, Modal, TextArea, TextInput } from "./ui";
 import { PrintLookPicker } from "./print-look-picker";
 import { calcTotals, fmt, fmtQty, itemRetKey } from "@/lib/invoices/helpers";
 import {
@@ -36,6 +37,20 @@ export function EditorTool() {
   const [histId, setHistId] = useState<string | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
   const [q, setQ] = useState("");
+  const suppressCustFocus = useRef(false);
+
+  function openCustomerPicker() {
+    setCustOpen(true);
+  }
+
+  function closeCustomerPicker() {
+    setCustOpen(false);
+    setQ("");
+    suppressCustFocus.current = true;
+    window.setTimeout(() => {
+      suppressCustFocus.current = false;
+    }, 200);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,15 +79,21 @@ export function EditorTool() {
         <ReturnBanner enriched={enriched} cur={strings.cur} />
       ) : null}
 
-      <section className="bb-glass grid gap-3 p-4 sm:grid-cols-2">
+      <Accordion title="بيانات الفاتورة">
+        <div className="grid gap-3 sm:grid-cols-2">
         <Field label="اسم العميل">
           <div className="flex gap-2">
             <TextInput
               value={draft.customerName}
               onChange={(e) => app.setDraft({ customerName: e.target.value })}
-              placeholder="اسم العميل..."
+              onFocus={() => {
+                if (!suppressCustFocus.current) openCustomerPicker();
+              }}
+              onClick={() => openCustomerPicker()}
+              placeholder="اضغط لاختيار عميل..."
+              className="cursor-pointer"
             />
-            <ActionBtn tone="ghost" onClick={() => setCustOpen(true)}>
+            <ActionBtn tone="ghost" onClick={openCustomerPicker}>
               اختر
             </ActionBtn>
           </div>
@@ -98,9 +119,10 @@ export function EditorTool() {
             placeholder="+20 ..."
           />
         </Field>
-      </section>
+        </div>
+      </Accordion>
 
-      <section className="bb-glass overflow-hidden p-4">
+      <Accordion title="تفاصيل الطلب">
         <div className="mb-3 hidden grid-cols-[1fr_4.5rem_6rem_6rem_2.5rem] gap-2 text-[11px] tracking-wide text-[var(--bb-muted)] uppercase sm:grid">
           <span>{strings.hItem}</span>
           <span className="text-center">{strings.hQty}</span>
@@ -196,9 +218,10 @@ export function EditorTool() {
             سطر يدوي
           </ActionBtn>
         </div>
-      </section>
+      </Accordion>
 
-      <section className="bb-glass ms-auto w-full max-w-sm p-4">
+      <Accordion title="المجاميع والملاحظات">
+      <div className="ms-auto w-full max-w-sm">
         <Field label={`${strings.discLabel} %`}>
           <TextInput
             type="number"
@@ -246,37 +269,37 @@ export function EditorTool() {
             </div>
           </>
         ) : null}
-      </section>
+      </div>
 
-      <Field label="ملاحظات">
-        <TextArea
-          rows={3}
-          value={draft.notes}
-          onChange={(e) => app.setDraft({ notes: e.target.value })}
-          placeholder="أي ملاحظات إضافية..."
-        />
-      </Field>
+      <div className="mt-4">
+        <Field label="ملاحظات">
+          <TextArea
+            rows={3}
+            value={draft.notes}
+            onChange={(e) => app.setDraft({ notes: e.target.value })}
+            placeholder="أي ملاحظات إضافية..."
+          />
+        </Field>
+      </div>
+      </Accordion>
 
       <Modal
         open={custOpen}
         title="اختر عميل"
-        onClose={() => {
-          setCustOpen(false);
-          setQ("");
-        }}
+        onClose={closeCustomerPicker}
       >
         <TextInput
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="بحث بالاسم أو الهاتف..."
           className="mb-3"
+          autoFocus
         />
         <CustomerPickList
           query={q}
           onPick={(id) => {
             const { showHistory } = app.selectCustomer(id);
-            setCustOpen(false);
-            setQ("");
+            closeCustomerPicker();
             if (showHistory) setHistId(id);
           }}
         />
@@ -288,7 +311,7 @@ export function EditorTool() {
         showNet={Boolean(enriched && enriched.salesStatus !== "active")}
         onClose={() => setPrintOpen(false)}
       />
-      <CustomerHistory
+      <CustomerBrief
         customerId={histId}
         onClose={() => setHistId(null)}
         onLoad={(id) => {
@@ -398,107 +421,6 @@ function ReturnBanner({
         ))}
       </ul>
     </div>
-  );
-}
-
-function CustomerPickList({
-  query,
-  onPick,
-}: {
-  query: string;
-  onPick: (id: string) => void;
-}) {
-  const { customers, invoices } = useInvoiceApp();
-  const q = query.toLowerCase();
-  const list = customers.filter(
-    (c) =>
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      (c.phone || "").includes(q),
-  );
-  if (!list.length) return <Empty>لا يوجد عملاء</Empty>;
-  return (
-    <ul className="flex flex-col gap-2">
-      {list.map((c) => {
-        const n = invoices.filter((i) => i.customerId === c.id).length;
-        return (
-          <li key={c.id}>
-            <button
-              type="button"
-              onClick={() => onPick(c.id)}
-              className="bb-glass w-full px-3 py-3 text-start"
-            >
-              <span className="block text-[var(--bb-title)]">{c.name}</span>
-              <span className="text-xs text-[var(--bb-muted)]">
-                {c.phone || "بدون هاتف"} · {n} فاتورة
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function CustomerHistory({
-  customerId,
-  onClose,
-  onLoad,
-}: {
-  customerId: string | null;
-  onClose: () => void;
-  onLoad: (id: string) => void;
-}) {
-  const app = useInvoiceApp();
-  const c = app.customers.find((x) => x.id === customerId);
-  const invs = useMemo(() => {
-    if (!customerId) return [];
-    return app.invoices
-      .filter((i) => i.customerId === customerId)
-      .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-      .map((inv) => enrichInvoice(app.returns, inv));
-  }, [app.invoices, app.returns, customerId]);
-  const net = invs
-    .filter((e) => e.salesStatus !== "full")
-    .reduce((s, e) => s + e.net, 0);
-  return (
-    <Modal
-      open={Boolean(customerId && c)}
-      title={c ? c.name : ""}
-      onClose={onClose}
-      footer={
-        <ActionBtn onClick={onClose}>موافق — فاتورة جديدة {app.draft.invoiceNumber}</ActionBtn>
-      }
-    >
-      <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        {invs.length} فاتورة سابقة · صافي {fmt(net)} {app.strings.cur}
-      </p>
-      {invs.length === 0 ? (
-        <Empty>لا يوجد فواتير سابقة</Empty>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {invs.map((e) => (
-            <li key={e.inv.id}>
-              <button
-                type="button"
-                onClick={() => onLoad(e.inv.id)}
-                className="bb-glass w-full px-3 py-3 text-start"
-              >
-                <span className="block text-[var(--bb-title)]">
-                  {e.inv.invoiceNumber} · {e.inv.date}
-                </span>
-                <span className="text-xs text-[var(--bb-muted)]">
-                  {fmt(e.net)} {app.strings.cur}
-                  {e.salesStatus !== "active"
-                    ? ` · ${salesStatusLabel(e.salesStatus)}`
-                    : ""}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Modal>
   );
 }
 
