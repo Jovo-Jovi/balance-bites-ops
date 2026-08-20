@@ -1,0 +1,27 @@
+---
+description: Do not duplicate apps, keys, or dump default catalogs when adding Design or Finance
+alwaysApply: true
+---
+
+# One module, one owner
+
+| Concern | Where |
+|---|---|
+| Invoices, customers, invoice print, payments flags | `hub/src/components/invoices/` — **done** |
+| Labels, templates, prepress, `label_assets/` | `hub/src/components/design/` (create here) |
+| Stock, prep, P&L, catalog **writes**, returns **writes** | `hub/src/components/finance/` (later) |
+| Auth, CloudStore, brand, workspace shell | existing hub files — import, do not copy |
+
+Do not add a second invoice list, customer book, or catalog CRUD inside Design. Do not reimplement `InvoiceProvider` for stickers.
+
+New app = new folder + `writeXKey` guard (mirror `writeInvoiceKey`). Shared color presets are one `bb_color_presets` list.
+
+# No dumps
+
+Never seed `DEFAULT_PRODUCTS`, `DEFAULT_CATEGORIES`, HTML gold themes, or empty invoice arrays into Firestore because the cloud key is missing. Workspace **Soon** actions must not write.
+
+Pending cards skip `kind: 'invoice_draft'`. Do not mix prep-approve with production-approve.
+
+# Design slice
+
+Port `balance-bites-sticker.html` + listed JS. English chrome. R2 for binaries. Read `docs/INVOICES.md` so you do not rebuild invoice UI.

@@ -21,8 +21,8 @@ Balance Bites is three products that must look like **one company system**: same
 └─────────────────────────────────────────────┘
 ```
 
-**Phase 1** keeps the existing HTML apps and only adds a launcher.  
-**Phase 2** replaces `FileStore` (Desktop folder) with Firestore. The UI modules stay.
+**Phase 1** was the launcher + CloudStore.  
+**Invoices** was rewritten as React in the hub (not an HTML wrap). Design and Finance still follow wrap-or-port from `costs/`.
 
 ## Why this split
 
@@ -97,8 +97,9 @@ Do not run both databases in v1.
 | Env | URL | Data |
 |---|---|---|
 | Local HTML | `file://` | Desktop `saved data` |
-| Preview | `*.vercel.app` | Firebase project `bb-dev` |
-| Production | one custom domain | Firebase project `bb-prod` |
+| Hub local | `localhost:3000` | same Firebase tenant as production |
+| Preview | `*.vercel.app` | Firebase project `balance-bites-ops` |
+| Production | https://balance-bites-ops.vercel.app | same Firebase project (staff Auth) |
 
 Never point production HTML at the Desktop folder.
 

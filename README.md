@@ -31,9 +31,10 @@ Stock on-hand is **not** a typed count. It is:
 - **Hub:** Next.js in `hub/` — login + three cards; Invoices is a live React app
 - **Database:** Firebase (Auth + Firestore). Binaries on Cloudflare R2 — not Firebase Storage / not Blaze.
 - **Git:** GitHub private repo `Jovo-Jovi/balance-bites-ops`
-- **Not deployed** until Auth + locked rules exist
+- **Live:** https://balance-bites-ops.vercel.app (staff login; rules locked)
 
 Parity: [docs/PARITY.md](docs/PARITY.md)  
+What shipped: [docs/JOURNAL.md](docs/JOURNAL.md) · invoices map: [docs/INVOICES.md](docs/INVOICES.md)  
 Full plan: [docs/CLOUD-PLAN.md](docs/CLOUD-PLAN.md)  
 Layers and brand: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
 Module map: [docs/MODULES.md](docs/MODULES.md)
@@ -75,8 +76,9 @@ Live app files (leave them in `costs` until migrate):
 
 ```
 balance-bites-ops/
+  .cursor/rules/       Agent rules (workflow, UI, no duplicate modules)
   hub/                 Next.js App Router (Vercel root directory)
-  docs/                Architecture, modules, data, brand, parity backlog
+  docs/                Architecture, modules, data, brand, parity, invoices journal
   firestore.rules      Locked staff-only rules (prototype — review before launch)
   storage.rules        Unused — binaries use Cloudflare R2
 ```
@@ -94,12 +96,12 @@ Setup (GitHub / Vercel / Firebase): [SETUP.md](SETUP.md)
 
 ## Status
 
-Hub scaffold is in `hub/`: login, linen UI, CloudStore. **Invoices** is a native workspace (editor, customers, catalog, queue, history, reports, print look). Design and Finance are still tool shells.
+Hub is live: login, linen UI, CloudStore. **Invoices** is a native workspace (editor, customers, catalog, queue, history, reports, print look) — merged 21 Aug 2026. **Design** and **Finance** are still tool shells (`feat/design` is the next slice).
 
 - **GitHub:** https://github.com/Jovo-Jovi/balance-bites-ops  
 - **Vercel:** https://balance-bites-ops.vercel.app  
 
-GitHub is code only — not the live database. Do not run the import script until you ask and have a zip of `saved data`. After the first live login, add `balance-bites-ops.vercel.app` under Firebase Auth → Authorized domains.
+GitHub is code only — not the live database. Do not run the import script until you ask and have a zip of `saved data`. `balance-bites-ops.vercel.app` must stay on Firebase Auth → Authorized domains.
 
 ## License
 

@@ -22,8 +22,8 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] Three cards only: الفواتير / التصميم / المالية والمخزون (no KPIs)
 - [x] Sign out, tenant name in footer
 - [x] Redirect to login if session missing
-- [ ] Staff allowlist live in Firebase (`staff/{uid}` created in Console — not in the app)
-- [ ] Vercel deploy (blocked until Auth + rules are on the project)
+- [x] Staff allowlist live in Firebase (`staff/{uid}` created in Console — not in the app)
+- [x] Vercel production https://balance-bites-ops.vercel.app (Firebase Auth still gates data)
 
 ---
 
@@ -51,7 +51,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 
 ## Invoices (`balance-bites-invoice-pro.html` → Next.js modules)
 
-Native React workspace (not an HTML wrap). Live modules mapped to hub tabs: editor, customers, catalog, queue (pending skip `kind === 'invoice_draft'` + bundles), history, reports (إجمالي / عميل / أفضل منتج / منتج + dates), look (print theme). Catalog is read-only. No default products / categories / presets written on empty cloud.
+Native React workspace (not an HTML wrap). Merged `feat/invoices` + `fix/invoices-ux` (21 Aug 2026). File map and UX rules: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Catalog is read-only. No default products / categories / presets written on empty cloud.
 
 - [x] CloudStore instead of Desktop folder
 - [x] New / save invoice, print, editor
@@ -67,6 +67,9 @@ Native React workspace (not an HTML wrap). Live modules mapped to hub tabs: edit
 - [x] Totals: subtotal, discount, grand total
 - [x] Payments flags shared with finance
 - [x] Returns display (finance writes)
+- [x] السجل filter معلقة / مدفوعة; print from invoice cards
+- [x] Load invoice jumps to فاتورة; customer dialogs portal to the viewport
+- [x] Print look always has a chosen preset (`__inv2__` fallback)
 
 ---
 
@@ -162,10 +165,10 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- Design and Finance are still **stubs**. Invoices is a native React app on the same keys.
+- **Invoices is done** (native React on the same keys). Design and Finance are still **tool shells**.
 - Import script is dry-run by default and was **not executed**.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
-- Cloud Storage is **not used** (Spark / free tier). Designer assets and finance backup files stay on Desktop.
+- Cloud Storage is **not used** (Spark / free tier). R2 client is wired; do not `import:assets` until asked. Designer art still on Desktop until then.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 
@@ -173,6 +176,6 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. Import `saved data` only after a zip backup, when you say so — invoices will then show live customers/catalog.
-2. Build Finance (stock ledger, prep, P&L) or wrap `bb-stock-costs.html`.
-3. Build Design or wrap `balance-bites-sticker.html`.
+1. **Design** (`feat/design`) — port `balance-bites-sticker.html` + prepress JS. Reuse hub chrome. Do not duplicate invoice modules.
+2. Import `saved data` only after a zip backup, when you say so.
+3. Finance (stock ledger, prep, P&L) or wrap `bb-stock-costs.html`.
