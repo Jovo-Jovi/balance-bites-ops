@@ -6,6 +6,17 @@ export type BbKey = (typeof BB_KEYS)[number];
 export const STORAGE_ONLY_KEYS = keyManifest.storageOnlyKeys;
 export const DEFAULT_TENANT_ID = keyManifest.tenantId;
 
+/** Invoice Pro may persist these. Catalog and returns stay finance-owned. */
+export const INVOICE_WRITE_KEYS = keyManifest.writers.invoicePro.filter(
+  (key) => key !== "bb_returns",
+) as BbKey[];
+
+const INVOICE_WRITE_SET = new Set<string>(INVOICE_WRITE_KEYS);
+
+export function isInvoiceWriteKey(key: string): key is BbKey {
+  return INVOICE_WRITE_SET.has(key);
+}
+
 const KEY_SET = new Set<string>(BB_KEYS);
 
 export function isBbKey(key: string): key is BbKey {

@@ -36,6 +36,18 @@ type UiHooks = {
 const pendingWriteIds = new Set<string>();
 const unsubscribers = new Map<string, Unsubscribe>();
 const firstSnapDone = new Set<string>();
+const listeners = new Set<(key: string) => void>();
+
+export function subscribeCloudStore(listener: (key: string) => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notify(key: string) {
+  listeners.forEach((fn) => fn(key));
+}
 
 let hooks: UiHooks = {
   onError: (message) => {
@@ -103,6 +115,7 @@ function newWriteId(): string {
 
 function applyRemote(key: string, data: unknown) {
   writeLocal(key, data);
+  notify(key);
 }
 
 export const CloudStore = {
@@ -116,11 +129,13 @@ export const CloudStore = {
    */
   set(key: string, value: unknown): Promise<void> {
     writeLocal(key, value);
+    notify(key);
     return persist(key, value);
   },
 
   remove(key: string): Promise<void> {
     clearLocal(key);
+    notify(key);
     return persistDelete(key);
   },
 
