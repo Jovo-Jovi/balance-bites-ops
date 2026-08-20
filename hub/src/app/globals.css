@@ -198,11 +198,50 @@ body {
   flex-shrink: 0;
   transform: rotate(45deg);
   background: var(--bb-gold);
+  animation: bb-diamond-pulse 1.8s ease-in-out infinite;
+}
+
+.bb-brand-diamond + .bb-brand-letters + .bb-brand-diamond {
+  animation-delay: 0.9s;
 }
 
 .bb-brand-lockup-hero .bb-brand-diamond {
   width: 9px;
   height: 9px;
+}
+
+.bb-brand-orn {
+  display: inline-flex;
+  align-items: center;
+  width: 2.6rem;
+  height: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.bb-brand-lockup-hero .bb-brand-orn {
+  width: 3.4rem;
+}
+
+.bb-brand-orn-track {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: max-content;
+  animation: bb-orn-march 2.2s linear infinite;
+}
+
+.bb-brand-orn-reverse .bb-brand-orn-track {
+  animation-direction: reverse;
+}
+
+.bb-brand-pip {
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
+  transform: rotate(45deg);
+  background: var(--bb-gold);
+  opacity: 0.7;
 }
 
 .bb-brand-name {
@@ -217,6 +256,24 @@ body {
   font-size: clamp(1.45rem, 5vw, 2.15rem);
 }
 
+@keyframes bb-orn-march {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes bb-diamond-pulse {
+  0%,
+  100% {
+    transform: rotate(45deg) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: rotate(45deg) scale(1.28);
+    opacity: 1;
+  }
+}
+
 @media (min-width: 640px) {
   .bb-brand-name {
     font-size: 1.125rem;
@@ -224,6 +281,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bb-brand-orn-track,
+  .bb-brand-diamond {
+    animation: none;
+  }
   .bb-btn,
   .bb-pressable {
     transition: none;
