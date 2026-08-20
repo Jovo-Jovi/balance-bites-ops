@@ -94,7 +94,12 @@ Setup (GitHub / Vercel / Firebase): [SETUP.md](SETUP.md)
 
 ## Status
 
-Hub scaffold is in `hub/`: login, linen UI, workspace tabs, CloudStore client. Invoice / Design / Finance are organized tool shells (logic not ported yet). GitHub is code only — not the live database. Do not run the import script until you ask and have a zip of `saved data`.
+Hub scaffold is in `hub/`: login, linen UI, workspace tabs, CloudStore client. Invoice / Design / Finance are organized tool shells (logic not ported yet).
+
+- **GitHub:** https://github.com/Jovo-Jovi/balance-bites-ops  
+- **Vercel:** https://balance-bites-ops.vercel.app  
+
+GitHub is code only — not the live database. Do not run the import script until you ask and have a zip of `saved data`. After the first live login, add `balance-bites-ops.vercel.app` under Firebase Auth → Authorized domains.
 
 ## License
 

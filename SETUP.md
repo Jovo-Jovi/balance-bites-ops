@@ -47,7 +47,11 @@ cd C:\Users\Marco\Desktop\balance-bites-ops\hub
 npx vercel link --yes --scope jiovannys-projects-0219772b
 ```
 
-Turn on **Vercel Authentication** (Deployment Protection) so the URL is not public. MCP: `update_project_deployment_protection`, or Dashboard → Project → Settings → Deployment Protection.
+Live URL after the first deploy: https://balance-bites-ops.vercel.app  
+
+Add that host (and later any custom domain) in Firebase Console → Authentication → Settings → Authorized domains, or email/Google login fails with `auth/unauthorized-domain`.
+
+To auto-deploy on `git push`, connect the private GitHub repo in Vercel → Project → Settings → Git (the GitHub App must be allowed to see `Jovo-Jovi/balance-bites-ops`).
 
 ## 3. Firebase (Console — no MCP)
 
