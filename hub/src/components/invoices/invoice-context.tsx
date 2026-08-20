@@ -18,6 +18,7 @@ import {
   cloneLineFromProduct,
   cloneLines,
   emptyDraft,
+  draftFromInvoice,
   genId,
   isInactiveProduct,
   nextGlobalInvoiceNumber,
@@ -110,6 +111,7 @@ type InvoiceContextValue = {
   printLook: PrintLookId;
   setPrintLook: (look: PrintLookId) => void;
   printInvoice: (mode: "original" | "net", look?: PrintLookId) => void;
+  printSavedInvoice: (invoiceId: string, mode?: "original" | "net") => void;
   printPrices: (productIds: string[], note: string) => void;
   printCustomers: (
     customerIds: string[],
@@ -158,7 +160,11 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
   const presets = asArray<ColorPreset>(useCloudKey("bb_color_presets"));
   const activePresetId = String(useCloudKey("bb_active_color_preset_id") || "");
   const fitOne = Boolean(useCloudKey("bb_print_fit_one"));
-  const printLook = parsePrintLookId(useCloudKey("bb_inv_print_preset_id"));
+  const printLook = parsePrintLookId(
+    useCloudKey("bb_inv_print_preset_id"),
+    presets,
+    activePresetId,
+  );
   const pageSize = parsePageSize(useCloudKey("bb_inv_print_page_size"));
   const margins = parseMargins(useCloudKey("bb_inv_print_margins"));
 
@@ -331,18 +337,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         toast.push("لم يتم إيجاد الفاتورة", "warn");
         return;
       }
-      setDraftState({
-        loadedInvoiceId: inv.id,
-        pendingId: null,
-        customerId: inv.customerId || null,
-        customerName: inv.customerName || "",
-        customerPhone: inv.customerPhone || "",
-        invoiceNumber: inv.invoiceNumber || "",
-        date: inv.date || todayISO(),
-        notes: inv.notes || "",
-        discount: inv.discount || 0,
-        items: cloneLines(inv.items),
-      });
+      setDraftState(draftFromInvoice(inv));
       toast.push(`تم تحميل الفاتورة ${inv.invoiceNumber}`, "ok");
     }
     function duplicateInvoice(id: string) {
@@ -620,6 +615,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
     }
     function persistLook() {
       persistInv2();
+      void writeInvoiceKey("bb_inv_print_preset_id", printLook);
       toast.push("تم حفظ إعدادات الطباعة", "ok");
     }
     function printInvoice(mode: "original" | "net", look?: PrintLookId) {
@@ -637,6 +633,28 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       const ok = printInvoiceDocument({
         draft,
         theme: resolvePrintTheme(resolved, theme, readPresets()),
+        strings,
+        mode,
+        returns,
+        invoices,
+        fitOne,
+        pageSize,
+        margins,
+      });
+      if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+    }
+    function printSavedInvoice(
+      invoiceId: string,
+      mode: "original" | "net" = "original",
+    ) {
+      const inv = readInvoices().find((i) => i.id === invoiceId);
+      if (!inv) {
+        toast.push("لم يتم إيجاد الفاتورة", "warn");
+        return;
+      }
+      const ok = printInvoiceDocument({
+        draft: draftFromInvoice(inv),
+        theme: resolvePrintTheme(printLook, theme, readPresets()),
         strings,
         mode,
         returns,
@@ -753,6 +771,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         void writeInvoiceKey("bb_inv_print_preset_id", look);
       },
       printInvoice,
+      printSavedInvoice,
       printPrices,
       printCustomers,
       catalogLocked,

@@ -316,14 +316,8 @@ export function EditorTool() {
         customerId={histId}
         onClose={() => setHistId(null)}
         onLoad={(id) => {
-          if (
-            window.confirm(
-              "تحميل هذه الفاتورة؟ ستُستبدل البيانات الحالية.",
-            )
-          ) {
-            app.loadInvoice(id);
-            setHistId(null);
-          }
+          app.loadInvoice(id);
+          setHistId(null);
         }}
       />
     </div>

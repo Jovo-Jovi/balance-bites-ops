@@ -53,7 +53,7 @@ export const EMPTY_DEFAULTS: Record<BbKey, unknown> = {
   bb_prep_ing_view: "total",
   bb_prep_prod_mode: "all",
   bb_prep_print_mode: "both",
-  bb_inv_print_preset_id: "",
+  bb_inv_print_preset_id: "__inv2__",
   bb_inv_print_page_size: "A4",
   bb_inv_print_margins: { t: 16, r: 14, b: 16, l: 14 },
   bb_print_fit_one: false,

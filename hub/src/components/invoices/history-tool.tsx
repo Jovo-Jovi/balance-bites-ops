@@ -11,13 +11,26 @@ import {
   invoicePayStatus,
 } from "@/lib/invoices/payments";
 import { enrichInvoice, salesStatusLabel } from "@/lib/invoices/returns";
+import { useWorkspaceTab } from "@/hooks/use-workspace-tab";
+
+const PAY_FILTERS = [
+  { id: "all", label: "الكل" },
+  { id: "pending", label: "معلقة" },
+  { id: "paid", label: "مدفوعة" },
+] as const;
+
+type PayFilter = (typeof PAY_FILTERS)[number]["id"];
 
 export function HistoryTool() {
   const app = useInvoiceApp();
+  const openTab = useWorkspaceTab();
   const [q, setQ] = useState("");
+  const [payFilter, setPayFilter] = useState<PayFilter>("all");
   const list = useMemo(() => {
     const query = q.toLowerCase();
     return app.invoices.filter((inv) => {
+      const pay = invoicePayStatus(app.payments, inv.id);
+      if (payFilter !== "all" && pay !== payFilter) return false;
       if (!query) return true;
       return (
         (inv.invoiceNumber || "").toLowerCase().includes(query) ||
@@ -25,7 +38,7 @@ export function HistoryTool() {
         (inv.date || "").includes(query)
       );
     });
-  }, [app.invoices, q]);
+  }, [app.invoices, app.payments, q, payFilter]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -34,8 +47,32 @@ export function HistoryTool() {
         onChange={(e) => setQ(e.target.value)}
         placeholder="بحث برقم أو عميل أو تاريخ..."
       />
+      <div className="flex flex-wrap gap-2">
+        {PAY_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            aria-pressed={payFilter === f.id}
+            onClick={() => setPayFilter(f.id)}
+            className={`bb-btn rounded-full text-sm ${
+              payFilter === f.id
+                ? "border border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                : "bb-glass"
+            }`}
+            data-tone={payFilter === f.id ? undefined : "ghost"}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
       {list.length === 0 ? (
-        <Empty>لا يوجد فواتير محفوظة</Empty>
+        <Empty>
+          {payFilter === "pending"
+            ? "لا توجد فواتير معلقة"
+            : payFilter === "paid"
+              ? "لا توجد فواتير مدفوعة"
+              : "لا يوجد فواتير محفوظة"}
+        </Empty>
       ) : (
         <ul className="flex flex-col gap-3">
           {list.map((inv) => {
@@ -78,16 +115,17 @@ export function HistoryTool() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <ActionBtn
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          "تحميل هذه الفاتورة؟ ستُستبدل البيانات الحالية.",
-                        )
-                      ) {
-                        app.loadInvoice(inv.id);
-                      }
+                      app.loadInvoice(inv.id);
+                      openTab("editor");
                     }}
                   >
                     تحميل
+                  </ActionBtn>
+                  <ActionBtn
+                    tone="ghost"
+                    onClick={() => app.printSavedInvoice(inv.id)}
+                  >
+                    طباعة
                   </ActionBtn>
                   <ActionBtn tone="ghost" onClick={() => app.duplicateInvoice(inv.id)}>
                     نسخ

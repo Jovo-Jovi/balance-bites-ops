@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInvoiceApp } from "./invoice-context";
 import { CustomerBrief } from "./customer-brief";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "./ui";
 import { customerPendingCount } from "@/lib/invoices/payments";
+import { useWorkspaceTab } from "@/hooks/use-workspace-tab";
 import type { Customer } from "@/lib/invoices/types";
 
 const emptyForm = {
@@ -18,9 +18,7 @@ const emptyForm = {
 
 export function CustomersTool() {
   const app = useInvoiceApp();
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
+  const openTab = useWorkspaceTab();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState(emptyForm);
@@ -65,9 +63,7 @@ export function CustomersTool() {
 
   function goToInvoice(customerId: string) {
     app.selectCustomer(customerId);
-    const next = new URLSearchParams(params.toString());
-    next.set("tab", "editor");
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    openTab("editor");
   }
 
   return (
@@ -234,15 +230,9 @@ export function CustomersTool() {
         onClose={() => setBriefId(null)}
         onUseForInvoice={goToInvoice}
         onLoad={(id) => {
-          if (
-            window.confirm("تحميل هذه الفاتورة؟ ستُستبدل البيانات الحالية.")
-          ) {
-            app.loadInvoice(id);
-            setBriefId(null);
-            const next = new URLSearchParams(params.toString());
-            next.set("tab", "editor");
-            router.replace(`${pathname}?${next.toString()}`, { scroll: false });
-          }
+          app.loadInvoice(id);
+          setBriefId(null);
+          openTab("editor");
         }}
       />
 
