@@ -129,8 +129,16 @@ export function AtelierTool() {
         <ArtPanel />
       </div>
 
-      <aside className="lg:sticky lg:top-24 lg:w-80">
-        <LabelPreview template={t} />
+      <aside className="w-full lg:sticky lg:top-24 lg:w-[28rem]">
+        <p className="mb-2 text-xs text-[var(--bb-muted)]">Tap a layer to select it, then drag. Corner handle resizes.</p>
+        <LabelPreview
+          template={t}
+          interactive
+          selectedId={app.selectedId}
+          onSelect={app.selectLayer}
+          onMove={app.moveItem}
+          onResize={app.resizeItem}
+        />
       </aside>
     </div>
   );

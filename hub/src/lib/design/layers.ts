@@ -1,7 +1,16 @@
+import { BG_MORE, BG_SLOTS, usableImage } from "./art";
 import { getIcon } from "./icons";
+import { bgPanKeys, productPhotoBox } from "./preview";
 import type { LabelState } from "./types";
 
-export type LayerKind = "part" | "zone" | "stamp";
+export const PHOTO_LAYER = "__photo__";
+export const QR_LAYER = "__qr__";
+
+export function bgLayerId(field: string) {
+  return `__bg:${field}`;
+}
+
+export type LayerKind = "part" | "zone" | "stamp" | "photo" | "bg" | "qr";
 
 export type DesignLayer = {
   id: string;
@@ -16,6 +25,22 @@ export type DesignLayer = {
   lock?: boolean;
   removable: boolean;
 };
+
+export type CanvasItem = {
+  id: string;
+  kind: LayerKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot?: number;
+  lock: boolean;
+};
+
+function num(state: LabelState, key: string, fallback: number) {
+  const n = Number(state[key]);
+  return Number.isFinite(n) ? n : fallback;
+}
 
 function zoneLabel(kind: string, label: string, iconId?: string) {
   if (label) return label;
@@ -67,7 +92,104 @@ export function listLayers(state: LabelState): DesignLayer[] {
       removable: true,
     });
   }
+  if (usableImage(state.hxCProd) || String(state.hxCProd || "").startsWith("__asset__:")) {
+    layers.push({
+      id: PHOTO_LAYER,
+      kind: "photo",
+      label: "Product photo",
+      z: 35,
+      removable: false,
+    });
+  }
+  if (usableImage(state.hxQr) || String(state.hxQr || "").startsWith("__asset__:")) {
+    layers.push({
+      id: QR_LAYER,
+      kind: "qr",
+      label: "QR / mark",
+      z: 36,
+      removable: false,
+    });
+  }
+  for (const slot of [...BG_SLOTS, ...BG_MORE]) {
+    if (slot.key === "hxQr") continue;
+    const raw = state[slot.key];
+    if (!usableImage(raw) && !String(raw || "").startsWith("__asset__:")) continue;
+    layers.push({
+      id: bgLayerId(slot.key),
+      kind: "bg",
+      label: slot.label,
+      z: -5,
+      removable: false,
+    });
+  }
   return layers.sort((a, b) => b.z - a.z || a.label.localeCompare(b.label));
+}
+
+export function listCanvasItems(state: LabelState, designType: string): CanvasItem[] {
+  const items: CanvasItem[] = [];
+  const circular = designType === "circular";
+  for (const part of state._composite?.parts || []) {
+    items.push({
+      id: part.id,
+      kind: "part",
+      x: part.x,
+      y: part.y,
+      w: part.w,
+      h: part.h,
+      rot: part.rot,
+      lock: Boolean(part.lock) && part.showImage !== true,
+    });
+  }
+  for (const zone of state._composite?.zones || []) {
+    items.push({
+      id: zone.id,
+      kind: "zone",
+      x: zone.x,
+      y: zone.y,
+      w: zone.w,
+      h: zone.h,
+      rot: zone.rot,
+      lock: Boolean(zone.lock) && zone.kind !== "image" && zone.kind !== "icon",
+    });
+  }
+  for (const stamp of state._stamps || []) {
+    items.push({
+      id: stamp.id,
+      kind: "stamp",
+      x: stamp.x,
+      y: stamp.y,
+      w: stamp.w,
+      h: stamp.h,
+      rot: stamp.rot,
+      lock: false,
+    });
+  }
+  if (usableImage(state.hxCProd) || String(state.hxCProd || "").startsWith("__asset__:")) {
+    const box = productPhotoBox(state, circular);
+    items.push({ id: PHOTO_LAYER, kind: "photo", ...box, lock: false });
+  }
+  if (usableImage(state.hxQr) || String(state.hxQr || "").startsWith("__asset__:")) {
+    items.push({ id: QR_LAYER, kind: "qr", x: 86, y: 86, w: 16, h: 16, lock: false });
+  }
+  for (const slot of [...BG_SLOTS, ...BG_MORE]) {
+    if (slot.key === "hxQr") continue;
+    const raw = state[slot.key];
+    if (!usableImage(raw) && !String(raw || "").startsWith("__asset__:")) continue;
+    const zoomKey = slot.zoom;
+    const zoom = zoomKey ? Math.max(0.05, num(state, zoomKey, 100) / 100) : 1;
+    const size = 100 * zoom;
+    const pan = bgPanKeys(slot.key);
+    items.push({
+      id: bgLayerId(slot.key),
+      kind: "bg",
+      x: num(state, pan.x, 50),
+      y: num(state, pan.y, 50),
+      w: size,
+      h: size,
+      lock: false,
+    });
+  }
+  return items;
 }
 
 export function patchLayer(
@@ -130,6 +252,62 @@ export function moveLayer(state: LabelState, id: string, dir: -1 | 1): LabelStat
           ...state._composite,
           parts: (state._composite.parts || []).map((p) => ({ ...p, z: applyZ(p.id, p.z || 0) })),
           zones: (state._composite.zones || []).map((z) => ({ ...z, z: applyZ(z.id, z.z || 0) })),
+        }
+      : state._composite,
+  };
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+export function moveItem(state: LabelState, id: string, x: number, y: number): LabelState {
+  const nx = clamp(x, -10, 110);
+  const ny = clamp(y, -10, 110);
+  if (id === PHOTO_LAYER) {
+    return { ...state, sCProdX: String(Math.round(nx)), sCProdY: String(Math.round(ny)) };
+  }
+  if (id === QR_LAYER) {
+    return { ...state, sQRX: String(nx), sQRY: String(ny) };
+  }
+  if (id.startsWith("__bg:")) {
+    const field = id.slice(5);
+    const pan = bgPanKeys(field);
+    return { ...state, [pan.x]: String(nx), [pan.y]: String(ny) };
+  }
+  return {
+    ...state,
+    _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, x: nx, y: ny } : s)),
+    _composite: state._composite
+      ? {
+          ...state._composite,
+          parts: (state._composite.parts || []).map((p) => (p.id === id ? { ...p, x: nx, y: ny } : p)),
+          zones: (state._composite.zones || []).map((z) => (z.id === id ? { ...z, x: nx, y: ny } : z)),
+        }
+      : state._composite,
+  };
+}
+
+export function resizeItem(state: LabelState, id: string, w: number, h: number): LabelState {
+  const nw = clamp(w, 4, 120);
+  const nh = clamp(h, 4, 120);
+  if (id === PHOTO_LAYER) {
+    return { ...state, sCProdSz: String(Math.round(nw / 0.45)) };
+  }
+  if (id.startsWith("__bg:")) {
+    const field = id.slice(5);
+    const slot = [...BG_SLOTS, ...BG_MORE].find((s) => s.key === field);
+    if (!slot?.zoom) return state;
+    return { ...state, [slot.zoom]: String(Math.round(nw)) };
+  }
+  return {
+    ...state,
+    _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, w: nw, h: nh } : s)),
+    _composite: state._composite
+      ? {
+          ...state._composite,
+          parts: (state._composite.parts || []).map((p) => (p.id === id ? { ...p, w: nw, h: nh } : p)),
+          zones: (state._composite.zones || []).map((z) => (z.id === id ? { ...z, w: nw, h: nh } : z)),
         }
       : state._composite,
   };

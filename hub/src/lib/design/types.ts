@@ -44,6 +44,9 @@ export type CompositePart = {
   srcUrl?: string;
   pathLocal?: string;
   showImage?: boolean;
+  artKey?: string;
+  lock?: boolean;
+  borderColor?: string;
 };
 
 export type CompositeZone = {
@@ -70,6 +73,7 @@ export type CompositeZone = {
   fontStyle?: string;
   fontScale?: number;
   shape?: string;
+  fill?: string;
 };
 
 export type LabelStamp = {

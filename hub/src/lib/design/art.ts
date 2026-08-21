@@ -1,4 +1,5 @@
 import { genId } from "@/lib/invoices/helpers";
+import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
 import type { CompositeZone, LabelStamp, LabelState } from "./types";
 
@@ -48,10 +49,18 @@ export function iconSizeById(id: string) {
   return ICON_SIZES.find((s) => s.id === id) ?? ICON_SIZES[1];
 }
 
-export function usableImage(value: unknown) {
+export function usableImage(value: unknown, artKey?: string) {
+  const preset = resolveArtSrc(value, artKey);
+  if (preset) return preset;
   const s = String(value ?? "");
   if (!s || s.startsWith("__asset__:")) return "";
-  if (s.startsWith("data:") || s.startsWith("http://") || s.startsWith("https://") || s.startsWith("blob:")) {
+  if (
+    s.startsWith("data:") ||
+    s.startsWith("http://") ||
+    s.startsWith("https://") ||
+    s.startsWith("blob:") ||
+    s.startsWith("/")
+  ) {
     return s;
   }
   return "";

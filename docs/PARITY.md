@@ -86,9 +86,11 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. N
 - [x] Print house cut stroke as an editable border around the die-cut (size mm + colour)
 - [x] Atelier background uploads (`hxBg*` / `hxCProd`) on any family
 - [x] Icon library in Atelier (repo catalog + category variants; apply to the open template)
+- [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs
+- [x] Atelier select + drag of parts, zones, stamps, and uploaded images
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
-- [ ] Applying `assets/presets/` folders (repo, not tenant dump)
+- [ ] Applying `assets/presets/` folders into tenant templates (repo, not tenant dump)
 
 ---
 

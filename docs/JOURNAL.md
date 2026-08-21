@@ -123,8 +123,18 @@ Live `bb_label_templates` (exact Desktop JSON) written to Firestore. 73 `label_a
 
 ---
 
+## 2026-08-22 — Atelier open, layers, popcorn art
+
+On `feat/design`. Opening a Library card no longer snaps back to the previous template (stale `?id=` vs hydrate race). Hydrate results from a previous template are ignored.
+
+Character stickers (popcorn, chicopon, jelly, corn, pretzels, crackers, marshmallows) draw from `hub/public/design-presets/*.svg` when the saved JSON has `artref:` or `assets/presets/…`. Those files stay in git; they are not written to Firestore.
+
+Atelier preview is a canvas: tap a layer (or the Layers list) to select it, drag to move, corner handle to resize. Background uploads and product photos move with the same hit boxes. Licensed popcorn-blue/red still stay out of the commercial print pack; they show in Library and Atelier.
+
+---
+
 ## Still not done (do not tick as shipped)
 
-- Design follow-up: composite drawing / PNG cut / art-preset folders
+- Design follow-up: full composite drawing / PNG cut pack / writing preset folders into tenant templates
 - Finance tabs and ledger formulas
 - One-shot JSON import of the rest of live `saved data` (invoices, stock, …)

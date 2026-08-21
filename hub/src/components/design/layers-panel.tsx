@@ -15,7 +15,7 @@ export function LayersPanel() {
   return (
     <Accordion title="Layers">
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        Front of the sticker is at the top. Move, recolor, or remove a layer.
+        Front of the sticker is at the top. Tap a row to select it on the preview, then drag.
       </p>
       {layers.length === 0 ? (
         <p className="text-sm text-[var(--bb-muted)]">No extra layers yet. Icons you add show up here.</p>
@@ -24,8 +24,17 @@ export function LayersPanel() {
           {layers.map((layer, i) => (
             <li
               key={layer.id}
-              className="flex flex-wrap items-center gap-2 rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-2 py-2"
+              className={`flex flex-wrap items-center gap-2 rounded-[var(--bb-radius)] border px-2 py-2 ${
+                app.selectedId === layer.id
+                  ? "border-[var(--bb-gold)] bg-[var(--bb-gold)]/10"
+                  : "border-[var(--bb-line)]"
+              }`}
             >
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                onClick={() => app.selectLayer(app.selectedId === layer.id ? null : layer.id)}
+              >
               {layer.iconId ? (
                 <span
                   className="flex h-8 w-8 items-center justify-center rounded"
@@ -36,6 +45,7 @@ export function LayersPanel() {
                 <span className="h-8 w-8 rounded border border-[var(--bb-line)]" style={{ background: layer.color || fill }} />
               )}
               <span className="min-w-0 flex-1 truncate text-sm text-[var(--bb-text)]">{layer.label}</span>
+              </button>
               {layer.color ? (
                 <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
                   Color

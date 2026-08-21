@@ -10,6 +10,8 @@ export const DPI = 300;
 export const PRINT_PACK_EXCLUDE: Record<string, string> = {
   "popcorn-blue": "Licensed likeness — not for commercial print pack",
   "popcorn-red": "Licensed likeness — not for commercial print pack",
+  art_popcorn_blue: "Licensed likeness — not for commercial print pack",
+  art_popcorn_red: "Licensed likeness — not for commercial print pack",
 };
 
 export function pxFromMm(mm: number) {
@@ -18,7 +20,14 @@ export function pxFromMm(mm: number) {
 
 export function printExcludeNote(template: LabelTemplate, state: LabelState) {
   const preset = String(state._composite?.presetId || "");
-  return PRINT_PACK_EXCLUDE[preset] || null;
+  const name = String(template.name || "").toLowerCase();
+  return (
+    PRINT_PACK_EXCLUDE[preset] ||
+    PRINT_PACK_EXCLUDE[name] ||
+    (name.includes("popcorn-blue") || name.includes("popcorn-red")
+      ? PRINT_PACK_EXCLUDE["popcorn-blue"]
+      : null)
+  );
 }
 
 export function downloadSvg(template: LabelTemplate, state: LabelState) {

@@ -17,7 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { hydrateStateAssets, hasUnresolvedAssets, stripStateAssets } from "@/lib/design/assets";
 import { applyIconToState, removeArtItem, setFillCutWithPaper, syncPaperToSilhouette } from "@/lib/design/art";
-import { moveLayer as moveLayerInState, patchLayer as patchLayerInState } from "@/lib/design/layers";
+import { moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState } from "@/lib/design/layers";
 import { flavorPackById, FLAVOR_PACKS } from "@/lib/design/colors";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
@@ -44,6 +44,7 @@ type DesignContextValue = {
   products: Product[];
   stickers: StickerSku[];
   current: LabelTemplate | null;
+  selectedId: string | null;
   busy: boolean;
   openLibrary: () => void;
   openAtelier: (id?: string) => void;
@@ -70,6 +71,9 @@ type DesignContextValue = {
   removeArt: (id: string) => void;
   patchLayer: (id: string, patch: { color?: string; text?: string }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
+  selectLayer: (id: string | null) => void;
+  moveItem: (id: string, x: number, y: number) => void;
+  resizeItem: (id: string, w: number, h: number) => void;
   setFillCut: (on: boolean) => void;
   save: () => Promise<boolean>;
   saveAsNew: () => Promise<boolean>;
@@ -108,9 +112,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const labelOpen = useCloudKey<unknown>("bb_label_open");
   const templates = useMemo(() => normalizeTemplates(templatesRaw), [templatesRaw]);
   const [current, setCurrent] = useState<LabelTemplate | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const consumedTs = useRef(0);
-  const openedId = useRef<string | null>(null);
+  const wantedId = useRef<string | null>(null);
+  const loadSeq = useRef(0);
 
   const go = useCallback(
     (tab: string, id?: string | null) => {
@@ -148,16 +154,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const loadIntoCurrent = useCallback(
     async (t: LabelTemplate) => {
-      openedId.current = t.id;
+      const seq = ++loadSeq.current;
+      wantedId.current = t.id;
+      setSelectedId(null);
       setBusy(true);
       try {
         const state = await hydrateStateAssets(t.id, t.state);
+        if (seq !== loadSeq.current || wantedId.current !== t.id) return;
         setCurrent({ ...t, state });
       } catch {
+        if (seq !== loadSeq.current || wantedId.current !== t.id) return;
         setCurrent(t);
         toast.push("Opened the template. Some art files could not load.", "warn");
       } finally {
-        setBusy(false);
+        if (seq === loadSeq.current) setBusy(false);
       }
     },
     [toast],
@@ -170,8 +180,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         toast.push("That template is not in the library.", "warn");
         return;
       }
-      await loadIntoCurrent(t);
+      wantedId.current = id;
       go("atelier", id);
+      await loadIntoCurrent(t);
     },
     [templates, loadIntoCurrent, go, toast],
   );
@@ -180,27 +191,28 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     const open = parseLabelOpen(labelOpen);
     const fresh =
       Boolean(open?.ts) && Date.now() - Number(open?.ts) < 120_000 && Number(open?.ts) !== consumedTs.current;
-    const urlTemplate = params.get("template") || "";
-    const urlId = params.get("id") || "";
-
-    let templateId = urlTemplate;
     if (fresh && open) {
       consumedTs.current = Number(open.ts);
       void removeDesignKey("bb_label_open");
-      templateId = open.templateId || templateId;
+      let templateId = open.templateId || "";
       if (!templateId && open.stickerId) {
         const sku = stickers.find((s) => s.id === open.stickerId);
         if (sku?.templateKey) templateId = sku.templateKey;
       }
+      if (templateId) {
+        wantedId.current = templateId;
+        const t = templates.find((x) => x.id === templateId);
+        if (t) void loadIntoCurrent(t).then(() => go("atelier", t.id));
+      }
+      return;
     }
-    if (!templateId) templateId = urlId;
-    if (!templateId || openedId.current === templateId) return;
-    const t = templates.find((x) => x.id === templateId);
+    const urlId = params.get("template") || params.get("id") || "";
+    if (!urlId || !templates.length) return;
+    if (wantedId.current === urlId) return;
+    if (wantedId.current && wantedId.current !== urlId) return;
+    const t = templates.find((x) => x.id === urlId);
     if (!t) return;
-    openedId.current = templateId;
-    void loadIntoCurrent(t).then(() => {
-      if (fresh || urlTemplate) go("atelier", t.id);
-    });
+    void loadIntoCurrent(t);
   }, [labelOpen, params, templates, stickers, loadIntoCurrent, go]);
 
   const replaceCurrent = useCallback((next: LabelTemplate) => {
@@ -221,6 +233,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       products,
       stickers,
       current,
+      selectedId,
       busy,
       openLibrary: () => go("library", current?.id || null),
       openAtelier: (id) => {
@@ -241,7 +254,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         setBusy(true);
         try {
           await persist([...templates, t]);
-          openedId.current = t.id;
+          wantedId.current = t.id;
           setCurrent(t);
           go("atelier", t.id);
           toast.push("Template created.", "ok");
@@ -280,7 +293,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         try {
           await persist(result.next);
           if (current?.id === id) {
-            openedId.current = null;
+            wantedId.current = null;
             setCurrent(null);
             go("library", null);
           }
@@ -423,6 +436,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         if (!current) return;
         replaceCurrent({ ...current, state: moveLayerInState(current.state, id, dir) });
       },
+      selectLayer: (id) => setSelectedId(id),
+      moveItem: (id, x, y) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: moveItemInState(current.state, id, x, y) });
+      },
+      resizeItem: (id, w, h) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: resizeItemInState(current.state, id, w, h) });
+      },
       setFillCut: (on) => {
         if (!current) return;
         replaceCurrent({ ...current, state: setFillCutWithPaper(current.state, on) });
@@ -464,7 +486,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         setBusy(true);
         try {
           await persist([...templates, copy]);
-          openedId.current = copy.id;
+          wantedId.current = copy.id;
           setCurrent(copy);
           go("atelier", copy.id);
           toast.push("Saved as a new template.", "ok");
@@ -483,6 +505,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     products,
     stickers,
     current,
+    selectedId,
     busy,
     go,
     openTemplate,

@@ -92,15 +92,21 @@ export function LibraryTool() {
             const spec = DESIGN_SPECS.find((s) => s.id === t.designType);
             return (
               <li key={t.id} className="bb-glass flex flex-col gap-3 p-3">
-                <LabelPreview template={t} />
-                <div>
-                  <p className="font-brand text-lg text-[var(--bb-title)]">{t.name}</p>
-                  <p className="text-sm text-[var(--bb-muted)]">
-                    {spec?.label || t.designType}
-                    {t.flavorKey ? ` · ${t.flavorKey}` : ""}
-                    {product ? ` · ${product.name}` : ""}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  className="text-start"
+                  onClick={() => void app.openTemplate(t.id)}
+                >
+                  <LabelPreview template={t} />
+                  <div className="mt-3">
+                    <p className="font-brand text-lg text-[var(--bb-title)]">{t.name}</p>
+                    <p className="text-sm text-[var(--bb-muted)]">
+                      {spec?.label || t.designType}
+                      {t.flavorKey ? ` · ${t.flavorKey}` : ""}
+                      {product ? ` · ${product.name}` : ""}
+                    </p>
+                  </div>
+                </button>
                 <div className="flex flex-wrap gap-2">
                   <ActionBtn onClick={() => void app.openTemplate(t.id)}>Open</ActionBtn>
                   <ActionBtn tone="ghost" onClick={() => void app.duplicate(t.id)}>

@@ -27,9 +27,9 @@ hub/src/components/design/
   atelier-tool.tsx
   art-panel.tsx     background uploads + icon picker
   copy-panel.tsx    copy that is actually on this family
-  layers-panel.tsx  z-order + icon/text color
+  layers-panel.tsx  z-order + select; icon/text color
   print-tool.tsx
-  label-preview.tsx
+  label-preview.tsx static thumbs + Atelier drag/select overlay
 hub/src/lib/design/
   write.ts          writeDesignKey / removeDesignKey
   types.ts
@@ -40,7 +40,8 @@ hub/src/lib/design/
   icons.ts          repo icon catalog (Lucide-style + kids + curves). Not Firestore.
   icon-catalog.json
   art.ts            bg slots, stamp/apply icon
-  layers.ts         layer list / move / recolor
+  art-presets.ts    artref: / assets/presets/ → /design-presets/*.svg (repo, not Firestore)
+  layers.ts         layer list / move / recolor / drag
   preview.ts        SVG from composite parts/zones or die-cut outline; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download (includes cut border)
 hub/src/lib/keys.ts DESIGN_WRITE_KEYS
@@ -70,13 +71,14 @@ Design **reads only:** `bb_products`, `bb_stickers`.
 
 - Freeform composite drawing, full cone-unroll taper print
 - PNG cut-path print pack from `bb-prepress.js`
-- Applying repo `assets/presets/` folders into tenant templates
+- Applying repo `assets/presets/` folders into tenant templates (preview resolves `artref:` from `public/design-presets/` instead)
 - Scanning Desktop `bbLabel-*.json` (import the file instead)
 - Auto-seed of any template or gold theme when Firestore is empty
 
 ## UX
 
 1. Dialogs portal to `document.body` (shared `Modal`).
-2. Open template → `?tab=atelier&id=`. Deep link consumes `bb_label_open` then clears it.
+2. Open template → `?tab=atelier&id=`. The claimed template id wins over a stale URL so Atelier does not snap back. Deep link consumes `bb_label_open` then clears it.
 3. Delete refuses to wipe a multi-template library if one id would empty the array (live `LabelTemplateMgr.remove` guard).
 4. Hub chrome stays linen. Flavor packs tint the label, not the workspace.
+5. Atelier preview: tap a layer to select, drag to move, corner handle to resize. Uploaded photos and character parts are not static.

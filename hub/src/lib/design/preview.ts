@@ -13,6 +13,22 @@ function num(state: LabelState, key: string, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+export function bgPanKeys(srcKey: string) {
+  const n = String(srcKey).replace(/^hxBg/i, "") || "1";
+  return { x: `sPan${n}X`, y: `sPan${n}Y` };
+}
+
+export function productPhotoBox(state: LabelState, circular: boolean) {
+  const sz = num(state, "sCProdSz", 80);
+  const w = Math.max(10, Math.min(70, sz * 0.45));
+  const xRaw = num(state, "sCProdX", circular ? 40 : 50);
+  const yRaw = num(state, "sCProdY", circular ? 0 : 50);
+  if (circular && xRaw === 40 && yRaw === 0) {
+    return { x: 80, y: 48, w, h: w };
+  }
+  return { x: xRaw || 50, y: yRaw || 50, w, h: w };
+}
+
 function polygon(n: number, cx: number, cy: number, rx: number, ry: number, rot = -90) {
   const pts: string[] = [];
   for (let i = 0; i < n; i++) {
@@ -38,9 +54,19 @@ function partShape(part: CompositePart) {
   const y = part.y;
   const rx = part.w / 2;
   const ry = part.h / 2;
-  const src = usableImage(part.src || part.srcUrl);
-  if (src) {
-    return `<image href="${esc(src)}" x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" preserveAspectRatio="xMidYMid slice" />`;
+  const left = x - rx;
+  const top = y - ry;
+  const src = usableImage(part.src || part.srcUrl, part.artKey);
+  const clipId = `pclip-${String(part.id || "x").replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const wantImage = Boolean(src) && part.showImage === true;
+  if (wantImage && part.pathLocal) {
+    return `<g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">
+      <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><path d="${esc(part.pathLocal)}" /></clipPath></defs>
+      <image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="none" clip-path="url(#${clipId})" />
+    </g>`;
+  }
+  if (wantImage) {
+    return `<image href="${esc(src)}" x="${left}" y="${top}" width="${part.w}" height="${part.h}" preserveAspectRatio="none" />`;
   }
   const t = part.type;
   if (t === "circle" || t === "oval") {
@@ -115,8 +141,11 @@ function bgLayers(state: LabelState) {
       const o = num(state, opaKey, 1);
       const z = Math.max(0.05, num(state, zoomKey, 100) / 100);
       const size = 100 * z;
-      const x = 50 - size / 2;
-      const y = 50 - size / 2;
+      const pan = bgPanKeys(srcKey);
+      const cx = num(state, pan.x, 50);
+      const cy = num(state, pan.y, 50);
+      const x = cx - size / 2;
+      const y = cy - size / 2;
       return `<image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice" />`;
     })
     .join("");
@@ -125,16 +154,19 @@ function bgLayers(state: LabelState) {
 function productLayer(state: LabelState, circular: boolean) {
   const href = usableImage(state.hxCProd);
   if (!href) return "";
-  if (circular) {
-    return `<image href="${esc(href)}" x="54" y="28" width="36" height="36" preserveAspectRatio="xMidYMid meet" />`;
-  }
-  return `<image href="${esc(href)}" x="30" y="30" width="40" height="40" preserveAspectRatio="xMidYMid meet" />`;
+  const box = productPhotoBox(state, circular);
+  const x = box.x - box.w / 2;
+  const y = box.y - box.h / 2;
+  return `<image href="${esc(href)}" x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
 function qrLayer(state: LabelState) {
   const href = usableImage(state.hxQr);
   if (!href) return "";
-  return `<image href="${esc(href)}" x="78" y="78" width="16" height="16" preserveAspectRatio="xMidYMid meet" />`;
+  const w = Math.max(8, num(state, "sQRSize", 16));
+  const x = num(state, "sQRX", 86);
+  const y = num(state, "sQRY", 86);
+  return `<image href="${esc(href)}" x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
 function iconMark(
@@ -160,6 +192,13 @@ function zoneMarkup(z: CompositeZone, fallback: string) {
   if (z.kind === "icon" && z.iconId) {
     return iconMark(z.iconId, z.x, z.y, z.w, z.h, z.color || z.textColor || fallback, z.strokeWidth ?? 2, z.rot);
   }
+  if (z.kind === "image") {
+    const src = usableImage(z.src || z.srcUrl);
+    if (!src) return "";
+    const left = z.x - z.w / 2;
+    const top = z.y - z.h / 2;
+    return `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />`;
+  }
   if (z.kind === "logo") {
     const r = Math.min(z.w, z.h) / 2;
     const fill = z.color || "#ffffff";
@@ -176,12 +215,16 @@ function zoneMarkup(z: CompositeZone, fallback: string) {
   const startY = z.y - ((lines.length - 1) * size * 0.55);
   const family = z.fontFamily || "Montserrat, Tajawal, sans-serif";
   const weight = z.fontWeight || "700";
-  return lines
+  const plate = z.fill && z.fill !== "none"
+    ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${Math.min(z.w, z.h) * 0.12}" fill="${esc(z.fill)}" />`
+    : "";
+  const text = lines
     .map(
       (line, i) =>
         `<text x="${z.x}" y="${startY + i * size * 1.12}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}">${esc(line)}</text>`,
     )
     .join("");
+  return `${plate}${text}`;
 }
 
 function esc(s: string) {
