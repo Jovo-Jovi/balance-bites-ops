@@ -17,6 +17,15 @@ export function isInvoiceWriteKey(key: string): key is BbKey {
   return INVOICE_WRITE_SET.has(key);
 }
 
+/** Designer may persist these. Catalog and stickers stay finance-owned. */
+export const DESIGN_WRITE_KEYS = keyManifest.writers.designer as BbKey[];
+
+const DESIGN_WRITE_SET = new Set<string>(DESIGN_WRITE_KEYS);
+
+export function isDesignWriteKey(key: string): key is BbKey {
+  return DESIGN_WRITE_SET.has(key);
+}
+
 const KEY_SET = new Set<string>(BB_KEYS);
 
 export function isBbKey(key: string): key is BbKey {

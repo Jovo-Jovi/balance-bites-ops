@@ -110,7 +110,6 @@ Uploads go through `/api/storage/object` (staff Firebase token required). The bu
 
 ## 6. After the hub is built
 
-1. Wrap the three HTML apps into `hub/public/apps/` (see [docs/PARITY.md](docs/PARITY.md)).
-2. Point them at CloudStore (`hub/public/bb-cloud-store.js`) instead of the Desktop folder.
-3. Run a one-time import of `saved data` JSON **only when you say so**.
-4. Keep `costs` as a rollback copy until you trust the cloud.
+1. Invoices and Design are **native** hub workspaces. Do not wrap their HTML into `hub/public/apps/`. Finance is still a shell until that slice.
+2. Run a one-time import of `saved data` JSON **only when you say so**.
+3. Keep `costs` as a rollback copy until you trust the cloud.

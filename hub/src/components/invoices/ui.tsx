@@ -109,12 +109,14 @@ export function Modal({
   onClose,
   children,
   footer,
+  closeLabel = "إغلاق",
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  closeLabel?: string;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -157,7 +159,7 @@ export function Modal({
             className="bb-btn min-h-11 rounded-full px-3 text-sm"
             data-tone="ghost"
           >
-            إغلاق
+            {closeLabel}
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>

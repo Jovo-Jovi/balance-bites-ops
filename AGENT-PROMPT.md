@@ -156,13 +156,15 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 ### Design (`balance-bites-sticker.html` + JS)
 
-- [ ] Template library CRUD (`bb_label_templates`)
-- [ ] Legacy `bbLabel-*.json` import if still present
-- [ ] `label_assets/{templateId}/` binary/text assets → Cloudflare R2 (not Firebase Storage)
-- [ ] Prepress (`bb-prepress.js`), composite (`bb-composite-label.js`)
-- [ ] Icon library, Jelly Kids, art presets in `assets/presets/`
-- [ ] Deep link `bb_label_open` from finance stickers
-- [ ] Product select from `bb_products` / `bb_stickers`
+- [x] Template library CRUD (`bb_label_templates`)
+- [x] Import/export JSON (`bb_label_template_v2`)
+- [x] `label_assets/{templateId}/` strip/hydrate → Cloudflare R2 (not Firebase Storage)
+- [x] Deep link `bb_label_open` from finance stickers
+- [x] Product select from `bb_products`; sticker SKUs read-only
+- [x] Print house bleed/DPI + SVG preview
+- [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
+- [ ] Icon library, Jelly Kids, applying art presets (`assets/presets/` stays in the repo)
+- [ ] Desktop folder scan of `bbLabel-*.json` (pick a file instead)
 
 ### Finance (`bb-stock-costs.html` tabs — all of them)
 
@@ -189,7 +191,7 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 1. ~~Scaffold Next.js + CloudStore + hub.~~ Done.
 2. ~~Port invoices as native React.~~ Done (`docs/INVOICES.md`).
-3. **Design next** (`feat/design`) from `balance-bites-sticker.html` + JS. Reuse hub chrome; do not duplicate invoice modules.
+3. ~~Port Design as native React.~~ In progress on `feat/design` (`docs/DESIGN.md`). Do not wrap the sticker HTML.
 4. Finance (hardest formulas) from `bb-stock-costs.html`.
 5. **Import script** (`saved data` → Firestore) only when the user says; zip backup first.
 6. Production is live at https://balance-bites-ops.vercel.app — still staff-only Auth + Firestore rules. Do not dump empty catalogs.
@@ -202,4 +204,4 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md`. Hub and invoices are shipped. Next is Design on `feat/design` — grep `costs/balance-bites-sticker.html`, do not duplicate invoice modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub, invoices, and Design (library / atelier / print) are in the hub. Next is Finance — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.

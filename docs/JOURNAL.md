@@ -12,9 +12,10 @@ Related maps:
 | File | Use |
 |---|---|
 | [INVOICES.md](INVOICES.md) | Invoice app file map, keys, UX decisions |
+| [DESIGN.md](DESIGN.md) | Design app file map, filtered tools, gaps |
 | [PARITY.md](PARITY.md) | Tick-list vs live HTML |
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
-| [MODULES.md](MODULES.md) | Live HTML module map (source of truth for Design / Finance) |
+| [MODULES.md](MODULES.md) | Live HTML module map (source of truth for remaining Design gaps / Finance) |
 | [BRAND-UI.md](BRAND-UI.md) | Linen desk, diamond mark, RTL |
 | `.cursor/rules/` | Workflow, responsive chrome, no duplicate modules |
 
@@ -84,22 +85,31 @@ Vercel preview toolbar / COOP noise: project `enablePreviewFeedback: false` and 
 
 ---
 
-## Next slice — Design
+## 2026-08-21 — Design native app (this branch)
 
 Branch: `feat/design`.
 
-Source: `costs/balance-bites-sticker.html` + `bb-prepress.js`, `bb-composite-label.js`, `bb-icon-library.js`, `bb-jelly-kids.js`, `assets/presets/`.
+Native React workspace under `hub/src/components/design/` — **not** a copy of `balance-bites-sticker.html` and **not** an iframe. Live keys and template JSON round-trip; chrome is three tools instead of the old left-panel dump.
 
-Reuse hub Auth, CloudStore, BrandLockup, workspace tabs. **Do not** copy invoice editor / customers / reports into Design. Designer writes `bb_label_templates`, theme keys, `bb_label_open`, and R2 `label_assets/`. English chrome, Arabic product names.
+### Tools
 
-Do not run `import:apply` or `import:assets` unless asked. Zip `saved data` first.
+Library · Atelier · Print house
+
+Dropped as their own tabs (same result, less duplication): New wizard, Product, Theme, Libraries, Product link. New + product pick live in Library/Atelier. Shared color presets stay on Invoices → Look. `bb_label_open` is consumed in the provider (120s) then cleared.
+
+### Writer / dump rules
+
+`writeDesignKey` allows designer keys only. Catalog and `bb_stickers` are read-only. Missing `bb_label_templates` does **not** seed Jelly Kids, flavor packs, or sample labels. Flavor packs stay in `hub/src/lib/design/colors.ts`. Fat `hx*` / composite `data:` go to R2 as `__asset__:` (placeholders if R2 is off).
+
+### Explicit gaps (do not tick as done)
+
+Freeform composite drawing, PNG cut pack, icon/Jelly Kids/art-preset apply, Desktop `bbLabel-*.json` folder scan.
 
 ---
 
 ## Still not done (do not tick as shipped)
 
-- Design atelier / prepress / template CRUD
+- Design follow-up: composite drawing / PNG cut / art presets
 - Finance tabs and ledger formulas
 - One-shot JSON import of live `saved data`
 - R2 bucket init + `import:assets` (code is wired; bucket/token may still be a human Console step)
-- Wrapping remaining HTML into `hub/public/apps/`

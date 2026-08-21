@@ -1,0 +1,229 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { ActionBtn, Empty, Field, Modal, TextInput } from "@/components/invoices/ui";
+import { useToast } from "@/components/toast";
+import { FLAVOR_PACKS } from "@/lib/design/colors";
+import { DESIGN_SPECS } from "@/lib/design/specs";
+import type { DesignType } from "@/lib/design/types";
+import { productOptions, useDesignApp } from "./design-context";
+import { LabelPreview } from "./label-preview";
+
+export function LibraryTool() {
+  const app = useDesignApp();
+  const toast = useToast();
+  const [q, setQ] = useState("");
+  const [family, setFamily] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const [draftType, setDraftType] = useState<DesignType>("composite");
+  const [draftPack, setDraftPack] = useState(FLAVOR_PACKS[0].id);
+  const [draftProduct, setDraftProduct] = useState("");
+
+  const visible = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return app.templates.filter((t) => {
+      if (family && t.designType !== family) return false;
+      if (!needle) return true;
+      const product = app.products.find((p) => p.id === t.productId)?.name || "";
+      return [t.name, t.flavorKey, t.designType, product].join(" ").toLowerCase().includes(needle);
+    });
+  }, [app.templates, app.products, q, family]);
+
+  const products = productOptions(app.products, draftProduct);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-[var(--bb-muted)]">
+        Saved labels from the cloud. Open one to edit copy and colors. Arabic names stay as stored.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <ActionBtn onClick={() => setCreating(true)}>New template</ActionBtn>
+        <label className="bb-btn inline-flex cursor-pointer items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-text)]">
+          Import JSON
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              try {
+                const raw = JSON.parse(await file.text()) as unknown;
+                await app.importFiles(raw);
+              } catch {
+                toast.push("That file is not JSON.", "bad");
+              }
+            }}
+          />
+        </label>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <TextInput
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search name, flavor, product"
+          aria-label="Search templates"
+        />
+        <select
+          value={family}
+          onChange={(e) => setFamily(e.target.value)}
+          aria-label="Filter by family"
+          className="bb-glass-input min-h-11 w-full px-3 text-[var(--bb-text)] sm:max-w-52"
+        >
+          <option value="">All families</option>
+          {DESIGN_SPECS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {visible.length === 0 ? (
+        <Empty>
+          {app.templates.length === 0
+            ? "No templates in the cloud yet. Create one — nothing is seeded automatically."
+            : "No templates match this search."}
+        </Empty>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {visible.map((t) => {
+            const product = app.products.find((p) => p.id === t.productId);
+            const spec = DESIGN_SPECS.find((s) => s.id === t.designType);
+            return (
+              <li key={t.id} className="bb-glass flex flex-col gap-3 p-3">
+                <LabelPreview template={t} />
+                <div>
+                  <p className="font-brand text-lg text-[var(--bb-title)]">{t.name}</p>
+                  <p className="text-sm text-[var(--bb-muted)]">
+                    {spec?.label || t.designType}
+                    {t.flavorKey ? ` · ${t.flavorKey}` : ""}
+                    {product ? ` · ${product.name}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <ActionBtn onClick={() => void app.openTemplate(t.id)}>Open</ActionBtn>
+                  <ActionBtn tone="ghost" onClick={() => void app.duplicate(t.id)}>
+                    Duplicate
+                  </ActionBtn>
+                  <ActionBtn tone="danger" onClick={() => setPendingDelete(t.id)}>
+                    Delete
+                  </ActionBtn>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <Modal
+        open={creating}
+        title="New template"
+        onClose={() => setCreating(false)}
+        closeLabel="Close"
+        footer={
+          <>
+            <ActionBtn tone="ghost" onClick={() => setCreating(false)}>
+              Cancel
+            </ActionBtn>
+            <ActionBtn
+              disabled={app.busy || !draftName.trim()}
+              onClick={async () => {
+                const t = await app.newTemplate({
+                  name: draftName,
+                  designType: draftType,
+                  packId: draftPack,
+                  productId: draftProduct || undefined,
+                });
+                if (t) {
+                  setCreating(false);
+                  setDraftName("");
+                }
+              }}
+            >
+              Create
+            </ActionBtn>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <Field label="Name">
+            <TextInput value={draftName} onChange={(e) => setDraftName(e.target.value)} />
+          </Field>
+          <Field label="Family">
+            <select
+              value={draftType}
+              onChange={(e) => setDraftType(e.target.value as DesignType)}
+              className="bb-glass-input min-h-11 w-full px-3 text-[var(--bb-text)]"
+            >
+              {DESIGN_SPECS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label} — {s.hint}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Flavor pack">
+            <select
+              value={draftPack}
+              onChange={(e) => setDraftPack(e.target.value)}
+              className="bb-glass-input min-h-11 w-full px-3 text-[var(--bb-text)]"
+            >
+              {FLAVOR_PACKS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Product (optional)">
+            <select
+              value={draftProduct}
+              onChange={(e) => setDraftProduct(e.target.value)}
+              className="bb-glass-input min-h-11 w-full px-3 text-[var(--bb-text)]"
+            >
+              <option value="">None</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.weight ? ` · ${p.weight}` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(pendingDelete)}
+        title="Delete template"
+        onClose={() => setPendingDelete(null)}
+        closeLabel="Close"
+        footer={
+          <>
+            <ActionBtn tone="ghost" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </ActionBtn>
+            <ActionBtn
+              tone="danger"
+              disabled={app.busy}
+              onClick={async () => {
+                if (!pendingDelete) return;
+                await app.remove(pendingDelete);
+                setPendingDelete(null);
+              }}
+            >
+              Delete
+            </ActionBtn>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--bb-text)]">
+          This removes the template from the cloud library. Sticker SKUs in Finance keep their link until someone updates them there.
+        </p>
+      </Modal>
+    </div>
+  );
+}

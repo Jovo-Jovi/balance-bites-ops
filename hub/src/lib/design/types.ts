@@ -1,0 +1,121 @@
+export type DesignType =
+  | "circular"
+  | "rect_top"
+  | "taper_top"
+  | "square"
+  | "pentagon"
+  | "hexagon"
+  | "octagon"
+  | "diamond"
+  | "star"
+  | "rounded_sq"
+  | "composite";
+
+export type LabelMode = "back" | "top" | "circle";
+
+export type ProductIdentity = {
+  brand: string;
+  topLogo: string;
+  topLine1: string;
+  topLine2: string;
+  circleBrand1: string;
+  circleBrand2: string;
+  weight: string;
+  bestBefore: string;
+  productionDate: string;
+  dateLabel1: string;
+  dateLabel2: string;
+};
+
+export type SyncTargets = { back: boolean; top: boolean; circle: boolean };
+
+export type CompositePart = {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot?: number;
+  z?: number;
+  color?: string;
+  src?: string;
+  srcUrl?: string;
+  pathLocal?: string;
+};
+
+export type CompositeZone = {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  z?: number;
+  label?: string;
+  text?: string;
+  field?: string;
+  color?: string;
+  src?: string;
+  srcUrl?: string;
+  lock?: boolean;
+};
+
+export type CompositeBlob = {
+  version?: number;
+  artboard?: { wCm: number; hCm: number };
+  bg?: string;
+  txt?: string;
+  parts?: CompositePart[];
+  zones?: CompositeZone[];
+  unionPath?: string;
+  presetId?: string | null;
+};
+
+export type LabelState = Record<string, unknown> & {
+  _composite?: CompositeBlob;
+  _isTapered?: boolean;
+  _designType?: string;
+};
+
+export type LabelTemplate = {
+  id: string;
+  name: string;
+  productId: string;
+  flavorKey: string;
+  designType: DesignType;
+  designLocked: boolean;
+  labelMode: LabelMode;
+  isTapered: boolean;
+  state: LabelState;
+  productIdentity: ProductIdentity;
+  syncTargets: SyncTargets;
+  schemaVersion: number;
+  updatedAt: string;
+};
+
+export type LabelOpen = {
+  stickerId?: string;
+  templateId?: string;
+  productId?: string;
+  recipeId?: string;
+  ts?: number;
+};
+
+export type StickerSku = {
+  id: string;
+  name: string;
+  productId?: string;
+  recipeId?: string;
+  templateKey?: string;
+};
+
+export type FlavorPack = {
+  id: string;
+  name: string;
+  bg: string;
+  txt: string;
+  sub: string;
+  logo: string;
+  flavor: string;
+};

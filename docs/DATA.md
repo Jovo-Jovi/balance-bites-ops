@@ -26,7 +26,7 @@ Live files live in the Desktop folder `saved data` as `{key}.json`. Cloud v1 sto
 | `bb_investors` | — | write | — |
 | `bb_investor_target` | — | write | — |
 | `bb_label_templates` | — | write (link) | write |
-| `bb_label_open` | — | write (deep link) | read |
+| `bb_label_open` | — | write (deep link) | read + clear |
 | `bb_color_presets` | write | write | write |
 | `bb_active_color_preset_id` | write | write | write |
 | `bb_active_theme` | — | write | write |

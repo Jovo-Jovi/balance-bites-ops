@@ -75,14 +75,17 @@ Native React workspace (not an HTML wrap). Merged `feat/invoices` + `fix/invoice
 
 ## Design (`balance-bites-sticker.html` + JS)
 
-- [ ] Template library CRUD (`bb_label_templates`)
-- [ ] Legacy `bbLabel-*.json` import (files still present in `saved data`)
-- [ ] `label_assets/{templateId}/` → Cloudflare R2
-- [ ] Prepress (`bb-prepress.js`)
-- [ ] Composite (`bb-composite-label.js`)
-- [ ] Icon library, Jelly Kids, art presets in `assets/presets/` (repo, not tenant)
-- [ ] Deep link `bb_label_open` from finance stickers
-- [ ] Product select from `bb_products` / `bb_stickers`
+Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. Not an HTML wrap.
+
+- [x] Template library CRUD (`bb_label_templates`)
+- [x] Import/export template JSON (`bb_label_template_v2`); user-picked file
+- [x] `label_assets/{templateId}/` strip/hydrate on Cloudflare R2 (`__asset__:`)
+- [x] Deep link `bb_label_open` from finance stickers (120s TTL, then clear)
+- [x] Product select from `bb_products`; linked SKUs from `bb_stickers` (read-only)
+- [x] Print house constants (1.5 mm bleed, 300 DPI) + SVG preview/download
+- [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
+- [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
+- [ ] Icon library, Jelly Kids, applying `assets/presets/` (repo, not tenant dump)
 
 ---
 
@@ -165,10 +168,13 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- **Invoices is done** (native React on the same keys). Design and Finance are still **tool shells**.
+- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / atelier / print). Finance is still a **tool shell**.
+- Design does **not** wrap `balance-bites-sticker.html`. Freeform composite drawing, PNG cut packs, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
+- Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
+- Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
 - Import script is dry-run by default and was **not executed**.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
-- Cloud Storage is **not used** (Spark / free tier). R2 client is wired; do not `import:assets` until asked. Designer art still on Desktop until then.
+- Cloud Storage is **not used** (Spark / free tier). R2 client is wired; do not `import:assets` until asked.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 
@@ -176,6 +182,6 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. **Design** (`feat/design`) — port `balance-bites-sticker.html` + prepress JS. Reuse hub chrome. Do not duplicate invoice modules.
+1. Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
 2. Import `saved data` only after a zip backup, when you say so.
-3. Finance (stock ledger, prep, P&L) or wrap `bb-stock-costs.html`.
+3. Optional Design follow-up: composite drawing + PNG cut pack, if still needed after this preview/round-trip.

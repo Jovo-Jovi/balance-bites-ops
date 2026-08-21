@@ -128,48 +128,39 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
     signOutLabel: "Sign out",
     tools: [
       {
-        id: "templates",
-        label: "Templates",
-        en: "Library",
+        id: "library",
+        label: "Library",
+        en: "Templates",
         summary:
-          "Label template library. Arabic product names stay as stored.",
+          "Saved label templates. Create, import JSON, open in the atelier. Arabic names stay as stored.",
         actions: [
-          { label: "New template", soon: true },
-          { label: "Import legacy JSON", soon: true },
+          { label: "New template" },
+          { label: "Import JSON" },
         ],
-        features: ["bb_label_templates CRUD", "Legacy bbLabel-*.json if still on disk"],
+        features: [
+          "bb_label_templates only — nothing seeded if the cloud list is empty",
+          "Import a file you pick (bb_label_template_v2). No Desktop folder scan",
+        ],
       },
       {
         id: "atelier",
         label: "Atelier",
-        en: "Artboard",
-        summary: "Left tools, artboard on the right. English chrome.",
-        actions: [{ label: "Open artboard", soon: true }],
-        features: ["Product pick from bb_products / bb_stickers"],
+        en: "Editor",
+        summary:
+          "Copy, flavor pack, product pick, and a preview of saved geometry. English chrome.",
+        actions: [{ label: "Save" }, { label: "Save as new" }],
+        features: [
+          "Reads bb_products and bb_stickers",
+          "Consumes bb_label_open (2 min) then clears it",
+        ],
       },
       {
-        id: "prepress",
-        label: "Prepress",
-        en: "Print house",
-        summary: "Bleed, crop, and print-ready export. Art files stay on Desktop.",
-        actions: [{ label: "Export pack", soon: true }],
-        features: ["bb-prepress.js", "bb-composite-label.js"],
-      },
-      {
-        id: "libraries",
-        label: "Libraries",
-        en: "Assets",
-        summary: "Icons, Jelly Kids, and art presets from the repo — not tenant JSON.",
-        actions: [{ label: "Browse presets", soon: true }],
-        features: ["Icon library", "Jelly Kids", "assets/presets/"],
-      },
-      {
-        id: "link",
-        label: "Product link",
-        en: "Deep link",
-        summary: "Open the template tied to a sticker SKU from finance.",
-        actions: [{ label: "Open bb_label_open", soon: true }],
-        features: ["Finance stickers → this atelier"],
+        id: "print",
+        label: "Print house",
+        en: "Prepress",
+        summary: "Bleed, DPI, SVG preview, and JSON export for the open template.",
+        actions: [{ label: "Print preview" }, { label: "Download SVG" }],
+        features: ["1.5 mm bleed · 300 DPI", "Licensed popcorn presets stay excluded"],
       },
     ],
   },
@@ -287,5 +278,13 @@ export function getWorkspaceApp(id: AppId): WorkspaceApp {
 }
 
 export function getTool(app: WorkspaceApp, tab: string | null): WorkspaceTool {
-  return app.tools.find((tool) => tool.id === tab) ?? app.tools[0];
+  const DESIGN_ALIAS: Record<string, string> = {
+    templates: "library",
+    prepress: "print",
+    libraries: "atelier",
+    link: "atelier",
+  };
+  const resolved =
+    app.id === "design" && tab ? DESIGN_ALIAS[tab] || tab : tab;
+  return app.tools.find((tool) => tool.id === resolved) ?? app.tools[0];
 }

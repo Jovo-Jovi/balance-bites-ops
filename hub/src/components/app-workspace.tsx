@@ -14,6 +14,7 @@ import {
   type AppId,
 } from "@/lib/workspace";
 import { InvoiceApp } from "./invoices/invoice-app";
+import { DesignApp } from "./design/design-app";
 
 export function WorkspaceScreen({ appId }: { appId: AppId }) {
   const app = getWorkspaceApp(appId);
@@ -128,6 +129,16 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
               {tool.label}
             </h1>
             <InvoiceApp tab={tool.id} />
+          </section>
+        ) : appId === "design" ? (
+          <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">
+            <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
+              {tool.en}
+            </p>
+            <h1 className="mt-1 mb-4 text-[clamp(1.35rem,2.6vw,1.85rem)] text-[var(--bb-title)]">
+              {tool.label}
+            </h1>
+            <DesignApp tab={tool.id} />
           </section>
         ) : (
           <>
