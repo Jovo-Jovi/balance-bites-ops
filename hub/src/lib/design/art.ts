@@ -1,6 +1,7 @@
 import { genId } from "@/lib/invoices/helpers";
 import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
+import { isAssetRef } from "./templates";
 import type { CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
 
 export function characterPresetSrc(template: LabelTemplate) {
@@ -62,7 +63,7 @@ export function usableImage(value: unknown, artKey?: string) {
   const preset = resolveArtSrc(value, artKey);
   if (preset) return preset;
   const s = String(value ?? "");
-  if (!s || s.startsWith("__asset__:")) return "";
+  if (!s || isAssetRef(s)) return "";
   if (
     s.startsWith("data:") ||
     s.startsWith("http://") ||
@@ -79,7 +80,7 @@ export function syncPaperToSilhouette(state: LabelState): LabelState {
   if (!state._fillCutWithPaper || !state._composite?.parts?.length) return state;
   const src = String(state.hxBg1 ?? "");
   const parts = state._composite.parts.map((part, i) =>
-    i === 0 ? { ...part, src, showImage: Boolean(usableImage(src) || src.startsWith("__asset__:")) } : part,
+    i === 0 ? { ...part, src, showImage: Boolean(usableImage(src) || isAssetRef(src)) } : part,
   );
   return { ...state, _composite: { ...state._composite, parts } };
 }
@@ -185,4 +186,55 @@ export function readImageFile(file: File) {
     reader.onerror = () => reject(new Error("Could not read that image."));
     reader.readAsDataURL(file);
   });
+}
+
+export function imageZones(state: LabelState) {
+  return (state._composite?.zones || []).filter((z) => z.kind === "image");
+}
+
+export function addProductPhotos(state: LabelState, srcs: string[]): LabelState {
+  if (!srcs.length) return state;
+  if (!state._composite) {
+    return { ...state, hxCProd: srcs[0] };
+  }
+  const existing = imageZones(state).length;
+  const extra: CompositeZone[] = srcs.map((src, i) => {
+    const n = existing + i;
+    return {
+      id: genId("z"),
+      kind: "image",
+      x: 48 + (n % 4) * 5,
+      y: 52 + (n % 4) * 4,
+      w: 28,
+      h: 28,
+      z: 20 + n,
+      label: `Photo ${n + 1}`,
+      src,
+      color: "#ffffff",
+    };
+  });
+  return {
+    ...state,
+    _composite: {
+      ...state._composite,
+      zones: [...(state._composite.zones || []), ...extra],
+    },
+  };
+}
+
+export function setZoneSrc(state: LabelState, zoneId: string, src: string): LabelState {
+  if (!state._composite) return state;
+  return {
+    ...state,
+    _composite: {
+      ...state._composite,
+      zones: (state._composite.zones || []).map((z) => (z.id === zoneId ? { ...z, src } : z)),
+    },
+  };
+}
+
+export function hasExactArt(state: LabelState) {
+  return (state._composite?.parts || []).some(
+    (p) => Boolean(p.artKey) || p.showImage === true,
+  );
 }

@@ -13,6 +13,22 @@ import type {
 } from "./types";
 
 const ASSET_PREFIX = "__asset__:";
+const R2_PREFIX = "__r2__:";
+
+export function isAssetRef(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    (value.startsWith(ASSET_PREFIX) || value.startsWith(R2_PREFIX))
+  );
+}
+
+export function toR2Ref(objectKey: string) {
+  return `${R2_PREFIX}${objectKey}`;
+}
+
+export function r2KeyFromRef(value: string) {
+  return value.startsWith(R2_PREFIX) ? value.slice(R2_PREFIX.length) : "";
+}
 
 export function emptyIdentity(): ProductIdentity {
   return {
@@ -327,11 +343,8 @@ export function duplicateTemplate(src: LabelTemplate): LabelTemplate {
   };
 }
 
-export function isAssetRef(value: unknown): value is string {
-  return typeof value === "string" && value.startsWith(ASSET_PREFIX);
-}
-
 export function assetFieldName(value: string) {
+  if (value.startsWith(R2_PREFIX)) return "";
   return value.slice(ASSET_PREFIX.length);
 }
 
@@ -344,7 +357,8 @@ export function isInlineAsset(key: string, value: unknown) {
     (key.startsWith("hx") || key.startsWith("hxq")) &&
     typeof value === "string" &&
     value.length > 400 &&
-    !value.startsWith(ASSET_PREFIX)
+    !value.startsWith(ASSET_PREFIX) &&
+    !value.startsWith(R2_PREFIX)
   );
 }
 

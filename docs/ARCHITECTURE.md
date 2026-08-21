@@ -22,7 +22,7 @@ Balance Bites is three products that must look like **one company system**: same
 ```
 
 **Phase 1** was the launcher + CloudStore.  
-**Invoices** was rewritten as React in the hub (not an HTML wrap). Design and Finance still follow wrap-or-port from `costs/`.
+**Invoices** and **Design** were rewritten as React in the hub (not HTML wraps). **Finance** still follows wrap-or-port from `costs/`. Maps: [INVOICES.md](INVOICES.md), [DESIGN.md](DESIGN.md).
 
 ## Why this split
 
@@ -63,7 +63,7 @@ Binary art:
 ```
 Designer save PNG / SVG / font snippet
     → Cloudflare R2  tenants/{tenant}/label_assets/{templateId}/…
-    → Firestore template record stores object keys, not huge base64
+    → Firestore template record stores `__asset__:` / `__r2__:` refs, not huge base64
 ```
 
 ## Firebase vs Supabase

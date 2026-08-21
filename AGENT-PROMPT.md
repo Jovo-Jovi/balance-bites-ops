@@ -13,7 +13,7 @@ This is a **behavior-accurate rebuild**, not a redesign of the business rules. R
 - One URL, Arabic RTL hub, linen-desk brand (ink on paper, teal actions).
 - After login, three equal cards only (no KPIs on the hub).
 - Same JSON keys as today, stored in Firestore (`tenants/balance-bites/keys/{key}`).
-- Label art in Firebase Storage (`label_assets/`).
+- Label art in Cloudflare R2 (`label_assets/`). Not Firebase Storage (Spark).
 - GitHub is code only. Live invoices stay on Desktop until a one-shot import.
 
 ## Repo and accounts (already decided)
@@ -156,14 +156,20 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 ### Design (`balance-bites-sticker.html` + JS)
 
+Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md` and `docs/JOURNAL.md`. Do not wrap the sticker HTML. Do not start Finance until asked.
+
 - [x] Template library CRUD (`bb_label_templates`)
 - [x] Import/export JSON (`bb_label_template_v2`)
-- [x] `label_assets/{templateId}/` strip/hydrate → Cloudflare R2 (not Firebase Storage)
+- [x] `label_assets/{templateId}/` strip/hydrate → Cloudflare R2 (not Firebase Storage); reuse `__r2__:`
 - [x] Deep link `bb_label_open` from finance stickers
 - [x] Product select from `bb_products`; sticker SKUs read-only
-- [x] Print house bleed/DPI + SVG preview
+- [x] Print house bleed/DPI + SVG preview + editable cut stroke
+- [x] Atelier Copy / Images / Icons / Layers; drag, rotate, resize
+- [x] Live faces: composite `_composite`; circular `buildCircleLabel`; rect wrap / top lid; taper `calcTaper`
+- [x] Icon picker in Atelier (repo catalog + live A–Z letters; not a Firestore dump)
+- [x] Character art from repo `public/design-presets/` (`artref:`)
 - [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
-- [ ] Icon library, Jelly Kids, applying art presets (`assets/presets/` stays in the repo)
+- [ ] Applying `assets/presets/` folders into tenant templates / Jelly Kids dump
 - [ ] Desktop folder scan of `bbLabel-*.json` (pick a file instead)
 
 ### Finance (`bb-stock-costs.html` tabs — all of them)
@@ -191,7 +197,7 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 1. ~~Scaffold Next.js + CloudStore + hub.~~ Done.
 2. ~~Port invoices as native React.~~ Done (`docs/INVOICES.md`).
-3. ~~Port Design as native React.~~ In progress on `feat/design` (`docs/DESIGN.md`). Do not wrap the sticker HTML.
+3. ~~Port Design as native React.~~ On `feat/design` (`docs/DESIGN.md`). Do not wrap the sticker HTML. Merge when asked.
 4. Finance (hardest formulas) from `bb-stock-costs.html`.
 5. **Import script** (`saved data` → Firestore) only when the user says; zip backup first.
 6. Production is live at https://balance-bites-ops.vercel.app — still staff-only Auth + Firestore rules. Do not dump empty catalogs.
@@ -204,4 +210,4 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub, invoices, and Design (library / atelier / print) are in the hub. Next is Finance — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub and invoices are on `main`. Design is native on `feat/design`. Next is Finance — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.

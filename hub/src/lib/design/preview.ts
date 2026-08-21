@@ -1,5 +1,7 @@
 import { usableImage } from "./art";
+import { familyPreviewSvg, circleShape } from "./family-preview";
 import { iconInner } from "./icons";
+import { artboardOf, previewFace } from "./layout";
 import { getDesignSpec } from "./specs";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
 
@@ -69,6 +71,11 @@ function partLocalGroup(part: CompositePart, inner: string) {
   return `<g${rot}><g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">${inner}${stroke}</g></g>`;
 }
 
+function partRot(part: CompositePart, inner: string) {
+  if (!part.rot) return inner;
+  return `<g transform="rotate(${part.rot} ${part.x} ${part.y})">${inner}</g>`;
+}
+
 function partShape(part: CompositePart, lite = false) {
   const fill = part.color || "#2e7d32";
   const x = part.x;
@@ -88,18 +95,18 @@ function partShape(part: CompositePart, lite = false) {
   }
   const t = part.type;
   if (t === "circle" || t === "oval") {
-    return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${esc(fill)}" />`;
+    return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${esc(fill)}" />`);
   }
   if (t === "square" || t === "rectangle" || t === "rounded_sq" || t === "rounded_rect") {
     const rr = t.startsWith("rounded") ? Math.min(rx, ry) * 0.22 : 0;
-    return `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" rx="${rr}" fill="${esc(fill)}" />`;
+    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" rx="${rr}" fill="${esc(fill)}" />`);
   }
-  if (t === "diamond") return `<polygon points="${polygon(4, x, y, rx, ry, -45)}" fill="${esc(fill)}" />`;
-  if (t === "hexagon") return `<polygon points="${polygon(6, x, y, rx, ry)}" fill="${esc(fill)}" />`;
-  if (t === "pentagon") return `<polygon points="${polygon(5, x, y, rx, ry)}" fill="${esc(fill)}" />`;
-  if (t === "octagon") return `<polygon points="${polygon(8, x, y, rx, ry)}" fill="${esc(fill)}" />`;
-  if (t === "star") return `<polygon points="${starPoints(x, y, rx, ry)}" fill="${esc(fill)}" />`;
-  return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${esc(fill)}" />`;
+  if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" fill="${esc(fill)}" />`);
+  if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" fill="${esc(fill)}" />`);
+  if (t === "pentagon") return partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" fill="${esc(fill)}" />`);
+  if (t === "octagon") return partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" fill="${esc(fill)}" />`);
+  if (t === "star") return partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" fill="${esc(fill)}" />`);
+  return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${esc(fill)}" />`);
 }
 
 function outlineShape(kind: string, fill: string) {
@@ -240,7 +247,9 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     if (!src) return "";
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
-    return `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />`;
+    const img = `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />`;
+    if (!z.rot) return img;
+    return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${img}</g>`;
   }
   if (z.kind === "logo") {
     const r = Math.min(z.w, z.h) / 2;
@@ -248,10 +257,12 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     const ink = z.textColor || "#1a1a1a";
     const fs = Math.max(3, r * (z.fontScale || 0.7));
     const family = z.fontFamily || fontOf(state, ["fntHead", "fntH"], "Bitter, serif");
-    return `<g>
+    const body = `<g>
       <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}" />
       <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="${esc(family)}">${esc(String(z.text || "BB"))}</text>
     </g>`;
+    if (!z.rot) return body;
+    return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${body}</g>`;
   }
   const lines = String(z.text || "").split("\n");
   const color = z.color || z.textColor || fallback;
@@ -268,7 +279,9 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
         `<text x="${z.x}" y="${startY + i * size * 1.12}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}">${esc(line)}</text>`,
     )
     .join("");
-  return `${plate}${text}`;
+  const body = `${plate}${text}`;
+  if (!z.rot) return body;
+  return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${body}</g>`;
 }
 
 function esc(s: string) {
@@ -374,10 +387,19 @@ function cutOverlayMm(template: LabelTemplate, state: LabelState, wMm: number, h
   const stroke = cutStrokeOf(state);
   if (stroke.mm <= 0) return "";
   const spec = getDesignSpec(template.designType);
+  const face = previewFace(template);
   const geom =
     spec.composite && state._composite
       ? compositeCutMm(state._composite, wMm, hMm)
-      : familyCutMm(familyClipKind(template.designType, spec.outline), wMm, hMm);
+      : familyCutMm(
+          face === "taper"
+            ? "taper"
+            : face === "back"
+              ? "rect"
+              : circleShape(state, spec.outline),
+          wMm,
+          hMm,
+        );
   return `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm}" stroke-linejoin="round" stroke-linecap="round">${geom}</g>`;
 }
 
@@ -385,7 +407,7 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
   if (!opts?.showCut) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" role="img">${inner}</svg>`;
   }
-  const { wCm, hCm } = artboardCm(state, template.designType);
+  const { wCm, hCm } = artboardOf(template, state);
   const wMm = wCm * 10;
   const hMm = hCm * 10;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wMm} ${hMm}" preserveAspectRatio="none" width="100%" height="100%" role="img">
@@ -397,17 +419,13 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
 export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
   const spec = getDesignSpec(template.designType);
   const lite = Boolean(opts?.lite);
+  if (!spec.composite || !state._composite) {
+    const inner = familyPreviewSvg(template, state, lite);
+    return wrapPreviewSvg(inner, template, state, opts);
+  }
+
   const fill = str(state, "cLabel", "#2e7d32");
   const txt = str(state, "cTxtMain", "#ffffff");
-  const brand = str(state, "eCBrand1", str(state, "eBrand", "BB"));
-  const flavor = str(state, "eCFlavorTxt", str(state, "eName1", ""));
-  const name2 = str(state, "eName2", "");
-  const weight = str(state, "eWeight", "");
-  const heading = fontOf(state, ["fntHead", "fntH"], "Playfair Display, serif");
-  const body = fontOf(state, ["fntBody", "fntB"], "DM Sans, sans-serif");
-  const arabic = fontOf(state, ["fntArabic", "fntAr"], "Tajawal, sans-serif");
-  const flavorFont = /[\u0600-\u06FF]/.test(flavor) ? arabic : body;
-  const name2Font = /[\u0600-\u06FF]/.test(name2) ? arabic : body;
   const comp = state._composite;
   const clipId = clipIdOf(template);
   const stamps = lite ? [] : [...(state._stamps || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
@@ -437,43 +455,9 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     return wrapPreviewSvg(inner, template, state, opts);
   }
 
-  const clipKind = familyClipKind(template.designType, spec.outline);
-  const wrap = outlineShape(clipKind, fill);
-  const lid = clipKind === "taper" || clipKind === "rect" ? topLid(fill) : "";
-  const yBrand = clipKind === "taper" || clipKind === "rect" ? 44 : 38;
-  const yFlavor = clipKind === "taper" || clipKind === "rect" ? 56 : 52;
-  const yName2 = clipKind === "taper" || clipKind === "rect" ? 68 : 64;
-  const yWeight = clipKind === "taper" || clipKind === "rect" ? (name2 ? 80 : 72) : name2 ? 78 : 70;
-  const name2Box = name2
-    ? `<rect x="18" y="${yName2 - 5}" width="64" height="10" rx="2" fill="${esc(str(state, "cName2Bg", "#473929"))}" />
-      <text x="50" y="${yName2}" text-anchor="middle" dominant-baseline="middle" fill="${esc(str(state, "cName2Txt", txt))}" font-size="4.2" font-family="${esc(name2Font)}" font-weight="700">${esc(name2)}</text>`
-    : "";
-  const inner = `
-    <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${wrap}</clipPath></defs>
-    ${lid}
-    <g clip-path="url(#${clipId})">
-      ${wrap}
-      ${bgLayers(state, lite)}
-      ${productLayer(state, template.designType === "circular", lite)}
-      <text x="50" y="${yBrand}" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="${esc(heading)}" font-weight="700">${esc(brand)}</text>
-      <text x="50" y="${yFlavor}" text-anchor="middle" fill="${esc(txt)}" font-size="5.4" font-family="${esc(flavorFont)}">${esc(flavor)}</text>
-      ${name2Box}
-      <text x="50" y="${yWeight}" text-anchor="middle" fill="${esc(txt)}" font-size="3.4" font-family="${esc(body)}">${esc(weight)}</text>
-      ${stampMarkup}
-      ${qrLayer(state, lite)}
-    </g>`;
-  return wrapPreviewSvg(inner, template, state, opts);
+  return wrapPreviewSvg(familyPreviewSvg(template, state, lite), template, state, opts);
 }
 
-export function artboardCm(state: LabelState, designType?: string) {
-  const type = String(designType || state._designType || "");
-  const comp = state._composite?.artboard;
-  const w = Number(comp?.wCm ?? state.cW);
-  const h = Number(comp?.hCm ?? state.cH);
-  if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
-    return { wCm: w, hCm: h };
-  }
-  if (type === "taper_top") return { wCm: 10, hCm: 7 };
-  if (type === "rect_top") return { wCm: 8, hCm: 5 };
-  return { wCm: 6, hCm: 6 };
+export function artboardCm(template: LabelTemplate) {
+  return artboardOf(template, template.state);
 }

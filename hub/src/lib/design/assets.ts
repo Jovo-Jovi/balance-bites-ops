@@ -6,11 +6,25 @@ import {
   cloneState,
   isAssetRef,
   isInlineAsset,
+  r2KeyFromRef,
   toAssetRef,
 } from "./templates";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState } from "./types";
 
 type WithSrc = { id?: string; src?: string; srcUrl?: string };
+
+async function readRef(templateId: string, value: string) {
+  const r2 = r2KeyFromRef(value);
+  if (r2) {
+    const url = await getLabelAssetUrl(r2);
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.text();
+  }
+  const field = assetFieldName(value);
+  if (!field) return null;
+  return readTextAsset(templateId, field);
+}
 
 async function putTextAsset(templateId: string, field: string, value: string) {
   const blob = new Blob([value], { type: "text/plain" });
@@ -38,7 +52,7 @@ function placeholderizeSrc(item: WithSrc, prefix: string) {
 
 async function stripSrc(templateId: string, item: WithSrc, prefix: string) {
   const src = item.src || item.srcUrl || "";
-  if (!isFatDataUrl(src)) return;
+  if (isAssetRef(src) || !isFatDataUrl(src)) return;
   const field = `${prefix}_${String(item.id || "x")}`;
   try {
     const ref = await putTextAsset(templateId, field, src);
@@ -54,7 +68,7 @@ async function hydrateSrc(templateId: string, item: WithSrc) {
     const v = item[key];
     if (!isAssetRef(v)) continue;
     try {
-      const data = await readTextAsset(templateId, assetFieldName(v));
+      const data = await readRef(templateId, String(v));
       if (data) item[key] = data;
     } catch {
       /* keep placeholder — R2 may be off */
@@ -107,7 +121,7 @@ export async function hydrateStateAssets(
     const value = out[key];
     if (!isAssetRef(value)) continue;
     try {
-      const data = await readTextAsset(templateId, assetFieldName(value));
+      const data = await readRef(templateId, String(value));
       if (data) out[key] = data;
     } catch {
       /* keep placeholder */
@@ -120,6 +134,49 @@ export async function hydrateStateAssets(
     out._composite = next;
   }
   return out;
+}
+
+export function collectAssetRefs(state: LabelState) {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(state)) {
+    if (key === "_composite" || key === "_stamps") continue;
+    if (isAssetRef(value)) out[key] = String(value);
+  }
+  for (const part of state._composite?.parts || []) {
+    if (isAssetRef(part.src)) out[`part:${part.id}:src`] = String(part.src);
+    if (isAssetRef(part.srcUrl)) out[`part:${part.id}:srcUrl`] = String(part.srcUrl);
+  }
+  for (const zone of state._composite?.zones || []) {
+    if (isAssetRef(zone.src)) out[`zone:${zone.id}:src`] = String(zone.src);
+    if (isAssetRef(zone.srcUrl)) out[`zone:${zone.id}:srcUrl`] = String(zone.srcUrl);
+  }
+  return out;
+}
+
+export function applyAssetRefs(state: LabelState, refs: Record<string, string>) {
+  const next = cloneState(state);
+  for (const [path, ref] of Object.entries(refs)) {
+    if (path.startsWith("part:") || path.startsWith("zone:")) {
+      const [, id, field] = path.split(":");
+      const list = path.startsWith("part:") ? next._composite?.parts : next._composite?.zones;
+      if (!list || (field !== "src" && field !== "srcUrl")) continue;
+      for (const item of list) {
+        if (item.id === id) (item as { src?: string; srcUrl?: string })[field] = ref;
+      }
+      continue;
+    }
+    next[path] = ref;
+  }
+  return next;
+}
+
+export async function hydrateAssetValue(templateId: string, value: string) {
+  if (!isAssetRef(value)) return value;
+  try {
+    return (await readRef(templateId, value)) || "";
+  } catch {
+    return "";
+  }
 }
 
 export function hasUnresolvedAssets(state: LabelState) {

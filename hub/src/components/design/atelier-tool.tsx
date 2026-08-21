@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Accordion, ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
+import { hasExactArt } from "@/lib/design/art";
+import { CUT_LAYER } from "@/lib/design/layers";
+import { previewFace } from "@/lib/design/layout";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
 import { ImagesPanel, IconsPanel } from "./art-panel";
@@ -32,11 +35,14 @@ export function AtelierTool() {
     return <Empty>Open a template from the library, or create a new one.</Empty>;
   }
   const spec = specOf(t);
+  const face = previewFace(t);
   const linked = productForTemplate(t, app.products);
   const productId = t.productId || linked?.id || "";
   const products = productOptions(app.products, productId);
   const packHint = FLAVOR_PACKS.find((p) => p.bg.toLowerCase() === str(t.state, "cLabel").toLowerCase());
   const sku = app.linkedStickers[0]?.name;
+  const loadedOn = app.loadedFlavorOn;
+  const artNative = hasExactArt(t.state);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -98,12 +104,66 @@ export function AtelierTool() {
               />
               Lock family
             </label>
-            <Field label="Width (cm)">
-              <TextInput inputMode="decimal" value={str(t.state, "cW")} onChange={(e) => app.setField("cW", e.target.value)} />
-            </Field>
-            <Field label="Height (cm)">
-              <TextInput inputMode="decimal" value={str(t.state, "cH")} onChange={(e) => app.setField("cH", e.target.value)} />
-            </Field>
+            {spec.modes.length > 1 ? (
+              <div className="sm:col-span-2 flex flex-wrap gap-1.5">
+                {spec.modes.map((mode) => {
+                  const on = t.labelMode === mode;
+                  const label = mode === "back" ? (spec.isTapered ? "Taper wrap" : "Back wrap") : mode === "top" ? "Top lid" : "Front";
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => app.setLabelMode(mode)}
+                      className={`rounded-[var(--bb-radius)] border px-3 py-2 text-xs uppercase tracking-wide ${
+                        on
+                          ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                          : "border-[var(--bb-line)] text-[var(--bb-text)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            {face === "top" ? (
+              <Field label="Lid size (cm)">
+                <TextInput inputMode="decimal" value={str(t.state, "tSz") || "4"} onChange={(e) => app.setField("tSz", e.target.value)} />
+              </Field>
+            ) : face === "back" ? (
+              <>
+                <Field label="Width (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "sW") || "17"} onChange={(e) => app.setField("sW", e.target.value)} />
+                </Field>
+                <Field label="Height (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "sH") || "4.5"} onChange={(e) => app.setField("sH", e.target.value)} />
+                </Field>
+              </>
+            ) : face === "taper" ? (
+              <>
+                <Field label="Top Ø (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "tpDTop") || "9"} onChange={(e) => app.setField("tpDTop", e.target.value)} />
+                </Field>
+                <Field label="Bottom Ø (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "tpDBot") || "7"} onChange={(e) => app.setField("tpDBot", e.target.value)} />
+                </Field>
+                <Field label="Label height (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "tpLblH") || "7"} onChange={(e) => app.setField("tpLblH", e.target.value)} />
+                </Field>
+                <Field label="Wrap %">
+                  <TextInput inputMode="decimal" value={str(t.state, "tpWrap") || "85"} onChange={(e) => app.setField("tpWrap", e.target.value)} />
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label="Width (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "cW") || "6"} onChange={(e) => app.setField("cW", e.target.value)} />
+                </Field>
+                <Field label="Height (cm)">
+                  <TextInput inputMode="decimal" value={str(t.state, "cH") || "6"} onChange={(e) => app.setField("cH", e.target.value)} />
+                </Field>
+              </>
+            )}
           </div>
           <p className="mt-2 text-xs text-[var(--bb-muted)]">
             {spec.hint}
@@ -112,12 +172,33 @@ export function AtelierTool() {
         </Accordion>
 
         <Accordion title="Flavor pack">
-          {packHint ? (
-            <p className="mb-3 text-sm text-[var(--bb-muted)]">Fill matches {packHint.name}.</p>
-          ) : null}
+          <p className="mb-3 text-sm text-[var(--bb-muted)]">
+            {artNative
+              ? "Artwork carries its own colors. Loaded restores the fills saved on this template."
+              : loadedOn
+                ? "Loaded — the colors already on this template."
+                : packHint
+                  ? `Fill matches ${packHint.name}.`
+                  : "Custom fill — not a listed pack."}
+          </p>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => app.restoreLoadedFlavor()}
+              className={`bb-btn inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-xs ${
+                loadedOn
+                  ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                  : "border-[var(--bb-line)] text-[var(--bb-text)]"
+              }`}
+            >
+              <span
+                className="h-3 w-3 rounded-full border border-[var(--bb-line)]"
+                style={{ background: app.loadedFlavor?.cLabel || str(t.state, "cLabel") }}
+              />
+              Loaded
+            </button>
             {FLAVOR_PACKS.map((p) => {
-              const on = str(t.state, "cLabel").toLowerCase() === p.bg.toLowerCase();
+              const on = !loadedOn && str(t.state, "cLabel").toLowerCase() === p.bg.toLowerCase();
               return (
                 <button
                   key={p.id}
@@ -170,14 +251,18 @@ export function AtelierTool() {
       </div>
 
       <aside className="w-full lg:sticky lg:top-24 lg:w-[28rem]">
-        <p className="mb-2 text-xs text-[var(--bb-muted)]">Tap a layer to select it, then drag. Corner handle resizes.</p>
+        <p className="mb-2 text-xs text-[var(--bb-muted)]">
+          Tap a layer to select it. Drag to move, round handle to rotate, corner to resize.
+        </p>
         <LabelPreview
           template={t}
           interactive
+          showCut={app.selectedId === CUT_LAYER}
           selectedId={app.selectedId}
           onSelect={app.selectLayer}
           onMove={app.moveItem}
           onResize={app.resizeItem}
+          onRotate={app.rotateItem}
         />
       </aside>
     </div>

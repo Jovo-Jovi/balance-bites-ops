@@ -42,7 +42,7 @@ export function downloadSvg(template: LabelTemplate, state: LabelState) {
 }
 
 export function printPreview(template: LabelTemplate, state: LabelState) {
-  const { wCm, hCm } = artboardCm(state, template.designType);
+  const { wCm, hCm } = artboardCm(template);
   const svg = labelPreviewSvg(template, state, { showCut: true });
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(template.name)}</title>
 <style>

@@ -26,7 +26,7 @@ export function PrintTool() {
     );
   }
   const spec = specOf(t);
-  const size = artboardCm(t.state, t.designType);
+  const size = artboardCm(t);
   const exclude = printExcludeNote(t, t.state);
   const bleedPx = pxFromMm(BLEED_MM);
   const cut = cutStrokeOf(t.state);

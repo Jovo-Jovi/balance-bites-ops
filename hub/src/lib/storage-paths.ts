@@ -24,6 +24,15 @@ export function labelAssetKey(templateId: string, fileName: string) {
   return `${LABEL_ASSETS_PREFIX}${id}/${name}`;
 }
 
+export function parseLabelAssetKey(key: string) {
+  const n = normalizeStorageKey(key);
+  if (!n.startsWith(LABEL_ASSETS_PREFIX)) return null;
+  const rest = n.slice(LABEL_ASSETS_PREFIX.length);
+  const slash = rest.indexOf("/");
+  if (slash < 1) return null;
+  return { templateId: rest.slice(0, slash), fileName: rest.slice(slash + 1) };
+}
+
 export function backupKey(fileName: string) {
   return `${BACKUPS_PREFIX}${sanitizeSegment(fileName)}`;
 }

@@ -110,6 +110,6 @@ Uploads go through `/api/storage/object` (staff Firebase token required). The bu
 
 ## 6. After the hub is built
 
-1. Invoices and Design are **native** hub workspaces. Do not wrap their HTML into `hub/public/apps/`. Finance is still a shell until that slice.
+1. Invoices and Design are **native** hub workspaces. Do not wrap their HTML into `hub/public/apps/`. Maps: [docs/INVOICES.md](docs/INVOICES.md), [docs/DESIGN.md](docs/DESIGN.md). What shipped: [docs/JOURNAL.md](docs/JOURNAL.md). Finance is still a shell until that slice.
 2. Run a one-time import of `saved data` JSON **only when you say so**.
 3. Keep `costs` as a rollback copy until you trust the cloud.

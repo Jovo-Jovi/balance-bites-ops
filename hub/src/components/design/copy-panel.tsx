@@ -2,14 +2,15 @@
 
 import { Field, TextInput } from "@/components/invoices/ui";
 import { stickerCopyFields } from "@/lib/design/layers";
+import { previewFace } from "@/lib/design/layout";
 import { useDesignApp } from "./design-context";
 
 export function CopyPanel() {
   const app = useDesignApp();
   const t = app.current;
   if (!t) return null;
-  const rows = stickerCopyFields(t.designType, t.state);
-  const composite = t.designType === "composite";
+  const rows = stickerCopyFields(t);
+  const composite = previewFace(t) === "composite";
 
   return (
     <div>

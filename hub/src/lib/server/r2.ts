@@ -2,11 +2,16 @@ import "server-only";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { isAllowedStorageKey, normalizeStorageKey } from "../storage-paths";
+import {
+  isAllowedStorageKey,
+  LABEL_ASSETS_PREFIX,
+  normalizeStorageKey,
+} from "../storage-paths";
 
 export type R2Config = {
   accountId: string;
@@ -107,4 +112,33 @@ export async function signedR2GetUrl(key: string, expiresIn = 900) {
     }),
     { expiresIn },
   );
+}
+
+export async function listR2Prefix(prefix = LABEL_ASSETS_PREFIX, max = 400) {
+  const cfg = readR2Config();
+  if (!cfg) throw new Error("Cloudflare R2 is not configured");
+  const keyPrefix = normalizeStorageKey(prefix);
+  if (!keyPrefix.startsWith(LABEL_ASSETS_PREFIX)) {
+    throw new Error("مسار تخزين غير مسموح");
+  }
+  const client = getR2Client(cfg);
+  const items: { key: string; size: number }[] = [];
+  let token: string | undefined;
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: cfg.bucket,
+        Prefix: keyPrefix,
+        ContinuationToken: token,
+        MaxKeys: 100,
+      }),
+    );
+    for (const obj of res.Contents || []) {
+      if (!obj.Key) continue;
+      items.push({ key: obj.Key, size: Number(obj.Size || 0) });
+      if (items.length >= max) return items;
+    }
+    token = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (token);
+  return items;
 }

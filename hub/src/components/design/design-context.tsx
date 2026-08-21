@@ -15,10 +15,17 @@ import { useCloudKey } from "@/hooks/use-cloud-key";
 import { useToast } from "@/components/toast";
 import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
-import { hydrateStateAssets, hasUnresolvedAssets, stripStateAssets } from "@/lib/design/assets";
-import { applyIconToState, removeArtItem, setFillCutWithPaper, syncPaperToSilhouette } from "@/lib/design/art";
-import { moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState } from "@/lib/design/layers";
-import { flavorPackById, FLAVOR_PACKS } from "@/lib/design/colors";
+import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
+import { addProductPhotos, applyIconToState, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
+import { moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState } from "@/lib/design/layers";
+import {
+  flavorPackById,
+  flavorSnapshot,
+  flavorSnapshotEquals,
+  FLAVOR_PACKS,
+  restoreFlavorSnapshot,
+  type FlavorSnapshot,
+} from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
@@ -35,8 +42,9 @@ import {
   parseStickers,
   patchState,
   safeRemoveTemplate,
+  toR2Ref,
 } from "@/lib/design/templates";
-import type { DesignType, LabelState, LabelTemplate, StickerSku } from "@/lib/design/types";
+import type { DesignType, LabelMode, LabelState, LabelTemplate, StickerSku } from "@/lib/design/types";
 import { isStorageEnabled } from "@/lib/firebase-config";
 import { removeDesignKey, writeDesignKey } from "@/lib/design/write";
 
@@ -47,6 +55,14 @@ type DesignContextValue = {
   current: LabelTemplate | null;
   selectedId: string | null;
   busy: boolean;
+  loadedFlavor: FlavorSnapshot | null;
+  loadedFlavorOn: boolean;
+  restoreLoadedFlavor: () => void;
+  addPhotosFromDevice: (files: FileList | File[]) => Promise<void>;
+  addPhotosFromStorage: (objectKeys: string[]) => Promise<void>;
+  applyStorageRef: (target: { field: string } | { zoneId: string }, objectKey: string) => Promise<void>;
+  setZoneImage: (zoneId: string, src: string) => void;
+  forgetAssetOrigin: (path: string) => void;
   openLibrary: () => void;
   openAtelier: (id?: string) => void;
   openPrint: () => void;
@@ -63,6 +79,7 @@ type DesignContextValue = {
   exportCurrent: () => void;
   setName: (name: string) => void;
   setFamily: (designType: DesignType) => void;
+  setLabelMode: (mode: LabelMode) => void;
   setLocked: (locked: boolean) => void;
   applyPack: (packId: string) => void;
   applyProduct: (productId: string) => void;
@@ -75,6 +92,7 @@ type DesignContextValue = {
   selectLayer: (id: string | null) => void;
   moveItem: (id: string, x: number, y: number) => void;
   resizeItem: (id: string, w: number, h: number) => void;
+  rotateItem: (id: string, rot: number) => void;
   setFillCut: (on: boolean) => void;
   save: () => Promise<boolean>;
   saveAsNew: () => Promise<boolean>;
@@ -115,9 +133,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<LabelTemplate | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadedFlavor, setLoadedFlavor] = useState<FlavorSnapshot | null>(null);
   const consumedTs = useRef(0);
   const wantedId = useRef<string | null>(null);
   const loadSeq = useRef(0);
+  const assetOrigins = useRef<Record<string, Record<string, string>>>({});
 
   const go = useCallback(
     (tab: string, id?: string | null) => {
@@ -139,7 +159,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       for (const t of list) {
         stripped.push({
           ...t,
-          state: await stripStateAssets(t.id, t.state),
+          state: await stripStateAssets(t.id, applyAssetRefs(t.state, assetOrigins.current[t.id] || {})),
           flavorKey: flavorKeyFromState(t.state),
           productIdentity: identityFromState(t.state),
           updatedAt: t.updatedAt,
@@ -158,6 +178,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       const seq = ++loadSeq.current;
       wantedId.current = t.id;
       setSelectedId(null);
+      setCurrent(t);
+      assetOrigins.current[t.id] = collectAssetRefs(t.state);
+      setLoadedFlavor(flavorSnapshot(t.state));
       setBusy(true);
       try {
         const state = await hydrateStateAssets(t.id, t.state);
@@ -236,6 +259,71 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       current,
       selectedId,
       busy,
+      loadedFlavor,
+      loadedFlavorOn: Boolean(current && loadedFlavor && flavorSnapshotEquals(current.state, loadedFlavor)),
+      restoreLoadedFlavor: () => {
+        if (!current || !loadedFlavor) return;
+        replaceCurrent({ ...current, state: restoreFlavorSnapshot(current.state, loadedFlavor) });
+      },
+      forgetAssetOrigin: (path) => {
+        if (!current) return;
+        const orig = { ...(assetOrigins.current[current.id] || {}) };
+        delete orig[path];
+        assetOrigins.current[current.id] = orig;
+      },
+      addPhotosFromDevice: async (files) => {
+        if (!current) return;
+        const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+        if (!list.length) return;
+        const srcs: string[] = [];
+        for (const file of list) srcs.push(await readImageFile(file));
+        replaceCurrent({ ...current, state: addProductPhotos(current.state, srcs) });
+      },
+      addPhotosFromStorage: async (objectKeys) => {
+        if (!current || !objectKeys.length) return;
+        const srcs: string[] = [];
+        const refs = objectKeys.map((key) => toR2Ref(key));
+        for (const ref of refs) {
+          srcs.push((await hydrateAssetValue(current.id, ref)) || ref);
+        }
+        const before = new Set((current.state._composite?.zones || []).map((z) => z.id));
+        const nextState = addProductPhotos(current.state, srcs);
+        const orig = { ...(assetOrigins.current[current.id] || {}) };
+        for (const zone of nextState._composite?.zones || []) {
+          if (before.has(zone.id) || zone.kind !== "image") continue;
+          const i = srcs.indexOf(String(zone.src || ""));
+          if (i >= 0) orig[`zone:${zone.id}:src`] = refs[i];
+        }
+        if (!current.state._composite && refs[0]) orig.hxCProd = refs[0];
+        assetOrigins.current[current.id] = orig;
+        replaceCurrent({ ...current, state: nextState });
+      },
+      applyStorageRef: async (target, objectKey) => {
+        if (!current) return;
+        const ref = toR2Ref(objectKey);
+        const data = (await hydrateAssetValue(current.id, ref)) || ref;
+        const orig = { ...(assetOrigins.current[current.id] || {}) };
+        if ("zoneId" in target) {
+          orig[`zone:${target.zoneId}:src`] = ref;
+          assetOrigins.current[current.id] = orig;
+          replaceCurrent({ ...current, state: setZoneSrc(current.state, target.zoneId, data) });
+          return;
+        }
+        orig[target.field] = ref;
+        assetOrigins.current[current.id] = orig;
+        let nextState = patchState(current.state, { [target.field]: data });
+        if (target.field === "hxBg1" && nextState._fillCutWithPaper) {
+          nextState = syncPaperToSilhouette(nextState);
+        }
+        replaceCurrent({ ...current, state: nextState });
+      },
+      setZoneImage: (zoneId, src) => {
+        if (!current) return;
+        const orig = { ...(assetOrigins.current[current.id] || {}) };
+        delete orig[`zone:${zoneId}:src`];
+        assetOrigins.current[current.id] = orig;
+        replaceCurrent({ ...current, state: setZoneSrc(current.state, zoneId, src) });
+      },
       openLibrary: () => go("library", current?.id || null),
       openAtelier: (id) => {
         if (id) void openTemplate(id);
@@ -256,6 +344,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         try {
           await persist([...templates, t]);
           wantedId.current = t.id;
+          assetOrigins.current[t.id] = collectAssetRefs(t.state);
+          setLoadedFlavor(flavorSnapshot(t.state));
           setCurrent(t);
           go("atelier", t.id);
           toast.push("Template created.", "ok");
@@ -349,6 +439,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           isTapered: spec.isTapered,
           state: { ...current.state, _designType: designType, _isTapered: spec.isTapered },
         });
+      },
+      setLabelMode: (mode) => {
+        if (!current) return;
+        const spec = getDesignSpec(current.designType);
+        if (!spec.modes.includes(mode)) return;
+        replaceCurrent({ ...current, labelMode: mode });
       },
       setLocked: (locked) => {
         if (!current) return;
@@ -446,11 +542,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       selectLayer: (id) => setSelectedId(id),
       moveItem: (id, x, y) => {
         if (!current) return;
-        replaceCurrent({ ...current, state: moveItemInState(current.state, id, x, y) });
+        replaceCurrent({ ...current, state: moveItemInState(current, id, x, y) });
       },
       resizeItem: (id, w, h) => {
         if (!current) return;
-        replaceCurrent({ ...current, state: resizeItemInState(current.state, id, w, h) });
+        replaceCurrent({ ...current, state: resizeItemInState(current, id, w, h) });
+      },
+      rotateItem: (id, rot) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: rotateItemInState(current, id, rot) });
       },
       setFillCut: (on) => {
         if (!current) return;
@@ -495,6 +595,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         try {
           await persist([...templates, copy]);
           wantedId.current = copy.id;
+          setLoadedFlavor(flavorSnapshot(copy.state));
           setCurrent(copy);
           go("atelier", copy.id);
           toast.push("Saved as a new template.", "ok");
@@ -515,6 +616,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     current,
     selectedId,
     busy,
+    loadedFlavor,
     go,
     openTemplate,
     persist,

@@ -61,3 +61,7 @@ Never commit live `bb_invoices.json` or customer files. Zip `saved data` private
 Desktop FileStore skipped these; they are now Firestore keys so they survive a new browser: `bb_prep_lines`, `bb_prep_ing_view`, `bb_prep_prod_mode`, `bb_prep_print_mode`, `bb_inv_print_preset_id`, `bb_print_fit_one`, `bb_ret_last_customer`.
 
 `bb_backup_locals` stays out of Firestore (full snapshots). Named folder backups go to Cloudflare R2 `bb_backups/`.
+
+## Hub Design (this slice)
+
+Live HTML designer is listed as a writer of `bb_color_presets` / theme keys above. The **hub** Design app does **not** write those — Invoices → Look already owns the shared list. Hub Design writes `bb_label_templates`, consumes/clears `bb_label_open`, and puts binaries on R2 `label_assets/{templateId}/` (`__asset__:` / reuse `__r2__:`). Flavor packs are code in `hub/src/lib/design/colors.ts`, not a Firestore dump. Map: [DESIGN.md](DESIGN.md).

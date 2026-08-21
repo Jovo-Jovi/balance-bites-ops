@@ -30,14 +30,15 @@ MCP: GitLens can commit/push after the remote exists. Repo **create** is GitHub 
 
 ## Phase 2 — Hub app (Next.js) + Vercel
 
-1. Scaffold Next.js (App Router) in `apps/hub` or repo root `hub/`.
+**Shipped:** hub at `hub/` (Vercel root `hub`). Invoices native React on `main`. Design native React on `feat/design` ([DESIGN.md](DESIGN.md)). Finance is still a shell. HTML wrap into `public/` was **not** used.
+
+1. Scaffold Next.js (App Router) in repo root `hub/`.
 2. Home `/` : login gate + **three cards** (RTL).
-   - `/invoices` → current Invoice Pro
-   - `/design` → Label Designer
-   - `/finance` → Stock & Costs
-3. Phase 2a fastest path: copy HTML/JS into `public/` and open them in the same origin (`/apps/invoices.html`). Shared `localStorage` still works on one origin — that already beats three Desktop files.
-4. Env: `NEXT_PUBLIC_FIREBASE_*` on Vercel (later).
-5. MCP after Vercel login:
+   - `/invoices` → native Invoice app
+   - `/design` → native Design app (library / atelier / print house)
+   - `/finance` → Stock & Costs (shell until that slice)
+3. Env: `NEXT_PUBLIC_FIREBASE_*` and R2 keys on Vercel (`NEXT_PUBLIC_BB_USE_STORAGE` for label art).
+4. MCP after Vercel login (already done for this repo):
    - `list_teams` → get `teamId`
    - `create_git_project` with `repo: owner/balance-bites-ops`, `projectName: balance-bites-ops`, `teamId`
    - Preview URL is the first “one URL”
@@ -50,10 +51,9 @@ In Firebase Console (not MCP):
 
 1. Create project `balance-bites-ops`.
 2. Enable **Authentication** → Google (and Email if you want).
-3. Enable **Firestore** (production mode → then paste rules).
-4. Enable **Storage**.
-5. Add a Web app; copy config into Vercel env.
-6. Allowlist emails in a `staff/{uid}` doc or Auth blocking function.
+3. Enable **Firestore** (production mode → then paste rules). Do **not** enable Firebase Storage on Spark — binaries use Cloudflare R2.
+4. Add a Web app; copy config into Vercel env.
+5. Allowlist emails in a `staff/{uid}` doc or Auth blocking function.
 
 ### Firestore shape (v1, lift JSON as-is)
 
@@ -73,7 +73,7 @@ tenants/balance-bites
 
 Keep the blob in `data` so CloudStore is a drop-in for `FileStore.writeKey`. Split into subcollections later if documents hit 1 MB (invoices + templates are the risk).
 
-### Storage shape
+### Object storage (R2, not Firebase Storage)
 
 ```
 tenants/balance-bites/label_assets/{templateId}/

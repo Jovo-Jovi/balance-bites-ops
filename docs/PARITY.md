@@ -75,19 +75,26 @@ Native React workspace (not an HTML wrap). Merged `feat/invoices` + `fix/invoice
 
 ## Design (`balance-bites-sticker.html` + JS)
 
-Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. Not an HTML wrap.
+Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. Not an HTML wrap. Branch `feat/design`.
 
 - [x] Template library CRUD (`bb_label_templates`)
 - [x] Import/export template JSON (`bb_label_template_v2`); user-picked file
-- [x] `label_assets/{templateId}/` strip/hydrate on Cloudflare R2 (`__asset__:`)
+- [x] `label_assets/{templateId}/` strip/hydrate on Cloudflare R2 (`__asset__:` / reuse `__r2__:`)
 - [x] Deep link `bb_label_open` from finance stickers (120s TTL, then clear)
 - [x] Product select from `bb_products`; linked SKUs from `bb_stickers` (read-only)
 - [x] Print house constants (1.5 mm bleed, 300 DPI) + SVG preview/download
 - [x] Print house cut stroke as an editable border around the die-cut (size mm + colour)
+- [x] Atelier Layers can select Print cut (same stroke fields as Print house)
 - [x] Atelier background uploads (`hxBg*` / `hxCProd`) on any family — Atelier **Images** tab
+- [x] Composite extra photos as image zones (live `addProductPhotos`); pick from R2 or the device
+- [x] Flavor pack **Loaded** chip for the colors already on the open template
 - [x] Icon library in Atelier (repo catalog + live A–Z letter fonts; apply to the open template)
 - [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path)
 - [x] Atelier select + drag of parts, zones, stamps, and uploaded images
+- [x] Atelier rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)
+- [x] Circular / outline families use live front layout (logo, brand, flavor, photo, weight, dates)
+- [x] Rect + top uses live back wrap (`buildLabel` sections) and top lid (`buildTopLabel`)
+- [x] Taper + top uses live `calcTaper` fan + section HTML
 - [x] Compact Library thumbs (no full 3 MB SVG per card)
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack

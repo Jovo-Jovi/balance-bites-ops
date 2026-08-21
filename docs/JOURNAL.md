@@ -15,7 +15,7 @@ Related maps:
 | [DESIGN.md](DESIGN.md) | Design app file map, filtered tools, gaps |
 | [PARITY.md](PARITY.md) | Tick-list vs live HTML |
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
-| [MODULES.md](MODULES.md) | Live HTML module map (source of truth for remaining Design gaps / Finance) |
+| [MODULES.md](MODULES.md) | Live HTML module map (Finance source; Design gaps) |
 | [BRAND-UI.md](BRAND-UI.md) | Linen desk, diamond mark, RTL |
 | `.cursor/rules/` | Workflow, responsive chrome, no duplicate modules |
 
@@ -85,63 +85,100 @@ Vercel preview toolbar / COOP noise: project `enablePreviewFeedback: false` and 
 
 ---
 
-## 2026-08-21 — Design native app (this branch)
+## 2026-08-21 / 22 — Design native app (`feat/design`)
 
-Branch: `feat/design`.
+Full map: [DESIGN.md](DESIGN.md). Parity ticks: [PARITY.md](PARITY.md). Live HTML stays the formula source (`costs/balance-bites-sticker.html` + composite / prepress / icon JS).
 
-Native React workspace under `hub/src/components/design/` — **not** a copy of `balance-bites-sticker.html` and **not** an iframe. Live keys and template JSON round-trip; chrome is three tools instead of the old left-panel dump.
+Native React under `hub/src/components/design/` + `hub/src/lib/design/` — **not** a copy of the sticker HTML and **not** an iframe. Production `main` is still invoices-only until this branch merges.
 
 ### Tools
 
 Library · Atelier · Print house
 
-Dropped as their own tabs (same result, less duplication): New wizard, Product, Theme, Libraries, Product link. New + product pick live in Library/Atelier. Shared color presets stay on Invoices → Look. `bb_label_open` is consumed in the provider (120s) then cleared.
+Dropped as their own workspace tabs (same result, less duplication): New wizard, Product, Theme, Libraries, Product link. New + product pick live in Library / Atelier. Shared color presets stay on Invoices → Look. `bb_label_open` is consumed in the provider (120s) then cleared.
 
-### Writer / dump rules
+Atelier inner tabs (not a fourth hub tool): **Copy** · **Images** · **Icons** · **Layers**.
 
-`writeDesignKey` allows designer keys only. Catalog and `bb_stickers` are read-only. Missing `bb_label_templates` does **not** seed Jelly Kids, flavor packs, or sample labels. Flavor packs stay in `hub/src/lib/design/colors.ts`. Fat `hx*` / composite `data:` go to R2 as `__asset__:` (placeholders if R2 is off).
+### Writer / dump / assets
+
+`writeDesignKey` allows designer keys only. Hub Design writes `bb_label_templates` and clears `bb_label_open`. Catalog and `bb_stickers` are read-only. This slice does **not** write `bb_color_presets`. Missing `bb_label_templates` does **not** seed Jelly Kids, flavor packs, or sample labels. Flavor packs stay in `hub/src/lib/design/colors.ts`.
+
+Fat `hx*` / composite `data:` go to Cloudflare R2 as `__asset__:`. Images → Storage reuses `__r2__:` so save does not copy the same PNG twice. `artref:` / `assets/presets/…` resolve from `hub/public/design-presets/` (git, not Firestore). Spark — no Firebase Storage.
+
+### Preview (why composites matched Desktop and others did not)
+
+Composite families paint `state._composite` (parts, zones, `unionPath`) — that already looked like saved JSON.
+
+Non-composite families now use the **live face**, not a 4-line silhouette:
+
+| Family | What Atelier draws |
+|---|---|
+| Circular / outline (`circular`, `rounded_sq`, …) | Front sticker: `buildCircleLabel` (logo, brand, flavor, photo, weight, dates). Clip from `cShape`. Size `cW`×`cH` (default 6 cm) |
+| Rect + top | Back wrap `buildLabel` (ingredients / nutrition / logo / dates) or top lid `buildTopLabel`. Size `sW`×`sH` or `tSz` |
+| Taper + top | Cup fan `calcTaper` or top lid. Bbox from cup Ø / wrap % |
+
+Rect / taper switch **Back wrap** / **Taper wrap** / **Top lid**. Circular families stay on the front face even if saved `labelMode` was `back`.
+
+### Canvas
+
+Tap to select. Drag to move. Round handle + Layers slider to rotate (−180°…180°). Corner to resize. Print cut is listed and can show the overlay; it is not draggable. Opening a template paints immediately, then hydrates R2 only if that id is still wanted (no leftover cheese photo).
+
+### Print house
+
+1.5 mm bleed, 300 DPI. Editable cut stroke `sCutStrokeMm` / `cCutStroke` (default 0.25 mm magenta) on preview, print, and SVG download. Same fields on Layers → Print cut. PNG cut pack is still a gap. Popcorn-blue / popcorn-red stay in Library; they are excluded from the commercial print pack.
+
+### Cloud seed (do not repeat unless asked)
+
+2026-08-21: Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32 templates). 73 files on R2 `label_assets/{templateId}/`. Nothing from `saved data` in git. Other `bb_*` keys were not overwritten.
+
+### Commits on `feat/design` (oldest → newest, before this docs push)
+
+| Hash | What |
+|---|---|
+| `9c53c4a` | Native Design workspace (library / atelier / print house) |
+| `9defde0` | Atelier background uploads + categorized icon catalog |
+| `a77b251` | Print house cut stroke as an editable die-cut border |
+| `4e775ec` | Keep the opened template; Atelier layers drag |
+| `d7119a7` | Compact Library thumbs; Images / letter fonts / popcorn cut |
+
+Later commits on this branch add Images Storage reuse, Loaded flavor pack, Print-cut layer, live family faces, and rotate.
+
+### UX that must not regress
+
+- Claimed template id wins over a stale `?id=` so Atelier does not snap back.
+- Delete guard: do not wipe a multi-template library if removing one id would empty the array.
+- Hub chrome stays linen. Flavor **Loaded** is the open template; listed packs highlight only after apply.
+- Icon picker tiles use hub linen / gold, not `cLabel`.
+- Character art: fill + path stroke, clip `unionPath`. Repo preset SVGs had full-canvas white fills stripped.
+- Empty `productId` matches `bb_products` by name (popcorn-yellow → فشار بالكراميل). Saving writes that link.
 
 ### Explicit gaps (do not tick as done)
 
-Freeform composite drawing, PNG cut pack, applying `assets/presets/` folders, Desktop `bbLabel-*.json` folder scan.
+Freeform composite drawing, PNG cut pack, applying `assets/presets/` folders into tenant templates, Desktop `bbLabel-*.json` folder scan, Jelly Kids dump, auto-seed when Firestore is empty.
 
 ---
 
 ## 2026-08-21 — Atelier art (backgrounds + icon catalog)
 
-On `feat/design`. Background uploads use live `hxBg*` / `hxCProd` keys and clip to the die-cut on every family. Icon picker lives in Atelier (not a fourth tab): repo catalog with category variants, click to stamp. Catalog is code, not a Firestore dump.
-
-Atelier dump fields (ingredients, nutrition, unused brand lines) were removed. Copy is only what that family draws. Layers control z-order and icon color. Composite preview uses the artboard aspect (crackers oval, not a circle). Taper/rect show wrap + lid instead of a rounded square.
+Background uploads use live `hxBg*` / `hxCProd` keys. Icon picker lives in Atelier (not a fourth tab): repo catalog, click to stamp. Catalog is code, not a Firestore dump. Copy is only what that family / face draws.
 
 ---
 
 ## 2026-08-21 — Print house cut stroke + live template seed
 
-On `feat/design`. Print house cut stroke is an editable border on the die-cut (`sCutStrokeMm`, `cCutStroke`; default 0.25 mm magenta). Preview, print, and SVG download include it.
-
-Live `bb_label_templates` (exact Desktop JSON) written to Firestore. 73 `label_assets/{templateId}/` files uploaded to R2. Nothing from `saved data` committed to git. Import path: `npm run import:apply -- --keys bb_label_templates --assets --no-backups`. Invoices and other keys were not overwritten.
+Cut stroke is an editable border on the die-cut. Live templates + R2 assets seeded (see Cloud seed above).
 
 ---
 
-## 2026-08-22 — Atelier open, layers, popcorn art
+## 2026-08-22 — Open, layers, popcorn, Library, Images, letters
 
-On `feat/design`. Opening a Library card no longer snaps back to the previous template (stale `?id=` vs hydrate race). Hydrate results from a previous template are ignored.
-
-Character stickers (popcorn, chicopon, jelly, corn, pretzels, crackers, marshmallows) draw from `hub/public/design-presets/*.svg` when the saved JSON has `artref:` or `assets/presets/…`. Those files stay in git; they are not written to Firestore.
-
-Atelier preview is a canvas: tap a layer (or the Layers list) to select it, drag to move, corner handle to resize. Background uploads and product photos move with the same hit boxes. Licensed popcorn-blue/red still stay out of the commercial print pack; they show in Library and Atelier.
+Opening a Library card no longer snaps back. Character stickers resolve `artref:` from `public/design-presets/`. Library cards are a compact 4-column grid (lazy character art; lite thumbs for other families). Images tab matches live Typography → Background images plus composite `addProductPhotos`. A–Z letters use live `LETTER_STYLES`.
 
 ---
 
-## 2026-08-22 — Library size/speed, Images tab, letter fonts, popcorn cut
+## 2026-08-22 — Loaded pack, cut layer, R2 reuse, family preview, rotate
 
-On `feat/design`. Library cards are a 4-column compact grid. Character art lazy-loads the preset file; other families use a lite silhouette so the page does not mount 32 full previews.
-
-Uploaded images live in Atelier as the **Images** tab (Copy / Images / Icons / Layers). Same `hxBg*` / `hxCProd` slots as live Typography → Background images. Not a fourth workspace tool.
-
-A–Z icon letters use live `LETTER_STYLES` (Fredoka / Baloo 2 / Nunito / Bubblegum Sans / Sniglet / Arial Black) instead of Tajawal.
-
-Character art fills the part box (`object-fit` meet) with the saved path stroke as the border; the die-cut clip is `unionPath`. White full-canvas fills were stripped from repo preset SVGs so the outline can match the cut. Templates with an empty `productId` show the current catalog product by name (popcorn-yellow → فشار بالكراميل, and so on). Saving writes that link. Family labels use heading/body/Arabic fonts and the name-2 plate from saved state.
+Template paints immediately, then R2 hydrates in place. Images slots can pick Device or existing Storage (`__r2__:`). Flavor pack **Loaded** chip. Layers include **Print cut**. Non-composite families use live circle / wrap / taper formulas. Selected layers rotate as well as move and resize.
 
 ---
 
@@ -150,3 +187,4 @@ Character art fills the part box (`object-fit` meet) with the saved path stroke 
 - Design follow-up: full composite drawing / PNG cut pack / writing preset folders into tenant templates
 - Finance tabs and ledger formulas
 - One-shot JSON import of the rest of live `saved data` (invoices, stock, …)
+- Merge `feat/design` → `main` when asked

@@ -65,6 +65,17 @@ export async function uploadLabelAsset(
   return key;
 }
 
+export async function listLabelAssets(): Promise<{ key: string; size: number }[]> {
+  assertStorageEnabled();
+  const res = await fetch("/api/storage/list", {
+    method: "GET",
+    headers: await authHeader(),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const body = (await res.json()) as { items?: { key: string; size: number }[] };
+  return body.items || [];
+}
+
 export async function deleteLabelAsset(objectKey: string): Promise<void> {
   assertStorageEnabled();
   const res = await fetch(

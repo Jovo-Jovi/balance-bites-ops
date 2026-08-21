@@ -34,7 +34,7 @@ Stock on-hand is **not** a typed count. It is:
 - **Live:** https://balance-bites-ops.vercel.app (staff login; rules locked)
 
 Parity: [docs/PARITY.md](docs/PARITY.md)  
-What shipped: [docs/JOURNAL.md](docs/JOURNAL.md) · invoices map: [docs/INVOICES.md](docs/INVOICES.md)  
+What shipped: [docs/JOURNAL.md](docs/JOURNAL.md) · invoices: [docs/INVOICES.md](docs/INVOICES.md) · design: [docs/DESIGN.md](docs/DESIGN.md)  
 Full plan: [docs/CLOUD-PLAN.md](docs/CLOUD-PLAN.md)  
 Layers and brand: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
 Module map: [docs/MODULES.md](docs/MODULES.md)
@@ -96,7 +96,7 @@ Setup (GitHub / Vercel / Firebase): [SETUP.md](SETUP.md)
 
 ## Status
 
-Hub is live: login, linen UI, CloudStore. **Invoices** is a native workspace (editor, customers, catalog, queue, history, reports, print look) — merged 21 Aug 2026. **Design** is a native workspace on `feat/design` (library, atelier, print house). **Finance** is still a tool shell.
+Hub is live: login, linen UI, CloudStore. **Invoices** is a native workspace (editor, customers, catalog, queue, history, reports, print look) — merged 21 Aug 2026. **Design** is a native workspace on `feat/design` (library, atelier, print house; live family faces; R2 art) — map [docs/DESIGN.md](docs/DESIGN.md). **Finance** is still a tool shell.
 
 - **GitHub:** https://github.com/Jovo-Jovi/balance-bites-ops  
 - **Vercel:** https://balance-bites-ops.vercel.app  

@@ -45,14 +45,14 @@ Hub card: **Design** — **ported** to native React (filtered tools). Do not wra
 
 | File | Role in live HTML | Hub |
 |---|---|---|
-| `balance-bites-sticker.html` | Shell, left panel, artboard, FileStore | Native Library + Atelier |
-| `bb-prepress.js` | Print-house export (bleed, crop, color) | Constants + SVG preview; PNG cut pack is a gap |
-| `bb-composite-label.js` | Composite label layout | Preview + round-trip `state._composite`; drawing is a gap |
-| `bb-icon-library.js` | Icon stamps on labels | Gap |
+| `balance-bites-sticker.html` | Shell, left panel, artboard, FileStore | Native Library + Atelier + Print house ([DESIGN.md](DESIGN.md)) |
+| `bb-prepress.js` | Print-house export (bleed, crop, color) | Constants + SVG preview / cut stroke; PNG cut pack is a gap |
+| `bb-composite-label.js` | Composite label layout | Preview + round-trip `state._composite` + move/rotate/resize; freeform drawing is a gap |
+| `bb-icon-library.js` | Icon stamps on labels | Atelier **Icons** tab (repo catalog + live A–Z letters). Not dumped into Firestore |
 | `bb-jelly-kids.js` | Jelly Kids preset behavior | Gap — do not dump into Firestore |
-| `assets/presets/` | Art preset payloads (repo, not tenant) | Gap — do not dump into Firestore |
+| `assets/presets/` | Art preset payloads (repo, not tenant) | Preview via `hub/public/design-presets/`. Do not dump folders into Firestore |
 
-Designer **writes** `bb_label_templates` and clears `bb_label_open`. Stock Costs **links** a sticker SKU to a template and can deep-link via `bb_label_open`. Design **reads** `bb_products` / `bb_stickers`.
+Designer **writes** `bb_label_templates` and clears `bb_label_open`. Stock Costs **links** a sticker SKU to a template and can deep-link via `bb_label_open`. Design **reads** `bb_products` / `bb_stickers`. Hub Design does **not** write `bb_color_presets` (Invoices → Look).
 
 ---
 

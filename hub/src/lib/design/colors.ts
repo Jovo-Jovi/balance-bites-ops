@@ -1,4 +1,4 @@
-import type { FlavorPack } from "./types";
+import type { FlavorPack, LabelState } from "./types";
 
 /** Label flavor packs — in code only. Never write these into Firestore. */
 export const FLAVOR_PACKS: FlavorPack[] = [
@@ -46,4 +46,79 @@ export const FLAVOR_PACKS: FlavorPack[] = [
 
 export function flavorPackById(id: string | null | undefined): FlavorPack | undefined {
   return FLAVOR_PACKS.find((p) => p.id === id);
+}
+
+export type FlavorSnapshot = {
+  cLabel: string;
+  cTxtMain: string;
+  cTxtSub: string;
+  cLogoTxt: string;
+  cCFlavorClr: string;
+  cLogoCircle: string;
+  compositeBg: string;
+  compositeTxt: string;
+  partColors: Record<string, string>;
+  zoneColors: Record<string, string>;
+};
+
+export function flavorSnapshot(state: LabelState): FlavorSnapshot {
+  return {
+    cLabel: String(state.cLabel || ""),
+    cTxtMain: String(state.cTxtMain || ""),
+    cTxtSub: String(state.cTxtSub || ""),
+    cLogoTxt: String(state.cLogoTxt || ""),
+    cCFlavorClr: String(state.cCFlavorClr || ""),
+    cLogoCircle: String(state.cLogoCircle || ""),
+    compositeBg: String(state._composite?.bg || ""),
+    compositeTxt: String(state._composite?.txt || ""),
+    partColors: Object.fromEntries(
+      (state._composite?.parts || []).map((p) => [p.id, String(p.color || "")]),
+    ),
+    zoneColors: Object.fromEntries(
+      (state._composite?.zones || []).map((z) => [z.id, String(z.color || "")]),
+    ),
+  };
+}
+
+export function flavorSnapshotEquals(state: LabelState, snap: FlavorSnapshot | null) {
+  if (!snap) return false;
+  const now = flavorSnapshot(state);
+  return (
+    now.cLabel === snap.cLabel &&
+    now.cTxtMain === snap.cTxtMain &&
+    now.cTxtSub === snap.cTxtSub &&
+    now.cLogoTxt === snap.cLogoTxt &&
+    now.cCFlavorClr === snap.cCFlavorClr &&
+    now.cLogoCircle === snap.cLogoCircle
+  );
+}
+
+export function restoreFlavorSnapshot(state: LabelState, snap: FlavorSnapshot): LabelState {
+  const next: LabelState = {
+    ...state,
+    cLabel: snap.cLabel,
+    cTxtMain: snap.cTxtMain,
+    cTxtSub: snap.cTxtSub,
+    cLogoTxt: snap.cLogoTxt,
+    cCFlavorClr: snap.cCFlavorClr,
+    cLogoCircle: snap.cLogoCircle,
+  };
+  if (next._composite) {
+    next._composite = {
+      ...next._composite,
+      bg: snap.compositeBg || next._composite.bg,
+      txt: snap.compositeTxt || next._composite.txt,
+      parts: (next._composite.parts || []).map((p) =>
+        Object.prototype.hasOwnProperty.call(snap.partColors, p.id)
+          ? { ...p, color: snap.partColors[p.id] }
+          : p,
+      ),
+      zones: (next._composite.zones || []).map((z) =>
+        Object.prototype.hasOwnProperty.call(snap.zoneColors, z.id)
+          ? { ...z, color: snap.zoneColors[z.id] }
+          : z,
+      ),
+    };
+  }
+  return next;
 }

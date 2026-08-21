@@ -1,16 +1,19 @@
 import { BG_MORE, BG_SLOTS, usableImage } from "./art";
 import { getIcon } from "./icons";
+import { familyBoxes, familyBoxById, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem } from "./layout";
 import { bgPanKeys, productPhotoBox } from "./preview";
-import type { LabelState } from "./types";
+import { isAssetRef } from "./templates";
+import type { LabelState, LabelTemplate } from "./types";
 
 export const PHOTO_LAYER = "__photo__";
 export const QR_LAYER = "__qr__";
+export const CUT_LAYER = "__cut__";
 
 export function bgLayerId(field: string) {
   return `__bg:${field}`;
 }
 
-export type LayerKind = "part" | "zone" | "stamp" | "photo" | "bg" | "qr";
+export type LayerKind = "part" | "zone" | "stamp" | "photo" | "bg" | "qr" | "cut";
 
 export type DesignLayer = {
   id: string;
@@ -48,12 +51,37 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
   if (kind === "icon") return getIcon(iconId)?.label || "Icon";
   if (kind === "logo") return "Logo";
   if (kind === "text") return "Text";
+  if (kind === "image") return "Photo";
   return kind || "Layer";
 }
 
-export function listLayers(state: LabelState): DesignLayer[] {
-  const layers: DesignLayer[] = [];
-  const comp = state._composite;
+export function listLayers(template: LabelTemplate): DesignLayer[] {
+  const state = template.state;
+  const layers: DesignLayer[] = [
+    {
+      id: CUT_LAYER,
+      kind: "cut",
+      label: "Print cut",
+      z: 1000,
+      color: String(state.cCutStroke || "#c9a84c"),
+      lock: true,
+      removable: false,
+    },
+  ];
+  const face = previewFace(template);
+  if (face !== "composite") {
+    familyBoxes(template).forEach((box, i) => {
+      layers.push({
+        id: box.id,
+        kind: box.id === PHOTO_LAYER ? "photo" : "zone",
+        label: box.label,
+        z: 40 - i,
+        lock: box.lock,
+        removable: false,
+      });
+    });
+  }
+  const comp = face === "composite" ? state._composite : undefined;
   if (comp) {
     for (const part of comp.parts || []) {
       layers.push({
@@ -78,7 +106,7 @@ export function listLayers(state: LabelState): DesignLayer[] {
         text: zone.text,
         field: zone.field,
         lock: zone.lock,
-        removable: zone.kind === "icon" && !zone.lock,
+        removable: (zone.kind === "icon" || zone.kind === "image") && !zone.lock,
         letterStyle: zone.letterStyle,
       });
     }
@@ -95,7 +123,8 @@ export function listLayers(state: LabelState): DesignLayer[] {
       letterStyle: stamp.letterStyle,
     });
   }
-  if (usableImage(state.hxCProd) || String(state.hxCProd || "").startsWith("__asset__:")) {
+  if (face === "composite") {
+  if (usableImage(state.hxCProd) || isAssetRef(state.hxCProd)) {
     layers.push({
       id: PHOTO_LAYER,
       kind: "photo",
@@ -104,7 +133,7 @@ export function listLayers(state: LabelState): DesignLayer[] {
       removable: false,
     });
   }
-  if (usableImage(state.hxQr) || String(state.hxQr || "").startsWith("__asset__:")) {
+  if (usableImage(state.hxQr) || isAssetRef(state.hxQr)) {
     layers.push({
       id: QR_LAYER,
       kind: "qr",
@@ -116,7 +145,7 @@ export function listLayers(state: LabelState): DesignLayer[] {
   for (const slot of [...BG_SLOTS, ...BG_MORE]) {
     if (slot.key === "hxQr") continue;
     const raw = state[slot.key];
-    if (!usableImage(raw) && !String(raw || "").startsWith("__asset__:")) continue;
+    if (!usableImage(raw) && !isAssetRef(raw)) continue;
     layers.push({
       id: bgLayerId(slot.key),
       kind: "bg",
@@ -125,12 +154,31 @@ export function listLayers(state: LabelState): DesignLayer[] {
       removable: false,
     });
   }
+  }
   return layers.sort((a, b) => b.z - a.z || a.label.localeCompare(b.label));
 }
 
-export function listCanvasItems(state: LabelState, designType: string): CanvasItem[] {
+export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
+  const state = template.state;
+  const designType = template.designType;
+  const face = previewFace(template);
   const items: CanvasItem[] = [];
+  if (face !== "composite") {
+    for (const box of familyBoxes(template)) {
+      items.push({
+        id: box.id,
+        kind: box.id === PHOTO_LAYER ? "photo" : "zone",
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
+        rot: box.rot,
+        lock: box.lock,
+      });
+    }
+  }
   const circular = designType === "circular";
+  if (face === "composite") {
   for (const part of state._composite?.parts || []) {
     items.push({
       id: part.id,
@@ -155,6 +203,7 @@ export function listCanvasItems(state: LabelState, designType: string): CanvasIt
       lock: Boolean(zone.lock) && zone.kind !== "image" && zone.kind !== "icon",
     });
   }
+  }
   for (const stamp of state._stamps || []) {
     items.push({
       id: stamp.id,
@@ -167,17 +216,18 @@ export function listCanvasItems(state: LabelState, designType: string): CanvasIt
       lock: false,
     });
   }
-  if (usableImage(state.hxCProd) || String(state.hxCProd || "").startsWith("__asset__:")) {
+  if (face === "composite") {
+  if (usableImage(state.hxCProd) || isAssetRef(state.hxCProd)) {
     const box = productPhotoBox(state, circular);
     items.push({ id: PHOTO_LAYER, kind: "photo", ...box, lock: false });
   }
-  if (usableImage(state.hxQr) || String(state.hxQr || "").startsWith("__asset__:")) {
+  if (usableImage(state.hxQr) || isAssetRef(state.hxQr)) {
     items.push({ id: QR_LAYER, kind: "qr", x: 86, y: 86, w: 16, h: 16, lock: false });
   }
   for (const slot of [...BG_SLOTS, ...BG_MORE]) {
     if (slot.key === "hxQr") continue;
     const raw = state[slot.key];
-    if (!usableImage(raw) && !String(raw || "").startsWith("__asset__:")) continue;
+    if (!usableImage(raw) && !isAssetRef(raw)) continue;
     const zoomKey = slot.zoom;
     const zoom = zoomKey ? Math.max(0.05, num(state, zoomKey, 100) / 100) : 1;
     const size = 100 * zoom;
@@ -191,6 +241,7 @@ export function listCanvasItems(state: LabelState, designType: string): CanvasIt
       h: size,
       lock: false,
     });
+  }
   }
   return items;
 }
@@ -264,7 +315,33 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-export function moveItem(state: LabelState, id: string, x: number, y: number): LabelState {
+function familyBoxByIdSafe(template: LabelTemplate, id: string) {
+  return previewFace(template) !== "composite" && familyBoxById(template, id);
+}
+
+export function rotateItem(template: LabelTemplate, id: string, rot: number): LabelState {
+  const state = template.state;
+  let a = rot % 360;
+  if (a > 180) a -= 360;
+  if (a < -180) a += 360;
+  a = Math.round(a);
+  if (familyBoxByIdSafe(template, id)) return rotateFamilyItem(state, id, a);
+  return {
+    ...state,
+    _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, rot: a } : s)),
+    _composite: state._composite
+      ? {
+          ...state._composite,
+          parts: (state._composite.parts || []).map((p) => (p.id === id ? { ...p, rot: a } : p)),
+          zones: (state._composite.zones || []).map((z) => (z.id === id ? { ...z, rot: a } : z)),
+        }
+      : state._composite,
+  };
+}
+
+export function moveItem(template: LabelTemplate, id: string, x: number, y: number): LabelState {
+  if (familyBoxByIdSafe(template, id)) return moveFamilyItem(template, id, x, y);
+  const state = template.state;
   const nx = clamp(x, -10, 110);
   const ny = clamp(y, -10, 110);
   if (id === PHOTO_LAYER) {
@@ -291,7 +368,9 @@ export function moveItem(state: LabelState, id: string, x: number, y: number): L
   };
 }
 
-export function resizeItem(state: LabelState, id: string, w: number, h: number): LabelState {
+export function resizeItem(template: LabelTemplate, id: string, w: number, h: number): LabelState {
+  if (familyBoxByIdSafe(template, id)) return resizeFamilyItem(template, id, w, h);
+  const state = template.state;
   const nw = clamp(w, 4, 120);
   const nh = clamp(h, 4, 120);
   if (id === PHOTO_LAYER) {
@@ -316,9 +395,11 @@ export function resizeItem(state: LabelState, id: string, w: number, h: number):
   };
 }
 
-export function stickerCopyFields(designType: string, state: LabelState) {
+export function stickerCopyFields(template: LabelTemplate) {
+  const { state } = template;
+  const face = previewFace(template);
   const comp = state._composite;
-  if (designType === "composite" && comp?.zones?.length) {
+  if (face === "composite" && comp?.zones?.length) {
     return (comp.zones || [])
       .filter((z) => z.kind === "text" || z.kind === "logo")
       .sort((a, b) => (a.z || 0) - (b.z || 0))
@@ -330,22 +411,32 @@ export function stickerCopyFields(designType: string, state: LabelState) {
         field: z.field || "",
       }));
   }
-  if (designType === "rect_top" || designType === "taper_top") {
+  if (face === "top") {
     return [
-      { id: "eBrand", label: "Brand", text: String(state.eBrand || ""), color: "", field: "eBrand" },
-      { id: "eName1", label: "Name", text: String(state.eName1 || ""), color: "", field: "eName1" },
-      { id: "eName2", label: "Name 2", text: String(state.eName2 || ""), color: "", field: "eName2" },
+      { id: "tLogoTxt", label: "Logo", text: String(state.tLogoTxt || ""), color: "", field: "tLogoTxt" },
+      { id: "tTitle1", label: "Title", text: String(state.tTitle1 || ""), color: "", field: "tTitle1" },
+      { id: "tTitle2", label: "Title 2", text: String(state.tTitle2 || ""), color: "", field: "tTitle2" },
+      { id: "tSub1", label: "Subtitle", text: String(state.tSub1 || ""), color: "", field: "tSub1" },
+    ];
+  }
+  if (face === "circle") {
+    return [
+      { id: "tLogoTxt", label: "Logo", text: String(state.tLogoTxt || ""), color: "", field: "tLogoTxt" },
+      { id: "eCBrand1", label: "Brand", text: String(state.eCBrand1 || ""), color: "", field: "eCBrand1" },
+      { id: "eCBrand2", label: "Brand 2", text: String(state.eCBrand2 || ""), color: "", field: "eCBrand2" },
+      { id: "eCProdName", label: "Product", text: String(state.eCProdName || ""), color: "", field: "eCProdName" },
+      { id: "eCFlavorTxt", label: "Flavor", text: String(state.eCFlavorTxt || ""), color: "", field: "eCFlavorTxt" },
+      { id: "eWeight", label: "Weight", text: String(state.eWeight || ""), color: "", field: "eWeight" },
+      { id: "eCDate1", label: "Date 1", text: String(state.eCDate1 || ""), color: "", field: "eCDate1" },
+      { id: "eCDate2", label: "Date 2", text: String(state.eCDate2 || ""), color: "", field: "eCDate2" },
     ];
   }
   return [
-    { id: "eCBrand1", label: "Brand", text: String(state.eCBrand1 || state.eBrand || ""), color: "", field: "eCBrand1" },
-    {
-      id: "eCFlavorTxt",
-      label: "Flavor",
-      text: String(state.eCFlavorTxt || state.eName1 || ""),
-      color: "",
-      field: "eCFlavorTxt",
-    },
+    { id: "eBrand", label: "Brand", text: String(state.eBrand || ""), color: "", field: "eBrand" },
+    { id: "eName1", label: "Name", text: String(state.eName1 || ""), color: "", field: "eName1" },
+    { id: "eName2", label: "Name 2", text: String(state.eName2 || ""), color: "", field: "eName2" },
+    { id: "eIngredients", label: "Ingredients", text: String(state.eIngredients || ""), color: "", field: "eIngredients" },
+    { id: "eIngredientsAr", label: "Ingredients AR", text: String(state.eIngredientsAr || ""), color: "", field: "eIngredientsAr" },
     { id: "eWeight", label: "Weight", text: String(state.eWeight || ""), color: "", field: "eWeight" },
   ];
 }
