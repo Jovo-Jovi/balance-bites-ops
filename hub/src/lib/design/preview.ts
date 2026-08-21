@@ -48,25 +48,43 @@ function starPoints(cx: number, cy: number, rx: number, ry: number) {
   return pts.join(" ");
 }
 
-function partShape(part: CompositePart) {
+function partBorderWidth(part: CompositePart) {
+  if (part.borderWidth != null && part.borderWidth !== "") {
+    const n = Number(part.borderWidth);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  if (part.type === "silhouette") return 0;
+  return 1.2;
+}
+
+function partLocalGroup(part: CompositePart, inner: string) {
+  const left = part.x - part.w / 2;
+  const top = part.y - part.h / 2;
+  const rot = part.rot ? ` transform="rotate(${part.rot} ${part.x} ${part.y})"` : "";
+  const bw = partBorderWidth(part);
+  const stroke =
+    bw > 0 && part.pathLocal
+      ? `<path d="${esc(part.pathLocal)}" fill="none" stroke="${esc(part.borderColor || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round" stroke-linecap="round"/>`
+      : "";
+  return `<g${rot}><g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">${inner}${stroke}</g></g>`;
+}
+
+function partShape(part: CompositePart, lite = false) {
   const fill = part.color || "#2e7d32";
   const x = part.x;
   const y = part.y;
   const rx = part.w / 2;
   const ry = part.h / 2;
-  const left = x - rx;
-  const top = y - ry;
-  const src = usableImage(part.src || part.srcUrl, part.artKey);
-  const clipId = `pclip-${String(part.id || "x").replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const src = lite ? "" : usableImage(part.src || part.srcUrl, part.artKey);
   const wantImage = Boolean(src) && part.showImage === true;
-  if (wantImage && part.pathLocal) {
-    return `<g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">
-      <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><path d="${esc(part.pathLocal)}" /></clipPath></defs>
-      <image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="none" clip-path="url(#${clipId})" />
-    </g>`;
-  }
   if (wantImage) {
-    return `<image href="${esc(src)}" x="${left}" y="${top}" width="${part.w}" height="${part.h}" preserveAspectRatio="none" />`;
+    return partLocalGroup(
+      part,
+      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" />`,
+    );
+  }
+  if (part.pathLocal) {
+    return partLocalGroup(part, `<path d="${esc(part.pathLocal)}" fill="${esc(fill)}" />`);
   }
   const t = part.type;
   if (t === "circle" || t === "oval") {
@@ -81,11 +99,6 @@ function partShape(part: CompositePart) {
   if (t === "pentagon") return `<polygon points="${polygon(5, x, y, rx, ry)}" fill="${esc(fill)}" />`;
   if (t === "octagon") return `<polygon points="${polygon(8, x, y, rx, ry)}" fill="${esc(fill)}" />`;
   if (t === "star") return `<polygon points="${starPoints(x, y, rx, ry)}" fill="${esc(fill)}" />`;
-  if (part.pathLocal) {
-    const left = x - rx;
-    const top = y - ry;
-    return `<g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})"><path d="${esc(part.pathLocal)}" fill="${esc(fill)}" /></g>`;
-  }
   return `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${esc(fill)}" />`;
 }
 
@@ -126,7 +139,8 @@ function compositeClip(comp: CompositeBlob) {
   return `<rect width="100" height="100" />`;
 }
 
-function bgLayers(state: LabelState) {
+function bgLayers(state: LabelState, lite = false) {
+  if (lite) return "";
   const slots: Array<[string, string, string]> = [
     ["hxBg1", "sOpa1", "sZoom1"],
     ["hxBg2", "sOpa2", "sZoom2"],
@@ -151,7 +165,8 @@ function bgLayers(state: LabelState) {
     .join("");
 }
 
-function productLayer(state: LabelState, circular: boolean) {
+function productLayer(state: LabelState, circular: boolean, lite = false) {
+  if (lite) return "";
   const href = usableImage(state.hxCProd);
   if (!href) return "";
   const box = productPhotoBox(state, circular);
@@ -160,7 +175,8 @@ function productLayer(state: LabelState, circular: boolean) {
   return `<image href="${esc(href)}" x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
-function qrLayer(state: LabelState) {
+function qrLayer(state: LabelState, lite = false) {
+  if (lite) return "";
   const href = usableImage(state.hxQr);
   if (!href) return "";
   const w = Math.max(8, num(state, "sQRSize", 16));
@@ -178,8 +194,9 @@ function iconMark(
   color: string,
   strokeWidth: number,
   rot?: number,
+  letterStyle?: string,
 ) {
-  const inner = iconInner(iconId, color, strokeWidth);
+  const inner = iconInner(iconId, color, strokeWidth, letterStyle);
   if (!inner) return "";
   const left = x - w / 2;
   const top = y - h / 2;
@@ -188,11 +205,37 @@ function iconMark(
   return `<g transform="rotate(${rot} ${x} ${y})">${body}</g>`;
 }
 
-function zoneMarkup(z: CompositeZone, fallback: string) {
+function cssFont(raw: string, fallback: string) {
+  const s = String(raw || "")
+    .replace(/^['"]+|['"]+$/g, "")
+    .trim();
+  return s || fallback;
+}
+
+function fontOf(state: LabelState, keys: string[], fallback: string) {
+  for (const key of keys) {
+    const v = cssFont(str(state, key), "");
+    if (v) return v;
+  }
+  return fallback;
+}
+
+function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false) {
   if (z.kind === "icon" && z.iconId) {
-    return iconMark(z.iconId, z.x, z.y, z.w, z.h, z.color || z.textColor || fallback, z.strokeWidth ?? 2, z.rot);
+    return iconMark(
+      z.iconId,
+      z.x,
+      z.y,
+      z.w,
+      z.h,
+      z.color || z.textColor || fallback,
+      z.strokeWidth ?? 2,
+      z.rot,
+      z.letterStyle,
+    );
   }
   if (z.kind === "image") {
+    if (lite) return "";
     const src = usableImage(z.src || z.srcUrl);
     if (!src) return "";
     const left = z.x - z.w / 2;
@@ -204,16 +247,17 @@ function zoneMarkup(z: CompositeZone, fallback: string) {
     const fill = z.color || "#ffffff";
     const ink = z.textColor || "#1a1a1a";
     const fs = Math.max(3, r * (z.fontScale || 0.7));
+    const family = z.fontFamily || fontOf(state, ["fntHead", "fntH"], "Bitter, serif");
     return `<g>
       <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}" />
-      <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="Bitter, serif">${esc(String(z.text || "BB"))}</text>
+      <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="${esc(family)}">${esc(String(z.text || "BB"))}</text>
     </g>`;
   }
   const lines = String(z.text || "").split("\n");
   const color = z.color || z.textColor || fallback;
   const size = Math.max(2.2, Math.min(10, z.h / Math.max(lines.length, 1) * 0.7));
   const startY = z.y - ((lines.length - 1) * size * 0.55);
-  const family = z.fontFamily || "Montserrat, Tajawal, sans-serif";
+  const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
   const weight = z.fontWeight || "700";
   const plate = z.fill && z.fill !== "none"
     ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${Math.min(z.w, z.h) * 0.12}" fill="${esc(z.fill)}" />`
@@ -234,7 +278,7 @@ function esc(s: string) {
 export const CUT_STROKE_MM = 0.25;
 export const CUT_STROKE_COLOR = "#FF00FF";
 
-export type LabelPreviewOpts = { showCut?: boolean };
+export type LabelPreviewOpts = { showCut?: boolean; lite?: boolean };
 
 export function cutStrokeOf(state: LabelState) {
   const raw = Number(state.sCutStrokeMm);
@@ -352,30 +396,43 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
 
 export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
   const spec = getDesignSpec(template.designType);
+  const lite = Boolean(opts?.lite);
   const fill = str(state, "cLabel", "#2e7d32");
   const txt = str(state, "cTxtMain", "#ffffff");
   const brand = str(state, "eCBrand1", str(state, "eBrand", "BB"));
   const flavor = str(state, "eCFlavorTxt", str(state, "eName1", ""));
+  const name2 = str(state, "eName2", "");
   const weight = str(state, "eWeight", "");
+  const heading = fontOf(state, ["fntHead", "fntH"], "Playfair Display, serif");
+  const body = fontOf(state, ["fntBody", "fntB"], "DM Sans, sans-serif");
+  const arabic = fontOf(state, ["fntArabic", "fntAr"], "Tajawal, sans-serif");
+  const flavorFont = /[\u0600-\u06FF]/.test(flavor) ? arabic : body;
+  const name2Font = /[\u0600-\u06FF]/.test(name2) ? arabic : body;
   const comp = state._composite;
   const clipId = clipIdOf(template);
-  const stamps = [...(state._stamps || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
-  const stampMarkup = stamps.map((s: LabelStamp) => iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot)).join("");
+  const stamps = lite ? [] : [...(state._stamps || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
+  const stampMarkup = stamps
+    .map((s: LabelStamp) =>
+      iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot, s.letterStyle),
+    )
+    .join("");
 
   if (spec.composite && comp) {
-    const bg = comp.bg || fill;
     const parts = [...(comp.parts || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
     const zones = [...(comp.zones || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
+    const exactArt = parts.some((p) => p.showImage);
+    const boardFill =
+      lite || !exactArt ? `<rect width="100" height="100" fill="${esc(comp.bg || fill)}" />` : "";
     const inner = `
       <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
-        <rect width="100" height="100" fill="${esc(bg)}" />
-        ${bgLayers(state)}
-        ${parts.map(partShape).join("")}
-        ${productLayer(state, false)}
-        ${zones.map((z) => zoneMarkup(z, comp.txt || txt)).join("")}
+        ${boardFill}
+        ${bgLayers(state, lite)}
+        ${parts.map((p) => partShape(p, lite)).join("")}
+        ${productLayer(state, false, lite)}
+        ${zones.map((z) => zoneMarkup(z, comp.txt || txt, state, lite)).join("")}
         ${stampMarkup}
-        ${qrLayer(state)}
+        ${qrLayer(state, lite)}
       </g>`;
     return wrapPreviewSvg(inner, template, state, opts);
   }
@@ -383,18 +440,27 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   const clipKind = familyClipKind(template.designType, spec.outline);
   const wrap = outlineShape(clipKind, fill);
   const lid = clipKind === "taper" || clipKind === "rect" ? topLid(fill) : "";
+  const yBrand = clipKind === "taper" || clipKind === "rect" ? 44 : 38;
+  const yFlavor = clipKind === "taper" || clipKind === "rect" ? 56 : 52;
+  const yName2 = clipKind === "taper" || clipKind === "rect" ? 68 : 64;
+  const yWeight = clipKind === "taper" || clipKind === "rect" ? (name2 ? 80 : 72) : name2 ? 78 : 70;
+  const name2Box = name2
+    ? `<rect x="18" y="${yName2 - 5}" width="64" height="10" rx="2" fill="${esc(str(state, "cName2Bg", "#473929"))}" />
+      <text x="50" y="${yName2}" text-anchor="middle" dominant-baseline="middle" fill="${esc(str(state, "cName2Txt", txt))}" font-size="4.2" font-family="${esc(name2Font)}" font-weight="700">${esc(name2)}</text>`
+    : "";
   const inner = `
     <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${wrap}</clipPath></defs>
     ${lid}
     <g clip-path="url(#${clipId})">
       ${wrap}
-      ${bgLayers(state)}
-      ${productLayer(state, template.designType === "circular")}
-      <text x="50" y="${clipKind === "taper" || clipKind === "rect" ? 48 : 42}" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="Playfair Display, serif" font-weight="700">${esc(brand)}</text>
-      <text x="50" y="${clipKind === "taper" || clipKind === "rect" ? 62 : 56}" text-anchor="middle" fill="${esc(txt)}" font-size="6" font-family="Tajawal, sans-serif">${esc(flavor)}</text>
-      <text x="50" y="${clipKind === "taper" || clipKind === "rect" ? 76 : 70}" text-anchor="middle" fill="${esc(txt)}" font-size="3.6" font-family="DM Sans, sans-serif">${esc(weight)}</text>
+      ${bgLayers(state, lite)}
+      ${productLayer(state, template.designType === "circular", lite)}
+      <text x="50" y="${yBrand}" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="${esc(heading)}" font-weight="700">${esc(brand)}</text>
+      <text x="50" y="${yFlavor}" text-anchor="middle" fill="${esc(txt)}" font-size="5.4" font-family="${esc(flavorFont)}">${esc(flavor)}</text>
+      ${name2Box}
+      <text x="50" y="${yWeight}" text-anchor="middle" fill="${esc(txt)}" font-size="3.4" font-family="${esc(body)}">${esc(weight)}</text>
       ${stampMarkup}
-      ${qrLayer(state)}
+      ${qrLayer(state, lite)}
     </g>`;
   return wrapPreviewSvg(inner, template, state, opts);
 }

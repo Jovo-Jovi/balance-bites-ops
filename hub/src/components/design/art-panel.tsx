@@ -10,7 +10,13 @@ import {
   readImageFile,
   usableImage,
 } from "@/lib/design/art";
-import { ICON_CATEGORIES, categoryCount, filterIcons, iconSvg } from "@/lib/design/icons";
+import {
+  ICON_CATEGORIES,
+  LETTER_STYLES,
+  categoryCount,
+  filterIcons,
+  iconSvg,
+} from "@/lib/design/icons";
 import { useDesignApp } from "./design-context";
 
 function str(state: Record<string, unknown>, key: string) {
@@ -117,155 +123,202 @@ function ImageSlot({
   );
 }
 
-export function ArtPanel() {
+export function ImagesPanel() {
   const app = useDesignApp();
   const t = app.current;
-  const [cat, setCat] = useState("all");
-  const [q, setQ] = useState("");
-  const [sizeId, setSizeId] = useState("m");
-  const [iconColor, setIconColor] = useState("");
   const [moreBg, setMoreBg] = useState(false);
-  const icons = useMemo(() => filterIcons(cat, q), [cat, q]);
   if (!t) return null;
-
-  const fill = str(t.state, "cLabel") || "#2e7d32";
-  const ink = str(t.state, "cTxtMain") || "#ffffff";
-  const stampColor = iconColor || ink;
   const composite = Boolean(t.state._composite);
 
   return (
-    <>
-      <Accordion title="Background images">
-        <p className="mb-3 text-sm text-[var(--bb-muted)]">Paper and photos clip to this family’s cut.</p>
-        <div className="flex flex-col gap-3">
-          {BG_SLOTS.map((slot) => (
+    <div>
+      <p className="mb-3 text-sm text-[var(--bb-muted)]">
+        Same slots as live Typography → Background images. PNG/JPG clip to this family’s cut.
+      </p>
+      <div className="flex flex-col gap-3">
+        {BG_SLOTS.map((slot) => (
+          <ImageSlot
+            key={slot.key}
+            label={slot.label}
+            hint={slot.hint}
+            field={slot.key}
+            opaKey={slot.opa}
+            zoomKey={slot.zoom}
+          />
+        ))}
+      </div>
+      {composite ? (
+        <label className="mt-3 flex items-center gap-2 text-sm text-[var(--bb-text)]">
+          <input
+            type="checkbox"
+            checked={Boolean(t.state._fillCutWithPaper)}
+            onChange={(e) => app.setFillCut(e.target.checked)}
+          />
+          Fill the cut shape with paper
+        </label>
+      ) : null}
+      <button
+        type="button"
+        className="mt-3 text-xs text-[var(--bb-gold)] underline-offset-2 hover:underline"
+        onClick={() => setMoreBg((v) => !v)}
+      >
+        {moreBg ? "Hide extra layers" : "More layers (3–5 + QR)"}
+      </button>
+      {moreBg ? (
+        <div className="mt-3 flex flex-col gap-3">
+          {BG_MORE.map((slot) => (
             <ImageSlot
               key={slot.key}
               label={slot.label}
-              hint={slot.hint}
               field={slot.key}
               opaKey={slot.opa}
               zoomKey={slot.zoom}
             />
           ))}
         </div>
-        {composite ? (
-          <label className="mt-3 flex items-center gap-2 text-sm text-[var(--bb-text)]">
-            <input
-              type="checkbox"
-              checked={Boolean(t.state._fillCutWithPaper)}
-              onChange={(e) => app.setFillCut(e.target.checked)}
-            />
-            Fill the cut shape with paper
-          </label>
-        ) : null}
-        <button
-          type="button"
-          className="mt-3 text-xs text-[var(--bb-gold)] underline-offset-2 hover:underline"
-          onClick={() => setMoreBg((v) => !v)}
-        >
-          {moreBg ? "Hide extra layers" : "More layers (3–5 + QR)"}
-        </button>
-        {moreBg ? (
-          <div className="mt-3 flex flex-col gap-3">
-            {BG_MORE.map((slot) => (
-              <ImageSlot
-                key={slot.key}
-                label={slot.label}
-                field={slot.key}
-                opaKey={slot.opa}
-                zoomKey={slot.zoom}
-              />
-            ))}
-          </div>
-        ) : null}
-      </Accordion>
+      ) : null}
+    </div>
+  );
+}
 
-      <Accordion title="Icon library">
-        <p className="mb-3 text-sm text-[var(--bb-muted)]">
-          Pick a color and size, then click an icon. It lands on the sticker — change it later in Layers.
-        </p>
-        <TextInput
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search icons"
-          aria-label="Search icons"
-        />
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {ICON_CATEGORIES.map((c) => {
-            const on = cat === c.id;
-            const n = categoryCount(c.id);
+export function IconsPanel() {
+  const app = useDesignApp();
+  const t = app.current;
+  const [cat, setCat] = useState("all");
+  const [q, setQ] = useState("");
+  const [sizeId, setSizeId] = useState("m");
+  const [iconColor, setIconColor] = useState("");
+  const [letterStyle, setLetterStyle] = useState("fatty");
+  const icons = useMemo(() => filterIcons(cat, q), [cat, q]);
+  if (!t) return null;
+
+  const fill = str(t.state, "cLabel") || "#2e7d32";
+  const ink = str(t.state, "cTxtMain") || "#ffffff";
+  const stampColor = iconColor || ink;
+
+  return (
+    <div>
+      <p className="mb-3 text-sm text-[var(--bb-muted)]">
+        Pick a color and size, then click an icon. A–Z letters use the font type below, same as the HTML picker.
+      </p>
+      <TextInput
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search icons"
+        aria-label="Search icons"
+      />
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {ICON_CATEGORIES.map((c) => {
+          const on = cat === c.id;
+          const n = categoryCount(c.id);
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setCat(c.id)}
+              className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                on
+                  ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                  : "border-[var(--bb-line)] text-[var(--bb-text)]"
+              }`}
+            >
+              {c.label} {n}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-3">
+        <p className="mb-1.5 text-xs text-[var(--bb-muted)]">Letter font</p>
+        <div className="flex flex-wrap gap-1.5">
+          {LETTER_STYLES.map((s) => {
+            const on = letterStyle === s.id;
             return (
               <button
-                key={c.id}
+                key={s.id}
                 type="button"
-                onClick={() => setCat(c.id)}
+                onClick={() => setLetterStyle(s.id)}
                 className={`rounded-full border px-2.5 py-1 text-[11px] ${
                   on
                     ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
                     : "border-[var(--bb-line)] text-[var(--bb-text)]"
                 }`}
-              >
-                {c.label} {n}
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-[var(--bb-muted)]">Size</span>
-          {ICON_SIZES.map((s) => {
-            const on = sizeId === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSizeId(s.id)}
-                className={`min-h-9 min-w-9 rounded-full border px-2 text-xs ${
-                  on
-                    ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
-                    : "border-[var(--bb-line)] text-[var(--bb-text)]"
-                }`}
+                style={{ fontFamily: s.family, fontWeight: s.weight }}
               >
                 {s.label}
               </button>
             );
           })}
-          <label className="ms-auto flex items-center gap-2 text-xs text-[var(--bb-muted)]">
-            Color
-            <input
-              type="color"
-              value={toHex(stampColor)}
-              onChange={(e) => setIconColor(e.target.value)}
-              className="h-9 w-9 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
-              aria-label="Icon color"
-            />
-          </label>
         </div>
-        <p className="mt-2 text-xs text-[var(--bb-muted)]">
-          {icons.length} in {ICON_CATEGORIES.find((c) => c.id === cat)?.label ?? cat}
-        </p>
-        <div className="mt-2 grid max-h-[28rem] grid-cols-4 gap-1.5 overflow-auto sm:grid-cols-5 lg:grid-cols-6">
-          {icons.map((ic) => (
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-[var(--bb-muted)]">Size</span>
+        {ICON_SIZES.map((s) => {
+          const on = sizeId === s.id;
+          return (
             <button
-              key={ic.id}
+              key={s.id}
               type="button"
-              title={ic.label}
-              onClick={() => {
-                app.applyIcon(ic.id, sizeId, stampColor);
-              }}
-              className="flex aspect-square flex-col items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-1"
-              style={{ background: fill }}
+              onClick={() => setSizeId(s.id)}
+              className={`min-h-9 min-w-9 rounded-full border px-2 text-xs ${
+                on
+                  ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                  : "border-[var(--bb-line)] text-[var(--bb-text)]"
+              }`}
             >
-              <span
-                className="block h-8 w-8"
-                dangerouslySetInnerHTML={{ __html: iconSvg(ic, stampColor, ic.thickCurve ? 2.8 : ic.fill ? 0.9 : 2) }}
-              />
-              <span className="mt-0.5 w-full truncate text-[9px] leading-tight" style={{ color: stampColor }}>
-                {ic.label}
-              </span>
+              {s.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
+        <label className="ms-auto flex items-center gap-2 text-xs text-[var(--bb-muted)]">
+          Color
+          <input
+            type="color"
+            value={toHex(stampColor)}
+            onChange={(e) => setIconColor(e.target.value)}
+            className="h-9 w-9 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+            aria-label="Icon color"
+          />
+        </label>
+      </div>
+      <p className="mt-2 text-xs text-[var(--bb-muted)]">
+        {icons.length} in {ICON_CATEGORIES.find((c) => c.id === cat)?.label ?? cat}
+      </p>
+      <div className="mt-2 grid max-h-[28rem] grid-cols-4 gap-1.5 overflow-auto sm:grid-cols-5 lg:grid-cols-6">
+        {icons.map((ic) => (
+          <button
+            key={ic.id}
+            type="button"
+            title={ic.label}
+            onClick={() => {
+              app.applyIcon(ic.id, sizeId, stampColor, letterStyle);
+            }}
+            className="flex aspect-square flex-col items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-1"
+            style={{ background: fill }}
+          >
+            <span
+              className="block h-8 w-8"
+              dangerouslySetInnerHTML={{
+                __html: iconSvg(ic, stampColor, ic.thickCurve ? 2.8 : ic.fill ? 0.9 : 2, letterStyle),
+              }}
+            />
+            <span className="mt-0.5 w-full truncate text-[9px] leading-tight" style={{ color: stampColor }}>
+              {ic.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ArtPanel() {
+  return (
+    <>
+      <Accordion title="Uploaded images">
+        <ImagesPanel />
+      </Accordion>
+      <Accordion title="Icon library">
+        <IconsPanel />
       </Accordion>
     </>
   );

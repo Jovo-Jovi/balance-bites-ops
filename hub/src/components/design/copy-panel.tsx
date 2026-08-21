@@ -1,6 +1,6 @@
 "use client";
 
-import { Accordion, Field, TextInput } from "@/components/invoices/ui";
+import { Field, TextInput } from "@/components/invoices/ui";
 import { stickerCopyFields } from "@/lib/design/layers";
 import { useDesignApp } from "./design-context";
 
@@ -12,7 +12,7 @@ export function CopyPanel() {
   const composite = t.designType === "composite";
 
   return (
-    <Accordion title="On the sticker">
+    <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
         {composite
           ? "These are the text and logo blocks already on this die-cut."
@@ -45,7 +45,7 @@ export function CopyPanel() {
           </div>
         ))}
       </div>
-    </Accordion>
+    </div>
   );
 }
 

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Accordion, ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
+import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
-import { ArtPanel } from "./art-panel";
+import { ImagesPanel, IconsPanel } from "./art-panel";
 import { CopyPanel } from "./copy-panel";
 import { productOptions, specOf, useDesignApp } from "./design-context";
 import { LabelPreview } from "./label-preview";
@@ -13,14 +15,26 @@ function str(state: Record<string, unknown>, key: string) {
   return String(state[key] ?? "");
 }
 
+const ATELIER_TABS = [
+  { id: "copy", label: "Copy" },
+  { id: "images", label: "Images" },
+  { id: "icons", label: "Icons" },
+  { id: "layers", label: "Layers" },
+] as const;
+
+type AtelierTab = (typeof ATELIER_TABS)[number]["id"];
+
 export function AtelierTool() {
   const app = useDesignApp();
   const t = app.current;
+  const [panel, setPanel] = useState<AtelierTab>("copy");
   if (!t) {
     return <Empty>Open a template from the library, or create a new one.</Empty>;
   }
   const spec = specOf(t);
-  const products = productOptions(app.products, t.productId);
+  const linked = productForTemplate(t, app.products);
+  const productId = t.productId || linked?.id || "";
+  const products = productOptions(app.products, productId);
   const packHint = FLAVOR_PACKS.find((p) => p.bg.toLowerCase() === str(t.state, "cLabel").toLowerCase());
   const sku = app.linkedStickers[0]?.name;
 
@@ -63,7 +77,7 @@ export function AtelierTool() {
             </Field>
             <Field label="Product">
               <select
-                value={t.productId}
+                value={productId}
                 onChange={(e) => app.applyProduct(e.target.value)}
                 className="bb-glass-input min-h-11 w-full px-3 text-[var(--bb-text)]"
               >
@@ -124,9 +138,35 @@ export function AtelierTool() {
           </div>
         </Accordion>
 
-        <CopyPanel />
-        <LayersPanel />
-        <ArtPanel />
+        <div>
+          <div className="mb-2 flex flex-wrap gap-1.5" role="tablist" aria-label="Atelier sections">
+            {ATELIER_TABS.map((tab) => {
+              const on = panel === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setPanel(tab.id)}
+                  className={`rounded-[var(--bb-radius)] border px-3 py-2 text-xs tracking-wide uppercase ${
+                    on
+                      ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                      : "border-[var(--bb-line)] text-[var(--bb-text)]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="bb-glass p-4">
+            {panel === "copy" ? <CopyPanel /> : null}
+            {panel === "images" ? <ImagesPanel /> : null}
+            {panel === "icons" ? <IconsPanel /> : null}
+            {panel === "layers" ? <LayersPanel /> : null}
+          </div>
+        </div>
       </div>
 
       <aside className="w-full lg:sticky lg:top-24 lg:w-[28rem]">

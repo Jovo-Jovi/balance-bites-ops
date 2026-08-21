@@ -1,13 +1,55 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
+import { characterPresetSrc } from "@/lib/design/art";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
+import { labelPreviewSvg } from "@/lib/design/preview";
+import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
-import type { DesignType } from "@/lib/design/types";
+import type { DesignType, LabelTemplate } from "@/lib/design/types";
 import { productOptions, useDesignApp } from "./design-context";
-import { LabelPreview } from "./label-preview";
+
+function LazyArt({ src }: { src: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setOn(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className="flex h-16 items-center justify-center">
+      {on ? (
+        <img src={src} alt="" loading="lazy" decoding="async" className="max-h-16 max-w-full object-contain" />
+      ) : (
+        <span className="h-10 w-10 rounded-full bg-[var(--bb-panel)]" />
+      )}
+    </div>
+  );
+}
+
+function LibraryThumb({ template }: { template: LabelTemplate }) {
+  const art = characterPresetSrc(template);
+  if (art) return <LazyArt src={art} />;
+  const svg = labelPreviewSvg(template, template.state, { lite: true });
+  return (
+    <div className="mx-auto h-16 w-16 overflow-hidden">
+      <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+    </div>
+  );
+}
 
 export function LibraryTool() {
   const app = useDesignApp();
@@ -26,7 +68,7 @@ export function LibraryTool() {
     return app.templates.filter((t) => {
       if (family && t.designType !== family) return false;
       if (!needle) return true;
-      const product = app.products.find((p) => p.id === t.productId)?.name || "";
+      const product = productForTemplate(t, app.products)?.name || "";
       return [t.name, t.flavorKey, t.designType, product].join(" ").toLowerCase().includes(needle);
     });
   }, [app.templates, app.products, q, family]);
@@ -86,33 +128,31 @@ export function LibraryTool() {
             : "No templates match this search."}
         </Empty>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {visible.map((t) => {
-            const product = app.products.find((p) => p.id === t.productId);
+            const product = productForTemplate(t, app.products);
             const spec = DESIGN_SPECS.find((s) => s.id === t.designType);
             return (
-              <li key={t.id} className="bb-glass flex flex-col gap-3 p-3">
-                <button
-                  type="button"
-                  className="text-start"
-                  onClick={() => void app.openTemplate(t.id)}
-                >
-                  <LabelPreview template={t} />
-                  <div className="mt-3">
-                    <p className="font-brand text-lg text-[var(--bb-title)]">{t.name}</p>
-                    <p className="text-sm text-[var(--bb-muted)]">
+              <li key={t.id} className="bb-glass flex flex-col gap-2 p-2">
+                <button type="button" className="text-start" onClick={() => void app.openTemplate(t.id)}>
+                  <LibraryThumb template={t} />
+                  <div className="mt-2">
+                    <p className="truncate font-brand text-sm text-[var(--bb-title)]">{t.name}</p>
+                    <p className="truncate text-[11px] text-[var(--bb-muted)]">
                       {spec?.label || t.designType}
                       {t.flavorKey ? ` · ${t.flavorKey}` : ""}
                       {product ? ` · ${product.name}` : ""}
                     </p>
                   </div>
                 </button>
-                <div className="flex flex-wrap gap-2">
-                  <ActionBtn onClick={() => void app.openTemplate(t.id)}>Open</ActionBtn>
-                  <ActionBtn tone="ghost" onClick={() => void app.duplicate(t.id)}>
-                    Duplicate
+                <div className="flex flex-wrap gap-1">
+                  <ActionBtn className="min-h-8 px-2 text-[11px]" onClick={() => void app.openTemplate(t.id)}>
+                    Open
                   </ActionBtn>
-                  <ActionBtn tone="danger" onClick={() => setPendingDelete(t.id)}>
+                  <ActionBtn tone="ghost" className="min-h-8 px-2 text-[11px]" onClick={() => void app.duplicate(t.id)}>
+                    Copy
+                  </ActionBtn>
+                  <ActionBtn tone="danger" className="min-h-8 px-2 text-[11px]" onClick={() => setPendingDelete(t.id)}>
                     Delete
                   </ActionBtn>
                 </div>

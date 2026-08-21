@@ -1,7 +1,16 @@
 import { genId } from "@/lib/invoices/helpers";
 import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
-import type { CompositeZone, LabelStamp, LabelState } from "./types";
+import type { CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
+
+export function characterPresetSrc(template: LabelTemplate) {
+  const parts = template.state._composite?.parts || [];
+  for (const part of parts) {
+    const src = usableImage(part.src || part.srcUrl, part.artKey);
+    if (src.startsWith("/design-presets/")) return src;
+  }
+  return "";
+}
 
 export const MAX_BG_BYTES = 6 * 1024 * 1024;
 
@@ -81,12 +90,19 @@ export function setFillCutWithPaper(state: LabelState, on: boolean): LabelState 
   return syncPaperToSilhouette(next);
 }
 
-export function applyIconToState(state: LabelState, iconId: string, sizeId: string, color: string): LabelState {
+export function applyIconToState(
+  state: LabelState,
+  iconId: string,
+  sizeId: string,
+  color: string,
+  letterStyle?: string,
+): LabelState {
   const icon = getIcon(iconId);
   if (!icon) return state;
   const size = iconSizeById(sizeId);
   const fill = color || String(state.cTxtMain || "#ffffff");
   const id = genId("ic");
+  const style = icon.letter ? letterStyle || "fatty" : undefined;
   const stamp: LabelStamp = {
     id,
     iconId,
@@ -97,6 +113,7 @@ export function applyIconToState(state: LabelState, iconId: string, sizeId: stri
     color: fill,
     strokeWidth: size.stroke,
     sizeId: size.id,
+    letterStyle: style,
     z: 40,
   };
 
@@ -111,6 +128,7 @@ export function applyIconToState(state: LabelState, iconId: string, sizeId: stri
       h: size.pct,
       color: fill,
       strokeWidth: size.stroke,
+      letterStyle: style,
       z: 40,
       label: icon.label,
     };

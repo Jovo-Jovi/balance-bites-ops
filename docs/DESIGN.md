@@ -10,7 +10,7 @@ This is **not** a paste of the sticker HTML and **not** an iframe. Tools are fil
 | id | Label | Component | Notes |
 |---|---|---|---|
 | `library` | Library | `library-tool.tsx` | Default. List, search, new, import JSON, duplicate, delete |
-| `atelier` | Atelier | `atelier-tool.tsx` | Open template: copy, flavor pack, background images, icon library, product, preview |
+| `atelier` | Atelier | `atelier-tool.tsx` | Open template: Copy / Images / Icons / Layers tabs, product, preview |
 | `print` | Print house | `print-tool.tsx` | Bleed / DPI / editable cut-stroke border (mm + colour) / SVG / JSON |
 
 Old ids still resolve: `templates` → library, `prepress` → print, `libraries` / `link` → atelier.
@@ -25,11 +25,11 @@ hub/src/components/design/
   design-context.tsx
   library-tool.tsx
   atelier-tool.tsx
-  art-panel.tsx     background uploads + icon picker
+  art-panel.tsx     Images tab (hxBg* uploads) + Icons tab (letter fonts)
   copy-panel.tsx    copy that is actually on this family
   layers-panel.tsx  z-order + select; icon/text color
   print-tool.tsx
-  label-preview.tsx static thumbs + Atelier drag/select overlay
+  label-preview.tsx Atelier drag/select overlay
 hub/src/lib/design/
   write.ts          writeDesignKey / removeDesignKey
   types.ts
@@ -37,10 +37,11 @@ hub/src/lib/design/
   colors.ts         flavor packs (code only — not bb_color_presets)
   templates.ts      normalize, starter, import/export, safe delete
   assets.ts         strip/hydrate R2 __asset__: refs
-  icons.ts          repo icon catalog (Lucide-style + kids + curves). Not Firestore.
+  icons.ts          repo icon catalog + live A–Z letter styles. Not Firestore.
   icon-catalog.json
   art.ts            bg slots, stamp/apply icon
   art-presets.ts    artref: / assets/presets/ → /design-presets/*.svg (repo, not Firestore)
+  product-match.ts  map template name to current bb_products when productId is empty
   layers.ts         layer list / move / recolor / drag
   preview.ts        SVG from composite parts/zones or die-cut outline; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download (includes cut border)
@@ -82,3 +83,6 @@ Design **reads only:** `bb_products`, `bb_stickers`.
 3. Delete refuses to wipe a multi-template library if one id would empty the array (live `LabelTemplateMgr.remove` guard).
 4. Hub chrome stays linen. Flavor packs tint the label, not the workspace.
 5. Atelier preview: tap a layer to select, drag to move, corner handle to resize. Uploaded photos and character parts are not static.
+6. Library cards are compact thumbs (lazy character art, lite silhouette for other families). Full preview lives in Atelier.
+7. Uploaded images are the Atelier **Images** tab (live Typography → Background images). Not a fourth workspace tool.
+8. A–Z icon letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block).

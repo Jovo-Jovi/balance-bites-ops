@@ -133,6 +133,18 @@ Atelier preview is a canvas: tap a layer (or the Layers list) to select it, drag
 
 ---
 
+## 2026-08-22 — Library size/speed, Images tab, letter fonts, popcorn cut
+
+On `feat/design`. Library cards are a 4-column compact grid. Character art lazy-loads the preset file; other families use a lite silhouette so the page does not mount 32 full previews.
+
+Uploaded images live in Atelier as the **Images** tab (Copy / Images / Icons / Layers). Same `hxBg*` / `hxCProd` slots as live Typography → Background images. Not a fourth workspace tool.
+
+A–Z icon letters use live `LETTER_STYLES` (Fredoka / Baloo 2 / Nunito / Bubblegum Sans / Sniglet / Arial Black) instead of Tajawal.
+
+Character art fills the part box (`object-fit` meet) with the saved path stroke as the border; the die-cut clip is `unionPath`. White full-canvas fills were stripped from repo preset SVGs so the outline can match the cut. Templates with an empty `productId` show the current catalog product by name (popcorn-yellow → فشار بالكراميل, and so on). Saving writes that link. Family labels use heading/body/Arabic fonts and the name-2 plate from saved state.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design follow-up: full composite drawing / PNG cut pack / writing preset folders into tenant templates

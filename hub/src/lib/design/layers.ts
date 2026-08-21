@@ -24,6 +24,7 @@ export type DesignLayer = {
   field?: string;
   lock?: boolean;
   removable: boolean;
+  letterStyle?: string;
 };
 
 export type CanvasItem = {
@@ -78,6 +79,7 @@ export function listLayers(state: LabelState): DesignLayer[] {
         field: zone.field,
         lock: zone.lock,
         removable: zone.kind === "icon" && !zone.lock,
+        letterStyle: zone.letterStyle,
       });
     }
   }
@@ -90,6 +92,7 @@ export function listLayers(state: LabelState): DesignLayer[] {
       color: stamp.color,
       iconId: stamp.iconId,
       removable: true,
+      letterStyle: stamp.letterStyle,
     });
   }
   if (usableImage(state.hxCProd) || String(state.hxCProd || "").startsWith("__asset__:")) {

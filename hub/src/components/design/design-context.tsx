@@ -19,6 +19,7 @@ import { hydrateStateAssets, hasUnresolvedAssets, stripStateAssets } from "@/lib
 import { applyIconToState, removeArtItem, setFillCutWithPaper, syncPaperToSilhouette } from "@/lib/design/art";
 import { moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState } from "@/lib/design/layers";
 import { flavorPackById, FLAVOR_PACKS } from "@/lib/design/colors";
+import { productForTemplate } from "@/lib/design/product-match";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
   applyFlavorPack,
@@ -67,7 +68,7 @@ type DesignContextValue = {
   applyProduct: (productId: string) => void;
   setField: (key: string, value: string) => void;
   setFields: (patch: Record<string, string>) => void;
-  applyIcon: (iconId: string, sizeId: string, color?: string) => void;
+  applyIcon: (iconId: string, sizeId: string, color?: string, letterStyle?: string) => void;
   removeArt: (id: string) => void;
   patchLayer: (id: string, patch: { color?: string; text?: string }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
@@ -417,11 +418,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             key === "hxBg1" && nextState._fillCutWithPaper ? syncPaperToSilhouette(nextState) : nextState,
         });
       },
-      applyIcon: (iconId, sizeId, color) => {
+      applyIcon: (iconId, sizeId, color, letterStyle) => {
         if (!current) return;
         replaceCurrent({
           ...current,
-          state: applyIconToState(current.state, iconId, sizeId, color || String(current.state.cTxtMain || "#ffffff")),
+          state: applyIconToState(
+            current.state,
+            iconId,
+            sizeId,
+            color || String(current.state.cTxtMain || "#ffffff"),
+            letterStyle,
+          ),
         });
       },
       removeArt: (id) => {
@@ -459,6 +466,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         const next: LabelTemplate = {
           ...current,
           name,
+          productId: current.productId || productForTemplate(current, products)?.id || "",
           flavorKey: flavorKeyFromState(current.state),
           productIdentity: identityFromState(current.state),
           updatedAt: new Date().toISOString(),

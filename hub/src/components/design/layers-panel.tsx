@@ -1,6 +1,6 @@
 "use client";
 
-import { Accordion, ActionBtn, Field, TextInput } from "@/components/invoices/ui";
+import { ActionBtn } from "@/components/invoices/ui";
 import { listLayers } from "@/lib/design/layers";
 import { iconSvg } from "@/lib/design/icons";
 import { useDesignApp } from "./design-context";
@@ -13,7 +13,7 @@ export function LayersPanel() {
   const fill = String(t.state.cLabel || "#2e7d32");
 
   return (
-    <Accordion title="Layers">
+    <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
         Front of the sticker is at the top. Tap a row to select it on the preview, then drag.
       </p>
@@ -39,7 +39,7 @@ export function LayersPanel() {
                 <span
                   className="flex h-8 w-8 items-center justify-center rounded"
                   style={{ background: fill }}
-                  dangerouslySetInnerHTML={{ __html: iconSvg(layer.iconId, layer.color || "#fff", 2) }}
+                  dangerouslySetInnerHTML={{ __html: iconSvg(layer.iconId, layer.color || "#fff", 2, layer.letterStyle) }}
                 />
               ) : (
                 <span className="h-8 w-8 rounded border border-[var(--bb-line)]" style={{ background: layer.color || fill }} />
@@ -75,7 +75,7 @@ export function LayersPanel() {
           ))}
         </ul>
       )}
-    </Accordion>
+    </div>
   );
 }
 

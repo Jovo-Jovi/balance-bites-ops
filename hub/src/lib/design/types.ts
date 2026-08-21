@@ -47,6 +47,7 @@ export type CompositePart = {
   artKey?: string;
   lock?: boolean;
   borderColor?: string;
+  borderWidth?: number | string;
 };
 
 export type CompositeZone = {
@@ -74,6 +75,7 @@ export type CompositeZone = {
   fontScale?: number;
   shape?: string;
   fill?: string;
+  letterStyle?: string;
 };
 
 export type LabelStamp = {
@@ -88,6 +90,7 @@ export type LabelStamp = {
   color?: string;
   strokeWidth?: number;
   sizeId?: string;
+  letterStyle?: string;
 };
 
 export type CompositeBlob = {
