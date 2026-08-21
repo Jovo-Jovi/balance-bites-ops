@@ -1,9 +1,16 @@
+import { usableImage } from "./art";
+import { iconInner } from "./icons";
 import { getDesignSpec } from "./specs";
-import type { CompositePart, LabelState, LabelTemplate } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
 
 function str(state: LabelState, key: string, fallback = "") {
   const v = state[key];
   return v == null || v === "" ? fallback : String(v);
+}
+
+function num(state: LabelState, key: string, fallback: number) {
+  const n = Number(state[key]);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function polygon(n: number, cx: number, cy: number, rx: number, ry: number, rot = -90) {
@@ -31,9 +38,9 @@ function partShape(part: CompositePart) {
   const y = part.y;
   const rx = part.w / 2;
   const ry = part.h / 2;
-  const src = part.src || part.srcUrl || "";
-  if (src && !src.startsWith("__asset__:")) {
-    return `<image href="${esc(src)}" x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" preserveAspectRatio="xMidYMid meet" />`;
+  const src = usableImage(part.src || part.srcUrl);
+  if (src) {
+    return `<image href="${esc(src)}" x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" preserveAspectRatio="xMidYMid slice" />`;
   }
   const t = part.type;
   if (t === "circle" || t === "oval") {
@@ -58,12 +65,8 @@ function partShape(part: CompositePart) {
 
 function outlineShape(kind: string, fill: string) {
   const c = esc(fill);
-  if (kind === "square") {
-    return `<rect x="12" y="12" width="76" height="76" fill="${c}" />`;
-  }
-  if (kind === "rounded_sq") {
-    return `<rect x="12" y="12" width="76" height="76" rx="14" fill="${c}" />`;
-  }
+  if (kind === "square") return `<rect x="12" y="12" width="76" height="76" fill="${c}" />`;
+  if (kind === "rounded_sq") return `<rect x="12" y="12" width="76" height="76" rx="14" fill="${c}" />`;
   if (kind === "diamond") return `<polygon points="${polygon(4, 50, 50, 38, 38, -45)}" fill="${c}" />`;
   if (kind === "hexagon") return `<polygon points="${polygon(6, 50, 50, 38, 38)}" fill="${c}" />`;
   if (kind === "pentagon") return `<polygon points="${polygon(5, 50, 50, 38, 38)}" fill="${c}" />`;
@@ -72,11 +75,90 @@ function outlineShape(kind: string, fill: string) {
   return `<circle cx="50" cy="50" r="38" fill="${c}" />`;
 }
 
+function compositeClip(comp: CompositeBlob) {
+  const union = String(comp.unionPath || "").trim();
+  if (union) return `<path d="${esc(union)}" />`;
+  const part = (comp.parts || [])[0];
+  if (part?.pathLocal) {
+    const left = part.x - part.w / 2;
+    const top = part.y - part.h / 2;
+    return `<path d="${esc(part.pathLocal)}" transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})" />`;
+  }
+  return `<rect width="100" height="100" />`;
+}
+
+function bgLayers(state: LabelState) {
+  const slots: Array<[string, string, string]> = [
+    ["hxBg1", "sOpa1", "sZoom1"],
+    ["hxBg2", "sOpa2", "sZoom2"],
+    ["hxBg3", "sOpa3", "sZoom3"],
+    ["hxBg4", "sOpa4", "sZoom4"],
+    ["hxBg5", "sOpa5", "sZoom5"],
+  ];
+  return slots
+    .map(([srcKey, opaKey, zoomKey]) => {
+      const href = usableImage(state[srcKey]);
+      if (!href) return "";
+      const o = num(state, opaKey, 1);
+      const z = Math.max(0.05, num(state, zoomKey, 100) / 100);
+      const size = 100 * z;
+      const x = 50 - size / 2;
+      const y = 50 - size / 2;
+      return `<image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice" />`;
+    })
+    .join("");
+}
+
+function productLayer(state: LabelState, circular: boolean) {
+  const href = usableImage(state.hxCProd);
+  if (!href) return "";
+  if (circular) {
+    return `<image href="${esc(href)}" x="54" y="28" width="36" height="36" preserveAspectRatio="xMidYMid meet" />`;
+  }
+  return `<image href="${esc(href)}" x="30" y="30" width="40" height="40" preserveAspectRatio="xMidYMid meet" />`;
+}
+
+function qrLayer(state: LabelState) {
+  const href = usableImage(state.hxQr);
+  if (!href) return "";
+  return `<image href="${esc(href)}" x="78" y="78" width="16" height="16" preserveAspectRatio="xMidYMid meet" />`;
+}
+
+function iconMark(
+  iconId: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+  strokeWidth: number,
+  rot?: number,
+) {
+  const inner = iconInner(iconId, color, strokeWidth);
+  if (!inner) return "";
+  const left = x - w / 2;
+  const top = y - h / 2;
+  const body = `<svg x="${left}" y="${top}" width="${w}" height="${h}" viewBox="0 0 24 24">${inner}</svg>`;
+  if (!rot) return body;
+  return `<g transform="rotate(${rot} ${x} ${y})">${body}</g>`;
+}
+
+function iconFromZone(z: CompositeZone, fallback: string) {
+  const id = z.iconId || "";
+  if (z.kind !== "icon" || !id) return "";
+  return iconMark(id, z.x, z.y, z.w, z.h, z.color || z.textColor || fallback, z.strokeWidth ?? 2, z.rot);
+}
+
+function iconFromStamp(s: LabelStamp, fallback: string) {
+  return iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || fallback, s.strokeWidth ?? 2, s.rot);
+}
+
 function esc(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/"/g, "&quot;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+}
+
+function clipIdOf(template: LabelTemplate) {
+  return `bbcut-${template.id.replace(/[^a-zA-Z0-9_-]/g, "") || "x"}`;
 }
 
 export function labelPreviewSvg(template: LabelTemplate, state: LabelState) {
@@ -87,6 +169,9 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState) {
   const flavor = str(state, "eCFlavorTxt", str(state, "eName1", ""));
   const weight = str(state, "eWeight", "");
   const comp = state._composite;
+  const clipId = clipIdOf(template);
+  const stamps = state._stamps || [];
+  const stampMarkup = stamps.map((s) => iconFromStamp(s, txt)).join("");
 
   if (spec.composite && comp) {
     const bg = comp.bg || fill;
@@ -95,21 +180,41 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState) {
     const partMarkup = parts.map(partShape).join("");
     const zoneMarkup = zones
       .map((z) => {
-        const color = z.color || comp.txt || txt;
+        const icon = iconFromZone(z, comp.txt || txt);
+        if (icon) return icon;
+        const color = z.color || z.textColor || comp.txt || txt;
         const text = esc(String(z.text || ""));
         const size = Math.max(3, Math.min(8, z.h * 0.45));
         return `<text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-family="Tajawal, DM Sans, sans-serif">${text}</text>`;
       })
       .join("");
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img"><rect width="100" height="100" fill="${esc(bg)}" /><g>${partMarkup}${zoneMarkup}</g></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img">
+      <defs><clipPath id="${clipId}">${compositeClip(comp)}</clipPath></defs>
+      <g clip-path="url(#${clipId})">
+        <rect width="100" height="100" fill="${esc(bg)}" />
+        ${bgLayers(state)}
+        ${partMarkup}
+        ${productLayer(state, false)}
+        ${zoneMarkup}
+        ${stampMarkup}
+        ${qrLayer(state)}
+      </g>
+    </svg>`;
   }
 
   const shape = spec.outline || (template.designType === "circular" ? "circle" : "rounded_sq");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img">
-    ${outlineShape(shape, fill)}
-    <text x="50" y="42" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="Playfair Display, serif" font-weight="700">${esc(brand)}</text>
-    <text x="50" y="56" text-anchor="middle" fill="${esc(txt)}" font-size="6" font-family="Tajawal, sans-serif">${esc(flavor)}</text>
-    <text x="50" y="70" text-anchor="middle" fill="${esc(txt)}" font-size="3.6" font-family="DM Sans, sans-serif">${esc(weight)}</text>
+    <defs><clipPath id="${clipId}">${outlineShape(shape, "#000")}</clipPath></defs>
+    <g clip-path="url(#${clipId})">
+      ${outlineShape(shape, fill)}
+      ${bgLayers(state)}
+      ${productLayer(state, template.designType === "circular")}
+      <text x="50" y="42" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="Playfair Display, serif" font-weight="700">${esc(brand)}</text>
+      <text x="50" y="56" text-anchor="middle" fill="${esc(txt)}" font-size="6" font-family="Tajawal, sans-serif">${esc(flavor)}</text>
+      <text x="50" y="70" text-anchor="middle" fill="${esc(txt)}" font-size="3.6" font-family="DM Sans, sans-serif">${esc(weight)}</text>
+      ${stampMarkup}
+      ${qrLayer(state)}
+    </g>
   </svg>`;
 }
 

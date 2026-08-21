@@ -3,6 +3,7 @@
 import { Accordion, ActionBtn, Empty, Field, TextArea, TextInput } from "@/components/invoices/ui";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
 import { DESIGN_SPECS } from "@/lib/design/specs";
+import { ArtPanel } from "./art-panel";
 import { productOptions, specOf, useDesignApp } from "./design-context";
 import { LabelPreview } from "./label-preview";
 
@@ -115,6 +116,8 @@ export function AtelierTool() {
             })}
           </div>
         </Accordion>
+
+        <ArtPanel />
 
         <Accordion title="Brand and flavor">
           <div className="grid gap-3 sm:grid-cols-2">

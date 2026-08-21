@@ -42,6 +42,7 @@ export type CompositePart = {
   src?: string;
   srcUrl?: string;
   pathLocal?: string;
+  showImage?: boolean;
 };
 
 export type CompositeZone = {
@@ -52,13 +53,31 @@ export type CompositeZone = {
   w: number;
   h: number;
   z?: number;
+  rot?: number;
   label?: string;
   text?: string;
   field?: string;
   color?: string;
+  textColor?: string;
   src?: string;
   srcUrl?: string;
+  iconId?: string;
+  strokeWidth?: number;
   lock?: boolean;
+};
+
+export type LabelStamp = {
+  id: string;
+  iconId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot?: number;
+  z?: number;
+  color?: string;
+  strokeWidth?: number;
+  sizeId?: string;
 };
 
 export type CompositeBlob = {
@@ -74,6 +93,8 @@ export type CompositeBlob = {
 
 export type LabelState = Record<string, unknown> & {
   _composite?: CompositeBlob;
+  _stamps?: LabelStamp[];
+  _fillCutWithPaper?: boolean;
   _isTapered?: boolean;
   _designType?: string;
 };

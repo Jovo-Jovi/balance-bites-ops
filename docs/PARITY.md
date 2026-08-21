@@ -83,9 +83,11 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. N
 - [x] Deep link `bb_label_open` from finance stickers (120s TTL, then clear)
 - [x] Product select from `bb_products`; linked SKUs from `bb_stickers` (read-only)
 - [x] Print house constants (1.5 mm bleed, 300 DPI) + SVG preview/download
+- [x] Atelier background uploads (`hxBg*` / `hxCProd`) on any family
+- [x] Icon library in Atelier (repo catalog + category variants; apply to the open template)
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
-- [ ] Icon library, Jelly Kids, applying `assets/presets/` (repo, not tenant dump)
+- [ ] Applying `assets/presets/` folders (repo, not tenant dump)
 
 ---
 

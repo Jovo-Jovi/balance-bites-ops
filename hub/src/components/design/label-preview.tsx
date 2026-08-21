@@ -1,6 +1,6 @@
 "use client";
 
-import { labelPreviewSvg } from "@/lib/design/preview";
+import { artboardCm, labelPreviewSvg } from "@/lib/design/preview";
 import type { LabelTemplate } from "@/lib/design/types";
 
 export function LabelPreview({
@@ -11,12 +11,14 @@ export function LabelPreview({
   className?: string;
 }) {
   const svg = labelPreviewSvg(template, template.state);
+  const { wCm, hCm } = artboardCm(template.state);
   return (
     <div
       className={`overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] ${className}`}
     >
       <div
-        className="aspect-square w-full"
+        className="w-full"
+        style={{ aspectRatio: `${wCm} / ${hCm}` }}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     </div>

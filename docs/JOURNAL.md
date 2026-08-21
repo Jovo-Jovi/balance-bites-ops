@@ -103,13 +103,19 @@ Dropped as their own tabs (same result, less duplication): New wizard, Product, 
 
 ### Explicit gaps (do not tick as done)
 
-Freeform composite drawing, PNG cut pack, icon/Jelly Kids/art-preset apply, Desktop `bbLabel-*.json` folder scan.
+Freeform composite drawing, PNG cut pack, applying `assets/presets/` folders, Desktop `bbLabel-*.json` folder scan.
+
+---
+
+## 2026-08-21 — Atelier art (backgrounds + icon catalog)
+
+On `feat/design`. Background uploads use live `hxBg*` / `hxCProd` keys and clip to the die-cut on every family. Icon picker lives in Atelier (not a fourth tab): repo catalog with category variants, click to stamp. Catalog is code, not a Firestore dump.
 
 ---
 
 ## Still not done (do not tick as shipped)
 
-- Design follow-up: composite drawing / PNG cut / art presets
+- Design follow-up: composite drawing / PNG cut / art-preset folders
 - Finance tabs and ledger formulas
 - One-shot JSON import of live `saved data`
 - R2 bucket init + `import:assets` (code is wired; bucket/token may still be a human Console step)

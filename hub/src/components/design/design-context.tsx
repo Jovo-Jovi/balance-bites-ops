@@ -16,6 +16,7 @@ import { useToast } from "@/components/toast";
 import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { hydrateStateAssets, hasUnresolvedAssets, stripStateAssets } from "@/lib/design/assets";
+import { applyIconToState, removeArtItem, setFillCutWithPaper, syncPaperToSilhouette } from "@/lib/design/art";
 import { flavorPackById, FLAVOR_PACKS } from "@/lib/design/colors";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
@@ -63,6 +64,10 @@ type DesignContextValue = {
   applyPack: (packId: string) => void;
   applyProduct: (productId: string) => void;
   setField: (key: string, value: string) => void;
+  setFields: (patch: Record<string, string>) => void;
+  applyIcon: (iconId: string, sizeId: string, color?: string) => void;
+  removeArt: (id: string) => void;
+  setFillCut: (on: boolean) => void;
   save: () => Promise<boolean>;
   saveAsNew: () => Promise<boolean>;
   linkedStickers: StickerSku[];
@@ -351,6 +356,28 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         });
         replaceCurrent({ ...current, productId: p.id, state });
       },
+      setFields: (patch) => {
+        if (!current) return;
+        let nextState: LabelState = patchState(current.state, patch);
+        if (Object.prototype.hasOwnProperty.call(patch, "cW") || Object.prototype.hasOwnProperty.call(patch, "cH")) {
+          nextState = {
+            ...nextState,
+            _composite: current.state._composite
+              ? {
+                  ...current.state._composite,
+                  artboard: {
+                    wCm: Number(patch.cW ?? current.state.cW) || current.state._composite.artboard?.wCm || 8,
+                    hCm: Number(patch.cH ?? current.state.cH) || current.state._composite.artboard?.hCm || 8,
+                  },
+                }
+              : current.state._composite,
+          };
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "hxBg1") && nextState._fillCutWithPaper) {
+          nextState = syncPaperToSilhouette(nextState);
+        }
+        replaceCurrent({ ...current, state: nextState });
+      },
       setField: (key, value) => {
         if (!current) return;
         const nextState: LabelState =
@@ -368,7 +395,26 @@ export function DesignProvider({ children }: { children: ReactNode }) {
                   : current.state._composite,
               }
             : patchState(current.state, { [key]: value });
-        replaceCurrent({ ...current, state: nextState });
+        replaceCurrent({
+          ...current,
+          state:
+            key === "hxBg1" && nextState._fillCutWithPaper ? syncPaperToSilhouette(nextState) : nextState,
+        });
+      },
+      applyIcon: (iconId, sizeId, color) => {
+        if (!current) return;
+        replaceCurrent({
+          ...current,
+          state: applyIconToState(current.state, iconId, sizeId, color || String(current.state.cTxtMain || "#ffffff")),
+        });
+      },
+      removeArt: (id) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: removeArtItem(current.state, id) });
+      },
+      setFillCut: (on) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: setFillCutWithPaper(current.state, on) });
       },
       save: async () => {
         if (!current) return false;

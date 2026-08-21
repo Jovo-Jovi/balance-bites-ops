@@ -10,7 +10,7 @@ This is **not** a paste of the sticker HTML and **not** an iframe. Tools are fil
 | id | Label | Component | Notes |
 |---|---|---|---|
 | `library` | Library | `library-tool.tsx` | Default. List, search, new, import JSON, duplicate, delete |
-| `atelier` | Atelier | `atelier-tool.tsx` | Open template: copy, flavor pack, product, preview |
+| `atelier` | Atelier | `atelier-tool.tsx` | Open template: copy, flavor pack, background images, icon library, product, preview |
 | `print` | Print house | `print-tool.tsx` | Bleed / DPI / SVG / JSON for the open template |
 
 Old ids still resolve: `templates` → library, `prepress` → print, `libraries` / `link` → atelier.
@@ -25,6 +25,7 @@ hub/src/components/design/
   design-context.tsx
   library-tool.tsx
   atelier-tool.tsx
+  art-panel.tsx     background uploads + icon picker
   print-tool.tsx
   label-preview.tsx
 hub/src/lib/design/
@@ -34,6 +35,9 @@ hub/src/lib/design/
   colors.ts         flavor packs (code only — not bb_color_presets)
   templates.ts      normalize, starter, import/export, safe delete
   assets.ts         strip/hydrate R2 __asset__: refs
+  icons.ts          repo icon catalog (Lucide-style + kids + curves). Not Firestore.
+  icon-catalog.json
+  art.ts            bg slots, stamp/apply icon
   preview.ts        SVG from composite parts/zones or die-cut outline
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
 hub/src/lib/keys.ts DESIGN_WRITE_KEYS
@@ -55,15 +59,15 @@ Design **reads only:** `bb_products`, `bb_stickers`.
 |---|---|
 | New / Templates / Product / Theme left tabs | New + product live inside Library / Atelier |
 | Theme / `bb_color_presets` editor | Invoices → Look (one list) |
-| Icon library, Jelly Kids, `assets/presets/` dump | Not a fourth app; applying repo art is an explicit gap |
+| Icon library, Jelly Kids, `assets/presets/` dump | Atelier icon picker (repo catalog). No fourth tab. Flavor packs stay code-only. Do not dump the catalog into Firestore |
 | Folder-connect, `bbLabel-*` disk scan | Import a JSON file the user picks |
 | Full BBComposite drawing + PNG cut pack | Preview + round-trip `state._composite`; SVG export |
 
 ## Explicit gaps
 
-- Freeform composite drawing, icon stamps, taper wrap renderer
+- Freeform composite drawing, taper wrap renderer
 - PNG cut-path print pack from `bb-prepress.js`
-- Applying repo art presets / Jelly Kids into tenant templates
+- Applying repo `assets/presets/` folders into tenant templates
 - Scanning Desktop `bbLabel-*.json` (import the file instead)
 - Auto-seed of any template or gold theme when Firestore is empty
 
