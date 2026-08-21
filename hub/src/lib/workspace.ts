@@ -132,7 +132,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "Library",
         en: "Templates",
         summary:
-          "Saved label templates. Create, import JSON, open in the atelier. Arabic names stay as stored.",
+          "Saved label templates. Create, import JSON, open in the atelier.",
         actions: [
           { label: "New template" },
           { label: "Import JSON" },
@@ -147,7 +147,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "Atelier",
         en: "Editor",
         summary:
-          "Copy, flavor pack, product pick, and a preview of saved geometry. English chrome.",
+          "Edit the open label: family shape, copy on the sticker, layers, backgrounds, icons.",
         actions: [{ label: "Save" }, { label: "Save as new" }],
         features: [
           "Reads bb_products and bb_stickers",

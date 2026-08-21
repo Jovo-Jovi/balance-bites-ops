@@ -11,7 +11,7 @@ This is **not** a paste of the sticker HTML and **not** an iframe. Tools are fil
 |---|---|---|---|
 | `library` | Library | `library-tool.tsx` | Default. List, search, new, import JSON, duplicate, delete |
 | `atelier` | Atelier | `atelier-tool.tsx` | Open template: copy, flavor pack, background images, icon library, product, preview |
-| `print` | Print house | `print-tool.tsx` | Bleed / DPI / SVG / JSON for the open template |
+| `print` | Print house | `print-tool.tsx` | Bleed / DPI / editable cut-stroke border (mm + colour) / SVG / JSON |
 
 Old ids still resolve: `templates` → library, `prepress` → print, `libraries` / `link` → atelier.
 
@@ -26,6 +26,8 @@ hub/src/components/design/
   library-tool.tsx
   atelier-tool.tsx
   art-panel.tsx     background uploads + icon picker
+  copy-panel.tsx    copy that is actually on this family
+  layers-panel.tsx  z-order + icon/text color
   print-tool.tsx
   label-preview.tsx
 hub/src/lib/design/
@@ -38,8 +40,9 @@ hub/src/lib/design/
   icons.ts          repo icon catalog (Lucide-style + kids + curves). Not Firestore.
   icon-catalog.json
   art.ts            bg slots, stamp/apply icon
-  preview.ts        SVG from composite parts/zones or die-cut outline
-  prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
+  layers.ts         layer list / move / recolor
+  preview.ts        SVG from composite parts/zones or die-cut outline; cut stroke overlay
+  prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download (includes cut border)
 hub/src/lib/keys.ts DESIGN_WRITE_KEYS
 ```
 
@@ -65,7 +68,7 @@ Design **reads only:** `bb_products`, `bb_stickers`.
 
 ## Explicit gaps
 
-- Freeform composite drawing, taper wrap renderer
+- Freeform composite drawing, full cone-unroll taper print
 - PNG cut-path print pack from `bb-prepress.js`
 - Applying repo `assets/presets/` folders into tenant templates
 - Scanning Desktop `bbLabel-*.json` (import the file instead)

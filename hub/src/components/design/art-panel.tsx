@@ -7,7 +7,6 @@ import {
   BG_MORE,
   BG_SLOTS,
   ICON_SIZES,
-  placedArtItems,
   readImageFile,
   usableImage,
 } from "@/lib/design/art";
@@ -124,21 +123,20 @@ export function ArtPanel() {
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [sizeId, setSizeId] = useState("m");
+  const [iconColor, setIconColor] = useState("");
   const [moreBg, setMoreBg] = useState(false);
   const icons = useMemo(() => filterIcons(cat, q), [cat, q]);
   if (!t) return null;
 
   const fill = str(t.state, "cLabel") || "#2e7d32";
   const ink = str(t.state, "cTxtMain") || "#ffffff";
-  const placed = placedArtItems(t.state);
+  const stampColor = iconColor || ink;
   const composite = Boolean(t.state._composite);
 
   return (
     <>
       <Accordion title="Background images">
-        <p className="mb-3 text-sm text-[var(--bb-muted)]">
-          Upload once and use on any family. Files stay on the template; save sends fat images to R2.
-        </p>
+        <p className="mb-3 text-sm text-[var(--bb-muted)]">Paper and photos clip to this family’s cut.</p>
         <div className="flex flex-col gap-3">
           {BG_SLOTS.map((slot) => (
             <ImageSlot
@@ -185,8 +183,7 @@ export function ArtPanel() {
 
       <Accordion title="Icon library">
         <p className="mb-3 text-sm text-[var(--bb-muted)]">
-          {categoryCount("all")} variants in the repo catalog, grouped by category. Click one to stamp it on this
-          design.
+          Pick a color and size, then click an icon. It lands on the sticker — change it later in Layers.
         </p>
         <TextInput
           value={q}
@@ -233,6 +230,16 @@ export function ArtPanel() {
               </button>
             );
           })}
+          <label className="ms-auto flex items-center gap-2 text-xs text-[var(--bb-muted)]">
+            Color
+            <input
+              type="color"
+              value={toHex(stampColor)}
+              onChange={(e) => setIconColor(e.target.value)}
+              className="h-9 w-9 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+              aria-label="Icon color"
+            />
+          </label>
         </div>
         <p className="mt-2 text-xs text-[var(--bb-muted)]">
           {icons.length} in {ICON_CATEGORIES.find((c) => c.id === cat)?.label ?? cat}
@@ -244,35 +251,29 @@ export function ArtPanel() {
               type="button"
               title={ic.label}
               onClick={() => {
-                app.applyIcon(ic.id, sizeId, ink);
+                app.applyIcon(ic.id, sizeId, stampColor);
               }}
               className="flex aspect-square flex-col items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-1"
               style={{ background: fill }}
             >
               <span
                 className="block h-8 w-8"
-                dangerouslySetInnerHTML={{ __html: iconSvg(ic, ink, ic.thickCurve ? 2.8 : ic.fill ? 0.9 : 2) }}
+                dangerouslySetInnerHTML={{ __html: iconSvg(ic, stampColor, ic.thickCurve ? 2.8 : ic.fill ? 0.9 : 2) }}
               />
-              <span className="mt-0.5 w-full truncate text-[9px] leading-tight" style={{ color: ink }}>
+              <span className="mt-0.5 w-full truncate text-[9px] leading-tight" style={{ color: stampColor }}>
                 {ic.label}
               </span>
             </button>
           ))}
         </div>
-        {placed.length ? (
-          <div className="mt-3 flex flex-col gap-1">
-            <p className="text-xs text-[var(--bb-muted)]">On this design</p>
-            {placed.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-2 text-sm text-[var(--bb-text)]">
-                <span className="truncate">{item.label}</span>
-                <ActionBtn tone="ghost" onClick={() => app.removeArt(item.id)}>
-                  Remove
-                </ActionBtn>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </Accordion>
     </>
   );
+}
+
+function toHex(value: string) {
+  const v = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  return "#ffffff";
 }

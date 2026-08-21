@@ -35,9 +35,7 @@ export function LibraryTool() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-[var(--bb-muted)]">
-        Saved labels from the cloud. Open one to edit copy and colors. Arabic names stay as stored.
-      </p>
+      <p className="text-sm text-[var(--bb-muted)]">Cloud templates. Open one to edit.</p>
       <div className="flex flex-wrap gap-2">
         <ActionBtn onClick={() => setCreating(true)}>New template</ActionBtn>
         <label className="bb-btn inline-flex cursor-pointer items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-text)]">

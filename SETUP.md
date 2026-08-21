@@ -78,7 +78,7 @@ Rules file: `firestore.rules` (staff-only; no public read). Review them before a
 
 10. Optional: enable Google sign-in in Console and add `localhost` (and later the Vercel domain) under Authentication → Settings → Authorized domains. Without the Vercel host, login on the live URL fails with `auth/unauthorized-domain`.
 
-Do **not** run `hub` import (`npm run import:apply`) until you zip `saved data` and explicitly ask. Dry-run: `cd hub && npm run import:dry`.
+Do **not** run a full `hub` import of every `bb_*` key until you zip `saved data` and explicitly ask. Design templates + R2 `label_assets/` were imported 2026-08-21 (`--keys bb_label_templates --assets --no-backups`). Dry-run: `cd hub && npm run import:dry`.
 
 ## 4. Cloudflare R2 (label art + backups)
 

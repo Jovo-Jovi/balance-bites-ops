@@ -7,6 +7,8 @@
  *   npm i -D firebase-admin
  *   npm run import:dry -- --dir "C:\Users\Marco\Desktop\BALANCE BITES\invoices customers\saved data"
  *   npm run import:apply -- --dir "..."   # writes
+ *   npm run import:apply -- --keys bb_label_templates --assets --no-backups
+ *     # Design-only: exact saved templates + label_assets to R2 (not git)
  *
  * Auth: hub/.service-account.json (gitignored), or --sa path, or GOOGLE_APPLICATION_CREDENTIALS.
  * Re-run --apply anytime to refresh Firestore from the Desktop folder.
@@ -39,6 +41,8 @@ function parseArgs(argv) {
   const out = {
     apply: false,
     assets: false,
+    noBackups: false,
+    keys: null,
     dir: DEFAULT_DIR,
     tenant: keyManifest.tenantId,
     sa: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
@@ -48,7 +52,13 @@ function parseArgs(argv) {
     if (a === "--apply") out.apply = true;
     else if (a === "--dry-run") out.apply = false;
     else if (a === "--assets") out.assets = true;
-    else if (a === "--dir") out.dir = argv[++i];
+    else if (a === "--no-backups") out.noBackups = true;
+    else if (a === "--keys") {
+      out.keys = String(argv[++i] || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else if (a === "--dir") out.dir = argv[++i];
     else if (a === "--tenant") out.tenant = argv[++i];
     else if (a === "--sa") out.sa = argv[++i];
   }
@@ -67,6 +77,53 @@ function loadAdmin() {
   }
 }
 
+const FIREBASE_CLI_OAUTH = {
+  client_id: "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
+  client_secret: "j9iVZfS8kkCEFUPaAeJV0sAi",
+};
+
+function openFirestore(projectId, opts) {
+  const admin = loadAdmin();
+  if (opts.sa) {
+    const firebaseApp = admin.app.initializeApp({
+      credential: admin.app.cert(opts.sa),
+      projectId,
+    });
+    return {
+      db: admin.firestore.getFirestore(firebaseApp),
+      now: admin.firestore.FieldValue.serverTimestamp(),
+    };
+  }
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    const firebaseApp = admin.app.initializeApp({
+      credential: admin.app.applicationDefault(),
+      projectId,
+    });
+    return {
+      db: admin.firestore.getFirestore(firebaseApp),
+      now: admin.firestore.FieldValue.serverTimestamp(),
+    };
+  }
+  const refresh = firebaseToolsRefreshJson();
+  if (!refresh) {
+    console.error(
+      "No Google credentials. Pass --sa path\\to\\serviceAccount.json\nor keep firebase-tools logged in on this machine and retry.",
+    );
+    process.exit(1);
+  }
+  const { Firestore, FieldValue } = require("@google-cloud/firestore");
+  const db = new Firestore({
+    projectId,
+    credentials: {
+      type: "authorized_user",
+      client_id: refresh.client_id,
+      client_secret: refresh.client_secret,
+      refresh_token: refresh.refresh_token,
+    },
+  });
+  return { db, now: FieldValue.serverTimestamp() };
+}
+
 function firebaseToolsRefreshJson() {
   const home = process.env.USERPROFILE || process.env.HOME || "";
   const candidates = [
@@ -77,11 +134,11 @@ function firebaseToolsRefreshJson() {
     if (!existsSync(p)) continue;
     const cfg = JSON.parse(readFileSync(p, "utf8"));
     const tokens = cfg.tokens || cfg.user?.tokens || null;
-    if (!tokens?.refresh_token || !tokens.client_id || !tokens.client_secret) continue;
+    if (!tokens?.refresh_token) continue;
     return {
       type: "authorized_user",
-      client_id: tokens.client_id,
-      client_secret: tokens.client_secret,
+      client_id: tokens.client_id || FIREBASE_CLI_OAUTH.client_id,
+      client_secret: tokens.client_secret || FIREBASE_CLI_OAUTH.client_secret,
       refresh_token: tokens.refresh_token,
     };
   }
@@ -99,13 +156,19 @@ function listJsonKeys(dir) {
     }));
 }
 
-function walkFiles(dir, acc = []) {
+function walkFiles(dir, acc = [], root = dir) {
   if (!existsSync(dir)) return acc;
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     const st = statSync(p);
-    if (st.isDirectory()) walkFiles(p, acc);
-    else acc.push({ path: p, rel: p.slice(dir.length + 1).replaceAll("\\", "/"), bytes: st.size });
+    if (st.isDirectory()) walkFiles(p, acc, root);
+    else {
+      acc.push({
+        path: p,
+        rel: p.slice(root.length + 1).replaceAll("\\", "/"),
+        bytes: st.size,
+      });
+    }
   }
   return acc;
 }
@@ -159,10 +222,15 @@ async function main() {
   legacy.slice(0, 8).forEach((n) => console.log("  ", n));
   if (legacy.length > 8) console.log("  …", legacy.length - 8, "more");
 
+  const wantKeys = opts.keys ? new Set(opts.keys) : null;
+  if (wantKeys) {
+    console.log("keys filter:", [...wantKeys].join(", "));
+  }
+
   const assetsDir = join(opts.dir, "label_assets");
   const backupsDir = join(opts.dir, "bb_backups");
   const assets = walkFiles(assetsDir);
-  const backups = walkFiles(backupsDir);
+  const backups = opts.noBackups ? [] : walkFiles(backupsDir);
   console.log(`\nlabel_assets files: ${assets.length}`);
   console.log(`bb_backups files: ${backups.length}`);
   console.log("not imported:", keyManifest.storageOnlyKeys.join(", "));
@@ -177,31 +245,12 @@ async function main() {
     return;
   }
 
-  const admin = loadAdmin();
-  let credential;
-  if (opts.sa) {
-    credential = admin.app.cert(opts.sa);
-  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    credential = admin.app.applicationDefault();
-  } else {
-    const refresh = firebaseToolsRefreshJson();
-    if (!refresh) {
-      console.error(
-        "No Google credentials. Pass --sa path\\to\\serviceAccount.json\nor keep firebase-tools logged in on this machine and retry.",
-      );
-      process.exit(1);
-    }
-    credential = admin.app.refreshToken(refresh);
-  }
-  const firebaseApp = admin.app.initializeApp({
-    credential,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "balance-bites-ops",
-  });
-  const db = admin.firestore.getFirestore(firebaseApp);
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "balance-bites-ops";
+  const { db, now } = openFirestore(projectId, opts);
 
   for (const f of files) {
     if (!known.has(f.key)) continue;
+    if (wantKeys && !wantKeys.has(f.key)) continue;
     const raw = readFileSync(f.path, "utf8").trim();
     if (!raw) {
       console.log("skip empty", f.key);

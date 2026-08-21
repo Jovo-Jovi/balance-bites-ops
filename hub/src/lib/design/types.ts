@@ -31,6 +31,7 @@ export type SyncTargets = { back: boolean; top: boolean; circle: boolean };
 
 export type CompositePart = {
   id: string;
+  name?: string;
   type: string;
   x: number;
   y: number;
@@ -64,6 +65,11 @@ export type CompositeZone = {
   iconId?: string;
   strokeWidth?: number;
   lock?: boolean;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  fontScale?: number;
+  shape?: string;
 };
 
 export type LabelStamp = {

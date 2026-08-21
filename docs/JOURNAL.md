@@ -5,7 +5,7 @@ Dated notes for later chats. Live behavior still lives in `costs/` HTML. This fi
 Production: https://balance-bites-ops.vercel.app  
 Repo: https://github.com/Jovo-Jovi/balance-bites-ops  
 Firebase: project `balance-bites-ops`, Firestore `(default)` `europe-west3`, Spark (no Storage).  
-Binaries: Cloudflare R2 (wired, assets **not** imported until asked).
+Binaries: Cloudflare R2 (`label_assets/` imported 2026-08-21; invoice JSON still local until asked).
 
 Related maps:
 
@@ -111,11 +111,20 @@ Freeform composite drawing, PNG cut pack, applying `assets/presets/` folders, De
 
 On `feat/design`. Background uploads use live `hxBg*` / `hxCProd` keys and clip to the die-cut on every family. Icon picker lives in Atelier (not a fourth tab): repo catalog with category variants, click to stamp. Catalog is code, not a Firestore dump.
 
+Atelier dump fields (ingredients, nutrition, unused brand lines) were removed. Copy is only what that family draws. Layers control z-order and icon color. Composite preview uses the artboard aspect (crackers oval, not a circle). Taper/rect show wrap + lid instead of a rounded square.
+
+---
+
+## 2026-08-21 — Print house cut stroke + live template seed
+
+On `feat/design`. Print house cut stroke is an editable border on the die-cut (`sCutStrokeMm`, `cCutStroke`; default 0.25 mm magenta). Preview, print, and SVG download include it.
+
+Live `bb_label_templates` (exact Desktop JSON) written to Firestore. 73 `label_assets/{templateId}/` files uploaded to R2. Nothing from `saved data` committed to git. Import path: `npm run import:apply -- --keys bb_label_templates --assets --no-backups`. Invoices and other keys were not overwritten.
+
 ---
 
 ## Still not done (do not tick as shipped)
 
 - Design follow-up: composite drawing / PNG cut / art-preset folders
 - Finance tabs and ledger formulas
-- One-shot JSON import of live `saved data`
-- R2 bucket init + `import:assets` (code is wired; bucket/token may still be a human Console step)
+- One-shot JSON import of the rest of live `saved data` (invoices, stock, …)

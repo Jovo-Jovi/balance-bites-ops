@@ -65,14 +65,27 @@ function partShape(part: CompositePart) {
 
 function outlineShape(kind: string, fill: string) {
   const c = esc(fill);
-  if (kind === "square") return `<rect x="12" y="12" width="76" height="76" fill="${c}" />`;
-  if (kind === "rounded_sq") return `<rect x="12" y="12" width="76" height="76" rx="14" fill="${c}" />`;
-  if (kind === "diamond") return `<polygon points="${polygon(4, 50, 50, 38, 38, -45)}" fill="${c}" />`;
-  if (kind === "hexagon") return `<polygon points="${polygon(6, 50, 50, 38, 38)}" fill="${c}" />`;
-  if (kind === "pentagon") return `<polygon points="${polygon(5, 50, 50, 38, 38)}" fill="${c}" />`;
-  if (kind === "octagon") return `<polygon points="${polygon(8, 50, 50, 38, 38)}" fill="${c}" />`;
-  if (kind === "star") return `<polygon points="${starPoints(50, 50, 40, 40)}" fill="${c}" />`;
-  return `<circle cx="50" cy="50" r="38" fill="${c}" />`;
+  if (kind === "square") return `<rect x="8" y="8" width="84" height="84" fill="${c}" />`;
+  if (kind === "rounded_sq") return `<rect x="8" y="8" width="84" height="84" rx="14" fill="${c}" />`;
+  if (kind === "diamond") return `<polygon points="${polygon(4, 50, 50, 42, 42, -45)}" fill="${c}" />`;
+  if (kind === "hexagon") return `<polygon points="${polygon(6, 50, 50, 44, 44)}" fill="${c}" />`;
+  if (kind === "pentagon") return `<polygon points="${polygon(5, 50, 50, 44, 44)}" fill="${c}" />`;
+  if (kind === "octagon") return `<polygon points="${polygon(8, 50, 50, 44, 44)}" fill="${c}" />`;
+  if (kind === "star") return `<polygon points="${starPoints(50, 50, 44, 44)}" fill="${c}" />`;
+  if (kind === "rect") return `<rect x="4" y="18" width="92" height="78" rx="3" fill="${c}" />`;
+  if (kind === "taper") return `<polygon points="14,16 86,16 100,96 0,96" fill="${c}" />`;
+  return `<circle cx="50" cy="50" r="48" fill="${c}" />`;
+}
+
+function familyClipKind(designType: string, outline: string | null) {
+  if (designType === "taper_top") return "taper";
+  if (designType === "rect_top") return "rect";
+  return outline || (designType === "circular" ? "circle" : "rounded_sq");
+}
+
+function topLid(fill: string) {
+  const c = esc(fill);
+  return `<circle cx="50" cy="10" r="9" fill="${c}" /><circle cx="50" cy="10" r="4" fill="none" stroke="#fff" stroke-width="0.8" opacity="0.45" />`;
 }
 
 function compositeClip(comp: CompositeBlob) {
@@ -143,25 +156,158 @@ function iconMark(
   return `<g transform="rotate(${rot} ${x} ${y})">${body}</g>`;
 }
 
-function iconFromZone(z: CompositeZone, fallback: string) {
-  const id = z.iconId || "";
-  if (z.kind !== "icon" || !id) return "";
-  return iconMark(id, z.x, z.y, z.w, z.h, z.color || z.textColor || fallback, z.strokeWidth ?? 2, z.rot);
-}
-
-function iconFromStamp(s: LabelStamp, fallback: string) {
-  return iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || fallback, s.strokeWidth ?? 2, s.rot);
+function zoneMarkup(z: CompositeZone, fallback: string) {
+  if (z.kind === "icon" && z.iconId) {
+    return iconMark(z.iconId, z.x, z.y, z.w, z.h, z.color || z.textColor || fallback, z.strokeWidth ?? 2, z.rot);
+  }
+  if (z.kind === "logo") {
+    const r = Math.min(z.w, z.h) / 2;
+    const fill = z.color || "#ffffff";
+    const ink = z.textColor || "#1a1a1a";
+    const fs = Math.max(3, r * (z.fontScale || 0.7));
+    return `<g>
+      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}" />
+      <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="Bitter, serif">${esc(String(z.text || "BB"))}</text>
+    </g>`;
+  }
+  const lines = String(z.text || "").split("\n");
+  const color = z.color || z.textColor || fallback;
+  const size = Math.max(2.2, Math.min(10, z.h / Math.max(lines.length, 1) * 0.7));
+  const startY = z.y - ((lines.length - 1) * size * 0.55);
+  const family = z.fontFamily || "Montserrat, Tajawal, sans-serif";
+  const weight = z.fontWeight || "700";
+  return lines
+    .map(
+      (line, i) =>
+        `<text x="${z.x}" y="${startY + i * size * 1.12}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}">${esc(line)}</text>`,
+    )
+    .join("");
 }
 
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 }
 
+export const CUT_STROKE_MM = 0.25;
+export const CUT_STROKE_COLOR = "#FF00FF";
+
+export type LabelPreviewOpts = { showCut?: boolean };
+
+export function cutStrokeOf(state: LabelState) {
+  const raw = Number(state.sCutStrokeMm);
+  const mm = Number.isFinite(raw) ? raw : CUT_STROKE_MM;
+  const color = str(state, "cCutStroke", CUT_STROKE_COLOR);
+  return { mm: Math.max(0, Math.min(8, mm)), color };
+}
+
 function clipIdOf(template: LabelTemplate) {
   return `bbcut-${template.id.replace(/[^a-zA-Z0-9_-]/g, "") || "x"}`;
 }
 
-export function labelPreviewSvg(template: LabelTemplate, state: LabelState) {
+function scalePts(pts: string, sx: number, sy: number) {
+  return pts
+    .trim()
+    .split(/\s+/)
+    .map((pair) => {
+      const [x, y] = pair.split(",");
+      return `${Number(x) * sx},${Number(y) * sy}`;
+    })
+    .join(" ");
+}
+
+function scalePathD(d: string, sx: number, sy: number) {
+  const tokens = String(d).match(/[MmLlHhVvCcSsQqTtAaZz]|[+-]?(?:\d*\.\d+|\d+)(?:[eE][+-]?\d+)?/g) || [];
+  let cmd = "";
+  let pair = 0;
+  let arc = 0;
+  const out: string[] = [];
+  for (const tok of tokens) {
+    if (/^[MmLlHhVvCcSsQqTtAaZz]$/.test(tok)) {
+      cmd = tok;
+      pair = 0;
+      arc = 0;
+      out.push(tok);
+      continue;
+    }
+    const n = Number(tok);
+    if (/[Hh]/.test(cmd)) {
+      out.push((n * sx).toFixed(3));
+    } else if (/[Vv]/.test(cmd)) {
+      out.push((n * sy).toFixed(3));
+    } else if (/[Aa]/.test(cmd)) {
+      const idx = arc % 7;
+      if (idx === 0 || idx === 5) out.push((n * sx).toFixed(3));
+      else if (idx === 1 || idx === 6) out.push((n * sy).toFixed(3));
+      else out.push(tok);
+      arc += 1;
+    } else {
+      out.push((n * (pair % 2 === 0 ? sx : sy)).toFixed(3));
+      pair += 1;
+    }
+  }
+  return out.join(" ");
+}
+
+function familyCutMm(kind: string, wMm: number, hMm: number) {
+  const sx = wMm / 100;
+  const sy = hMm / 100;
+  const rr = (v: number) => (v * Math.min(sx, sy)).toFixed(3);
+  if (kind === "square") return `<rect x="${8 * sx}" y="${8 * sy}" width="${84 * sx}" height="${84 * sy}" />`;
+  if (kind === "rounded_sq") {
+    return `<rect x="${8 * sx}" y="${8 * sy}" width="${84 * sx}" height="${84 * sy}" rx="${rr(14)}" />`;
+  }
+  if (kind === "diamond") return `<polygon points="${scalePts(polygon(4, 50, 50, 42, 42, -45), sx, sy)}" />`;
+  if (kind === "hexagon") return `<polygon points="${scalePts(polygon(6, 50, 50, 44, 44), sx, sy)}" />`;
+  if (kind === "pentagon") return `<polygon points="${scalePts(polygon(5, 50, 50, 44, 44), sx, sy)}" />`;
+  if (kind === "octagon") return `<polygon points="${scalePts(polygon(8, 50, 50, 44, 44), sx, sy)}" />`;
+  if (kind === "star") return `<polygon points="${scalePts(starPoints(50, 50, 44, 44), sx, sy)}" />`;
+  if (kind === "rect") {
+    return `<rect x="${4 * sx}" y="${18 * sy}" width="${92 * sx}" height="${78 * sy}" rx="${rr(3)}" />`;
+  }
+  if (kind === "taper") return `<polygon points="${scalePts("14,16 86,16 100,96 0,96", sx, sy)}" />`;
+  return `<ellipse cx="${50 * sx}" cy="${50 * sy}" rx="${48 * sx}" ry="${48 * sy}" />`;
+}
+
+function compositeCutMm(comp: CompositeBlob, wMm: number, hMm: number) {
+  const sx = wMm / 100;
+  const sy = hMm / 100;
+  const union = String(comp.unionPath || "").trim();
+  if (union) return `<path d="${esc(scalePathD(union, sx, sy))}" />`;
+  const part = (comp.parts || [])[0];
+  if (part?.pathLocal) {
+    const left = (part.x - part.w / 2) * sx;
+    const top = (part.y - part.h / 2) * sy;
+    const d = scalePathD(part.pathLocal, (part.w / 100) * sx, (part.h / 100) * sy);
+    return `<path d="${esc(d)}" transform="translate(${left} ${top})" />`;
+  }
+  return `<rect x="0" y="0" width="${wMm}" height="${hMm}" />`;
+}
+
+function cutOverlayMm(template: LabelTemplate, state: LabelState, wMm: number, hMm: number) {
+  const stroke = cutStrokeOf(state);
+  if (stroke.mm <= 0) return "";
+  const spec = getDesignSpec(template.designType);
+  const geom =
+    spec.composite && state._composite
+      ? compositeCutMm(state._composite, wMm, hMm)
+      : familyCutMm(familyClipKind(template.designType, spec.outline), wMm, hMm);
+  return `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm}" stroke-linejoin="round" stroke-linecap="round">${geom}</g>`;
+}
+
+function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
+  if (!opts?.showCut) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" role="img">${inner}</svg>`;
+  }
+  const { wCm, hCm } = artboardCm(state, template.designType);
+  const wMm = wCm * 10;
+  const hMm = hCm * 10;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wMm} ${hMm}" preserveAspectRatio="none" width="100%" height="100%" role="img">
+    <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none">${inner}</svg>
+    ${cutOverlayMm(template, state, wMm, hMm)}
+  </svg>`;
+}
+
+export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
   const spec = getDesignSpec(template.designType);
   const fill = str(state, "cLabel", "#2e7d32");
   const txt = str(state, "cTxtMain", "#ffffff");
@@ -170,60 +316,55 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState) {
   const weight = str(state, "eWeight", "");
   const comp = state._composite;
   const clipId = clipIdOf(template);
-  const stamps = state._stamps || [];
-  const stampMarkup = stamps.map((s) => iconFromStamp(s, txt)).join("");
+  const stamps = [...(state._stamps || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
+  const stampMarkup = stamps.map((s: LabelStamp) => iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot)).join("");
 
   if (spec.composite && comp) {
     const bg = comp.bg || fill;
     const parts = [...(comp.parts || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
     const zones = [...(comp.zones || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
-    const partMarkup = parts.map(partShape).join("");
-    const zoneMarkup = zones
-      .map((z) => {
-        const icon = iconFromZone(z, comp.txt || txt);
-        if (icon) return icon;
-        const color = z.color || z.textColor || comp.txt || txt;
-        const text = esc(String(z.text || ""));
-        const size = Math.max(3, Math.min(8, z.h * 0.45));
-        return `<text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-family="Tajawal, DM Sans, sans-serif">${text}</text>`;
-      })
-      .join("");
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img">
-      <defs><clipPath id="${clipId}">${compositeClip(comp)}</clipPath></defs>
+    const inner = `
+      <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
         <rect width="100" height="100" fill="${esc(bg)}" />
         ${bgLayers(state)}
-        ${partMarkup}
+        ${parts.map(partShape).join("")}
         ${productLayer(state, false)}
-        ${zoneMarkup}
+        ${zones.map((z) => zoneMarkup(z, comp.txt || txt)).join("")}
         ${stampMarkup}
         ${qrLayer(state)}
-      </g>
-    </svg>`;
+      </g>`;
+    return wrapPreviewSvg(inner, template, state, opts);
   }
 
-  const shape = spec.outline || (template.designType === "circular" ? "circle" : "rounded_sq");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img">
-    <defs><clipPath id="${clipId}">${outlineShape(shape, "#000")}</clipPath></defs>
+  const clipKind = familyClipKind(template.designType, spec.outline);
+  const wrap = outlineShape(clipKind, fill);
+  const lid = clipKind === "taper" || clipKind === "rect" ? topLid(fill) : "";
+  const inner = `
+    <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${wrap}</clipPath></defs>
+    ${lid}
     <g clip-path="url(#${clipId})">
-      ${outlineShape(shape, fill)}
+      ${wrap}
       ${bgLayers(state)}
       ${productLayer(state, template.designType === "circular")}
-      <text x="50" y="42" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="Playfair Display, serif" font-weight="700">${esc(brand)}</text>
-      <text x="50" y="56" text-anchor="middle" fill="${esc(txt)}" font-size="6" font-family="Tajawal, sans-serif">${esc(flavor)}</text>
-      <text x="50" y="70" text-anchor="middle" fill="${esc(txt)}" font-size="3.6" font-family="DM Sans, sans-serif">${esc(weight)}</text>
+      <text x="50" y="${clipKind === "taper" || clipKind === "rect" ? 48 : 42}" text-anchor="middle" fill="${esc(txt)}" font-size="7" font-family="Playfair Display, serif" font-weight="700">${esc(brand)}</text>
+      <text x="50" y="${clipKind === "taper" || clipKind === "rect" ? 62 : 56}" text-anchor="middle" fill="${esc(txt)}" font-size="6" font-family="Tajawal, sans-serif">${esc(flavor)}</text>
+      <text x="50" y="${clipKind === "taper" || clipKind === "rect" ? 76 : 70}" text-anchor="middle" fill="${esc(txt)}" font-size="3.6" font-family="DM Sans, sans-serif">${esc(weight)}</text>
       ${stampMarkup}
       ${qrLayer(state)}
-    </g>
-  </svg>`;
+    </g>`;
+  return wrapPreviewSvg(inner, template, state, opts);
 }
 
-export function artboardCm(state: LabelState) {
+export function artboardCm(state: LabelState, designType?: string) {
+  const type = String(designType || state._designType || "");
   const comp = state._composite?.artboard;
-  const w = Number(comp?.wCm ?? state.cW ?? 8);
-  const h = Number(comp?.hCm ?? state.cH ?? 8);
-  return {
-    wCm: Number.isFinite(w) && w > 0 ? w : 8,
-    hCm: Number.isFinite(h) && h > 0 ? h : 8,
-  };
+  const w = Number(comp?.wCm ?? state.cW);
+  const h = Number(comp?.hCm ?? state.cH);
+  if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
+    return { wCm: w, hCm: h };
+  }
+  if (type === "taper_top") return { wCm: 10, hCm: 7 };
+  if (type === "rect_top") return { wCm: 8, hCm: 5 };
+  return { wCm: 6, hCm: 6 };
 }

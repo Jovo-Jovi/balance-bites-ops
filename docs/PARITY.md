@@ -36,7 +36,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] Prep / print keys that were localStorage-only now listed as Firestore keys
 - [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
 - [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
-- [ ] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
+- [x] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
 - [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; invoices were rebuilt as React instead)
 
 ### Keys imported from disk today
@@ -83,6 +83,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. N
 - [x] Deep link `bb_label_open` from finance stickers (120s TTL, then clear)
 - [x] Product select from `bb_products`; linked SKUs from `bb_stickers` (read-only)
 - [x] Print house constants (1.5 mm bleed, 300 DPI) + SVG preview/download
+- [x] Print house cut stroke as an editable border around the die-cut (size mm + colour)
 - [x] Atelier background uploads (`hxBg*` / `hxCProd`) on any family
 - [x] Icon library in Atelier (repo catalog + category variants; apply to the open template)
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
@@ -174,9 +175,9 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Design does **not** wrap `balance-bites-sticker.html`. Freeform composite drawing, PNG cut packs, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
-- Import script is dry-run by default and was **not executed**.
+- Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` were imported (Firestore + R2). Other `bb_*` JSON was **not** applied.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
-- Cloud Storage is **not used** (Spark / free tier). R2 client is wired; do not `import:assets` until asked.
+- Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 

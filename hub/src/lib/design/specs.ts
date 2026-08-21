@@ -14,7 +14,7 @@ export type DesignSpec = {
 export const DESIGN_SPECS: DesignSpec[] = [
   { id: "circular", label: "Circular", modes: ["circle"], defaultMode: "circle", isTapered: false, outline: "circle", composite: false, hint: "Front die-cut" },
   { id: "rect_top", label: "Rect + top", modes: ["back", "top"], defaultMode: "back", isTapered: false, outline: null, composite: false, hint: "Back label + round top" },
-  { id: "taper_top", label: "Taper + top", modes: ["back", "top"], defaultMode: "back", isTapered: true, outline: null, composite: false, hint: "Cup wrap + round top" },
+  { id: "taper_top", label: "Taper + top", modes: ["back", "top"], defaultMode: "back", isTapered: true, outline: null, composite: false, hint: "Cup wrap + round lid" },
   { id: "square", label: "Square", modes: ["circle"], defaultMode: "circle", isTapered: false, outline: "square", composite: false, hint: "Front die-cut" },
   { id: "pentagon", label: "Pentagon", modes: ["circle"], defaultMode: "circle", isTapered: false, outline: "pentagon", composite: false, hint: "Front die-cut" },
   { id: "hexagon", label: "Hexagon", modes: ["circle"], defaultMode: "circle", isTapered: false, outline: "hexagon", composite: false, hint: "Front die-cut" },

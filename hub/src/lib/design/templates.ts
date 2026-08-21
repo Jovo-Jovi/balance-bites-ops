@@ -260,6 +260,14 @@ export function patchState(state: LabelState, patch: Record<string, unknown>): L
 
 export function starterState(designType: DesignType, pack: FlavorPack): LabelState {
   const spec = getDesignSpec(designType);
+  const size =
+    designType === "taper_top"
+      ? { cW: "10", cH: "7" }
+      : designType === "rect_top"
+        ? { cW: "8", cH: "5" }
+        : spec.composite
+          ? { cW: "8", cH: "8" }
+          : { cW: "6", cH: "6" };
   const base = applyFlavorPack(
     {
       eBrand: "BB",
@@ -267,8 +275,7 @@ export function starterState(designType: DesignType, pack: FlavorPack): LabelSta
       eCBrand2: "BITES",
       eCFlavorTxt: "FLAVOR",
       eWeight: "",
-      cW: "8",
-      cH: "8",
+      ...size,
       _isTapered: spec.isTapered,
       _designType: designType,
     },

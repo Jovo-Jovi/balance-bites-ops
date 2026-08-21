@@ -17,6 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { hydrateStateAssets, hasUnresolvedAssets, stripStateAssets } from "@/lib/design/assets";
 import { applyIconToState, removeArtItem, setFillCutWithPaper, syncPaperToSilhouette } from "@/lib/design/art";
+import { moveLayer as moveLayerInState, patchLayer as patchLayerInState } from "@/lib/design/layers";
 import { flavorPackById, FLAVOR_PACKS } from "@/lib/design/colors";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
@@ -67,6 +68,8 @@ type DesignContextValue = {
   setFields: (patch: Record<string, string>) => void;
   applyIcon: (iconId: string, sizeId: string, color?: string) => void;
   removeArt: (id: string) => void;
+  patchLayer: (id: string, patch: { color?: string; text?: string }) => void;
+  moveLayer: (id: string, dir: -1 | 1) => void;
   setFillCut: (on: boolean) => void;
   save: () => Promise<boolean>;
   saveAsNew: () => Promise<boolean>;
@@ -411,6 +414,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       removeArt: (id) => {
         if (!current) return;
         replaceCurrent({ ...current, state: removeArtItem(current.state, id) });
+      },
+      patchLayer: (id, patch) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: patchLayerInState(current.state, id, patch) });
+      },
+      moveLayer: (id, dir) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: moveLayerInState(current.state, id, dir) });
       },
       setFillCut: (on) => {
         if (!current) return;

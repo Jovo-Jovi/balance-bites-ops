@@ -1,10 +1,11 @@
 import { esc } from "@/lib/invoices/helpers";
-import { artboardCm, labelPreviewSvg } from "./preview";
+import { artboardCm, CUT_STROKE_COLOR, CUT_STROKE_MM, cutStrokeOf, labelPreviewSvg } from "./preview";
 import type { LabelState, LabelTemplate } from "./types";
+
+export { CUT_STROKE_COLOR, CUT_STROKE_MM, cutStrokeOf };
 
 export const BLEED_MM = 1.5;
 export const DPI = 300;
-export const CUT_STROKE_MM = 0.25;
 
 export const PRINT_PACK_EXCLUDE: Record<string, string> = {
   "popcorn-blue": "Licensed likeness — not for commercial print pack",
@@ -21,7 +22,7 @@ export function printExcludeNote(template: LabelTemplate, state: LabelState) {
 }
 
 export function downloadSvg(template: LabelTemplate, state: LabelState) {
-  const svg = labelPreviewSvg(template, state);
+  const svg = labelPreviewSvg(template, state, { showCut: true });
   const blob = new Blob([svg], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -32,14 +33,14 @@ export function downloadSvg(template: LabelTemplate, state: LabelState) {
 }
 
 export function printPreview(template: LabelTemplate, state: LabelState) {
-  const { wCm, hCm } = artboardCm(state);
-  const svg = labelPreviewSvg(template, state);
+  const { wCm, hCm } = artboardCm(state, template.designType);
+  const svg = labelPreviewSvg(template, state, { showCut: true });
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(template.name)}</title>
 <style>
   @page { size: auto; margin: 10mm; }
   body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
-  .sheet { width: ${wCm}cm; height: ${hCm}cm; }
-  svg { width: 100%; height: 100%; display: block; }
+  .sheet { width: ${wCm}cm; height: ${hCm}cm; overflow: visible; }
+  svg { width: 100%; height: 100%; display: block; overflow: visible; }
 </style></head><body><div class="sheet">${svg}</div>
 <script>window.onload=function(){window.print();};<\/script></body></html>`;
   const w = window.open("", "_blank", "width=820,height=960");
