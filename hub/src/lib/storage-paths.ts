@@ -18,10 +18,12 @@ export function normalizeStorageKey(key: string) {
     .replace(/\/{2,}/g, "/");
 }
 
+export function labelAssetFolder(templateId: string) {
+  return `${LABEL_ASSETS_PREFIX}${sanitizeSegment(templateId)}/`;
+}
+
 export function labelAssetKey(templateId: string, fileName: string) {
-  const id = sanitizeSegment(templateId);
-  const name = sanitizeSegment(fileName);
-  return `${LABEL_ASSETS_PREFIX}${id}/${name}`;
+  return `${labelAssetFolder(templateId)}${sanitizeSegment(fileName)}`;
 }
 
 export function parseLabelAssetKey(key: string) {
@@ -41,7 +43,7 @@ export function backupKey(fileName: string) {
   return `${BACKUPS_PREFIX}${sanitizeSegment(fileName)}`;
 }
 
-function sanitizeSegment(value: string) {
+export function sanitizeSegment(value: string) {
   const n = String(value || "")
     .replaceAll("\\", "/")
     .split("/")

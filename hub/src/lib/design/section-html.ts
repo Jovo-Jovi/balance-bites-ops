@@ -98,7 +98,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   const pad = Math.round(h * 0.07);
   const padS = Math.round(h * 0.04);
   const wrap = (inner: string) =>
-    `<div style="width:100%;height:100%;overflow:hidden;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
+    `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
 
   if (k === "1") {
     const lang = s(state, "eLangIng", "both");
@@ -194,11 +194,22 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
             .map((l) => `<div style="direction:rtl;font-family:${esc(FAR)}">${html(l)}</div>`)
             .join("")}`
         : "";
+    const nameOwn = state.sNamePosX != null && String(state.sNamePosX) !== "";
+    const nx = nameOwn ? n(state, "sNamePosX", 0) : n(state, "sLogoPosX", 0);
+    const ny = nameOwn ? n(state, "sNamePosY", 0) : n(state, "sLogoPosY", 0);
+    const lx = n(state, "sLogoPosX", 0);
+    const ly = n(state, "sLogoPosY", 0);
+    const lrot = n(state, "sLogoRot", 0);
+    const nrot = n(state, "sNameRot", 0);
     return wrap(
-      `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${h * 0.03}px;padding:${padS}px;transform:translate(${n(state, "sLogoPosX", 0)}px,${n(state, "sLogoPosY", 0)}px)">
-        ${logoDiscHtml(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20))}
-        <div style="font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;max-width:100%;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1">${nameHtml}${arHtml}</div>
-        ${flag(state, "chkLogoBadges", true) ? badges(state, lite, 0.9) : ""}
+      `<div style="position:relative;width:100%;height:100%;overflow:visible">
+        <div style="position:absolute;left:50%;top:28%;width:${sz}px;height:${sz}px;transform:translate(-50%,-50%) translate(${lx}px,${ly}px) rotate(${lrot}deg);transform-origin:center">${logoDiscHtml(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20))}</div>
+        <div style="position:absolute;left:50%;top:58%;width:88%;transform:translate(-50%,-50%) translate(${nx}px,${ny}px) rotate(${nrot}deg);transform-origin:center;font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1">${nameHtml}${arHtml}</div>
+        ${
+          flag(state, "chkLogoBadges", true)
+            ? `<div style="position:absolute;left:50%;top:82%;width:92%;transform:translate(-50%,-50%) translate(${nx}px,${ny}px) rotate(${nrot}deg);transform-origin:center">${badges(state, lite, 0.9)}</div>`
+            : ""
+        }
       </div>`,
     );
   }
@@ -275,5 +286,5 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
 }
 
 export function sectionBox(w: number, h: number, inner: string) {
-  return `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;overflow:hidden;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
+  return `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;overflow:visible;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
 }

@@ -200,6 +200,7 @@ export const FAM = {
   ing: "__fam:ing",
   nut: "__fam:nut",
   blogo: "__fam:blogo",
+  bname: "__fam:bname",
   tip: "__fam:tip",
   bdates: "__fam:bdates",
   bwt: "__fam:bwt",
@@ -403,14 +404,15 @@ export function backSections(state: LabelState, W: number): BackSection[] {
   for (const k of order) if (raw[k]?.on) active += raw[k].p;
   if (active === 0) active = 1;
   let left = 0;
+  const wanted = order.filter((k) => raw[k]?.on);
   const out: BackSection[] = [];
-  for (const k of order) {
-    if (!raw[k]?.on) continue;
-    const w = Math.round(W * (raw[k].p / active));
-    if (w <= 0) continue;
-    out.push({ k, l: left, w });
-    left += w;
-  }
+  wanted.forEach((k, i) => {
+    const last = i === wanted.length - 1;
+    const w = last ? Math.max(0, W - left) : Math.round(W * (raw[k].p / active));
+    if (w <= 0 && !last) return;
+    out.push({ k, l: left, w: Math.max(1, w) });
+    left += Math.max(1, w);
+  });
   return out;
 }
 
@@ -473,17 +475,45 @@ function vbPct(g: TaperGeo, x: number, y: number) {
 const WRAP_META: Record<string, { id: string; label: string; ox: string; oy: string }> = {
   "1": { id: FAM.ing, label: "Ingredients", ox: "sIngPosX", oy: "sIngPosY" },
   "2": { id: FAM.nut, label: "Nutrition", ox: "sNutPosX", oy: "sNutPosY" },
-  "3": { id: FAM.blogo, label: "Logo / brand", ox: "sLogoPosX", oy: "sLogoPosY" },
+  "3": { id: FAM.blogo, label: "Logo", ox: "sLogoPosX", oy: "sLogoPosY" },
   "4": { id: FAM.tip, label: "Tips", ox: "sTipPosX", oy: "sTipPosY" },
   "5": { id: FAM.bdates, label: "Dates", ox: "sDatePosX", oy: "sDatePosY" },
   "6": { id: FAM.cus, label: "Custom", ox: "", oy: "" },
 };
 
+export type FamilyFocusTab = "copy" | "nutrition" | "type";
+
+export function familyFocus(id: string | null | undefined): { tab: FamilyFocusTab; block: string } | null {
+  if (!id) return null;
+  const map: Record<string, { tab: FamilyFocusTab; block: string }> = {
+    [FAM.ing]: { tab: "copy", block: "ing" },
+    [FAM.nut]: { tab: "nutrition", block: "nut" },
+    [FAM.blogo]: { tab: "copy", block: "logo" },
+    [FAM.bname]: { tab: "copy", block: "brand" },
+    [FAM.tip]: { tab: "copy", block: "tip" },
+    [FAM.bdates]: { tab: "copy", block: "dates" },
+    [FAM.bwt]: { tab: "copy", block: "weight" },
+    [FAM.cus]: { tab: "copy", block: "custom" },
+    [FAM.qr]: { tab: "copy", block: "dates" },
+    [FAM.logo]: { tab: "copy", block: "clogo" },
+    [FAM.brand]: { tab: "copy", block: "cbrand" },
+    [FAM.flavor]: { tab: "copy", block: "cflavor" },
+    [FAM.photo]: { tab: "copy", block: "cphoto" },
+    [FAM.weight]: { tab: "copy", block: "cweight" },
+    [FAM.dates]: { tab: "copy", block: "cdates" },
+    [FAM.tlogo]: { tab: "copy", block: "tlogo" },
+    [FAM.ttitle]: { tab: "copy", block: "ttitle" },
+    [FAM.tsub]: { tab: "copy", block: "tsub" },
+  };
+  return map[id] || null;
+}
+
 export function familyTextField(id: string): { field: string; multiline: boolean } | null {
   const map: Record<string, { field: string; multiline: boolean }> = {
     [FAM.ing]: { field: "eIngredients", multiline: true },
     [FAM.nut]: { field: "nCal", multiline: false },
-    [FAM.blogo]: { field: "eName1", multiline: false },
+    [FAM.blogo]: { field: "eBrand", multiline: false },
+    [FAM.bname]: { field: "eName1", multiline: false },
     [FAM.tip]: { field: "eTipBody", multiline: true },
     [FAM.bdates]: { field: "eDate1", multiline: false },
     [FAM.bwt]: { field: "eWeight", multiline: false },
@@ -508,10 +538,10 @@ export function backBoxes(state: LabelState): FamilyBox[] {
     const restX = pct(sec.l + sec.w / 2, W);
     const cw = pct(Math.max(24, sec.w * 0.88), W);
     const rot = n(state, `sSec${sec.k}Rot`, 0);
-    const home = (restYPct: number, ox: string, oy: string) => {
+    const homeAt = (restYPct: number, ox: number, oy: number) => {
       const fromC = ((restYPct - 50) / 100) * H;
       const rest = rotOffset(0, fromC, rot);
-      const world = rotOffset(n(state, ox, 0), fromC + n(state, oy, 0), rot);
+      const world = rotOffset(ox, fromC + oy, rot);
       return {
         x: restX + pct(world.x, W),
         y: 50 + pct(world.y, H),
@@ -519,6 +549,45 @@ export function backBoxes(state: LabelState): FamilyBox[] {
         restY: 50 + pct(rest.y, H),
       };
     };
+    const home = (restYPct: number, ox: string, oy: string) => homeAt(restYPct, n(state, ox, 0), n(state, oy, 0));
+    if (sec.k === "3") {
+      const logoSz = n(state, "sLogoSz", 48);
+      const logo = home(28, "sLogoPosX", "sLogoPosY");
+      boxes.push({
+        id: FAM.blogo,
+        label: "Logo",
+        x: logo.x,
+        y: logo.y,
+        w: pct(logoSz, W),
+        h: pct(logoSz, H),
+        rot: rot + n(state, "sLogoRot", 0),
+        fan: 0,
+        lock: false,
+        restX: logo.restX,
+        restY: logo.restY,
+        ox: "sLogoPosX",
+        oy: "sLogoPosY",
+        size: "sLogoSz",
+      });
+      const nameOwn = state.sNamePosX != null && String(state.sNamePosX) !== "";
+      const names = nameOwn ? home(58, "sNamePosX", "sNamePosY") : homeAt(58, n(state, "sLogoPosX", 0), n(state, "sLogoPosY", 0));
+      boxes.push({
+        id: FAM.bname,
+        label: "Brand",
+        x: names.x,
+        y: names.y,
+        w: cw,
+        h: 36,
+        rot: rot + n(state, "sNameRot", 0),
+        fan: 0,
+        lock: false,
+        restX: names.restX,
+        restY: names.restY,
+        ox: "sNamePosX",
+        oy: "sNamePosY",
+      });
+      continue;
+    }
     if (sec.k === "5") {
       const dates = home(28, "sDatePosX", "sDatePosY");
       boxes.push({
@@ -623,6 +692,52 @@ export function taperBoxes(state: LabelState): FamilyBox[] {
     const midR = (g.R1 + g.R2) / 2;
     const w = g.vbW ? (sec.fW / g.vbW) * 100 * 0.72 : 14;
     const h = g.vbH ? (sec.fH / g.vbH) * 100 * 0.55 : 18;
+    if (sec.k === "3") {
+      const logoSz = n(state, "sLogoSz", 48);
+      const logoAt = taperPlaced(g, state, rot, g.R2 + (g.R1 - g.R2) * 0.72, "sLogoPosX", "sLogoPosY", rot);
+      boxes.push({
+        id: FAM.blogo,
+        label: "Logo",
+        x: logoAt.x,
+        y: logoAt.y,
+        w: g.vbW ? (logoSz / g.vbW) * 100 : 8,
+        h: g.vbH ? (logoSz / g.vbH) * 100 : 8,
+        rot: rot + n(state, "sLogoRot", 0),
+        fan: sec.mid,
+        lock: false,
+        restX: logoAt.restX,
+        restY: logoAt.restY,
+        ox: "sLogoPosX",
+        oy: "sLogoPosY",
+        size: "sLogoSz",
+      });
+      const nameOwn = state.sNamePosX != null && String(state.sNamePosX) !== "";
+      const nameAt = taperPlaced(
+        g,
+        state,
+        rot,
+        g.R2 + (g.R1 - g.R2) * 0.38,
+        nameOwn ? "sNamePosX" : "sLogoPosX",
+        nameOwn ? "sNamePosY" : "sLogoPosY",
+        rot,
+      );
+      boxes.push({
+        id: FAM.bname,
+        label: "Brand",
+        x: nameAt.x,
+        y: nameAt.y,
+        w,
+        h: h * 0.7,
+        rot: rot + n(state, "sNameRot", 0),
+        fan: sec.mid,
+        lock: false,
+        restX: nameAt.restX,
+        restY: nameAt.restY,
+        ox: "sNamePosX",
+        oy: "sNamePosY",
+      });
+      continue;
+    }
     if (sec.k === "5") {
       const dateAt = taperPlaced(g, state, rot, g.R2 + (g.R1 - g.R2) * 0.62, "sDatePosX", "sDatePosY", rot);
       boxes.push({
@@ -754,7 +869,8 @@ const ROT_KEYS: Record<string, string> = {
   [FAM.tsub]: "sTSubRot",
   [FAM.ing]: "sSec1Rot",
   [FAM.nut]: "sSec2Rot",
-  [FAM.blogo]: "sSec3Rot",
+  [FAM.blogo]: "sLogoRot",
+  [FAM.bname]: "sNameRot",
   [FAM.tip]: "sSec4Rot",
   [FAM.bdates]: "sSec5Rot",
   [FAM.cus]: "sSec6Rot",
@@ -765,6 +881,7 @@ export function rotateFamilyItem(template: LabelTemplate, id: string, rot: numbe
   if (!key) return template.state;
   const box = familyBoxById(template, id);
   let a = (rot - (box?.fan || 0)) % 360;
+  if (id === FAM.blogo || id === FAM.bname) a -= n(template.state, "sSec3Rot", 0);
   if (a > 180) a -= 360;
   if (a < -180) a += 360;
   return { ...template.state, [key]: String(Math.round(a)) };

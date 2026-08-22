@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef, type ReactNode } from "react";
 import { Field, TextArea, TextInput } from "@/components/invoices/ui";
-import { flag, n, previewFace, s } from "@/lib/design/layout";
+import { familyFocus, flag, n, previewFace, s } from "@/lib/design/layout";
 import { stickerCopyFields } from "@/lib/design/layers";
 import { useDesignApp } from "./design-context";
 
@@ -29,6 +30,36 @@ function LangSelect({
       <option value="en">English only</option>
       <option value="ar">Arabic only</option>
     </select>
+  );
+}
+
+function FocusBlock({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  const app = useDesignApp();
+  const on = familyFocus(app.selectedId)?.block === id;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (on) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [on]);
+  return (
+    <div
+      ref={ref}
+      className={`grid gap-3 ${on ? "rounded-[var(--bb-radius)] border border-[var(--bb-gold)] p-3" : ""}`}
+    >
+      {title ? (
+        <p className={`text-xs uppercase tracking-wide ${on ? "text-[var(--bb-title)]" : "text-[var(--bb-muted)]"}`}>
+          {title}
+        </p>
+      ) : null}
+      {children}
+    </div>
   );
 }
 
@@ -73,46 +104,56 @@ export function CopyPanel() {
   if (face === "circle") {
     return (
       <div className="grid gap-3">
-        <Field label="Logo letters">
-          <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
-        </Field>
-        <Field label="Brand line 1">
-          <TextInput value={s(st, "eCBrand1")} onChange={(e) => app.setField("eCBrand1", e.target.value)} />
-        </Field>
-        <Field label="Brand line 2">
-          <TextInput value={s(st, "eCBrand2")} onChange={(e) => app.setField("eCBrand2", e.target.value)} />
-        </Field>
-        <Field label="Product name">
-          <TextInput value={s(st, "eCProdName")} onChange={(e) => app.setField("eCProdName", e.target.value)} />
-        </Field>
-        <Field label="Flavor">
-          <TextInput value={s(st, "eCFlavorTxt")} onChange={(e) => app.setField("eCFlavorTxt", e.target.value)} />
-        </Field>
-        <Field label="Weight">
-          <TextInput value={s(st, "eWeight")} onChange={(e) => app.setField("eWeight", e.target.value)} />
-        </Field>
-        <label className="flex items-center gap-2 text-sm text-[var(--bb-text)]">
-          <input
-            type="checkbox"
-            checked={flag(st, "bCShowDate1", true)}
-            onChange={(e) => app.setField("bCShowDate1", e.target.checked ? "true" : "false")}
-          />
-          Date 1
-        </label>
-        <Field label="Date 1">
-          <TextInput value={s(st, "eCDate1")} onChange={(e) => app.setField("eCDate1", e.target.value)} />
-        </Field>
-        <label className="flex items-center gap-2 text-sm text-[var(--bb-text)]">
-          <input
-            type="checkbox"
-            checked={flag(st, "bCShowDate2", true)}
-            onChange={(e) => app.setField("bCShowDate2", e.target.checked ? "true" : "false")}
-          />
-          Date 2
-        </label>
-        <Field label="Date 2">
-          <TextInput value={s(st, "eCDate2")} onChange={(e) => app.setField("eCDate2", e.target.value)} />
-        </Field>
+        <FocusBlock id="clogo" title="Logo">
+          <Field label="Logo letters">
+            <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
+          </Field>
+        </FocusBlock>
+        <FocusBlock id="cbrand" title="Brand">
+          <Field label="Brand line 1">
+            <TextInput value={s(st, "eCBrand1")} onChange={(e) => app.setField("eCBrand1", e.target.value)} />
+          </Field>
+          <Field label="Brand line 2">
+            <TextInput value={s(st, "eCBrand2")} onChange={(e) => app.setField("eCBrand2", e.target.value)} />
+          </Field>
+        </FocusBlock>
+        <FocusBlock id="cflavor" title="Flavor">
+          <Field label="Product name">
+            <TextInput value={s(st, "eCProdName")} onChange={(e) => app.setField("eCProdName", e.target.value)} />
+          </Field>
+          <Field label="Flavor">
+            <TextInput value={s(st, "eCFlavorTxt")} onChange={(e) => app.setField("eCFlavorTxt", e.target.value)} />
+          </Field>
+        </FocusBlock>
+        <FocusBlock id="cweight" title="Weight">
+          <Field label="Weight">
+            <TextInput value={s(st, "eWeight")} onChange={(e) => app.setField("eWeight", e.target.value)} />
+          </Field>
+        </FocusBlock>
+        <FocusBlock id="cdates" title="Dates">
+          <label className="flex items-center gap-2 text-sm text-[var(--bb-text)]">
+            <input
+              type="checkbox"
+              checked={flag(st, "bCShowDate1", true)}
+              onChange={(e) => app.setField("bCShowDate1", e.target.checked ? "true" : "false")}
+            />
+            Date 1
+          </label>
+          <Field label="Date 1">
+            <TextInput value={s(st, "eCDate1")} onChange={(e) => app.setField("eCDate1", e.target.value)} />
+          </Field>
+          <label className="flex items-center gap-2 text-sm text-[var(--bb-text)]">
+            <input
+              type="checkbox"
+              checked={flag(st, "bCShowDate2", true)}
+              onChange={(e) => app.setField("bCShowDate2", e.target.checked ? "true" : "false")}
+            />
+            Date 2
+          </label>
+          <Field label="Date 2">
+            <TextInput value={s(st, "eCDate2")} onChange={(e) => app.setField("eCDate2", e.target.value)} />
+          </Field>
+        </FocusBlock>
       </div>
     );
   }
@@ -120,142 +161,162 @@ export function CopyPanel() {
   if (face === "top") {
     return (
       <div className="grid gap-3">
-        <Field label="Logo letters">
-          <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
-        </Field>
-        <Field label="Title 1">
-          <TextInput value={s(st, "tTitle1")} onChange={(e) => app.setField("tTitle1", e.target.value)} />
-        </Field>
-        <Field label="Title 2">
-          <TextInput value={s(st, "tTitle2")} onChange={(e) => app.setField("tTitle2", e.target.value)} />
-        </Field>
-        <Field label="Subtitle 1">
-          <TextInput value={s(st, "tSub1")} onChange={(e) => app.setField("tSub1", e.target.value)} />
-        </Field>
-        <Field label="Subtitle 2">
-          <TextInput value={s(st, "tSub2")} onChange={(e) => app.setField("tSub2", e.target.value)} />
-        </Field>
+        <FocusBlock id="tlogo" title="Logo">
+          <Field label="Logo letters">
+            <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
+          </Field>
+        </FocusBlock>
+        <FocusBlock id="ttitle" title="Title">
+          <Field label="Title 1">
+            <TextInput value={s(st, "tTitle1")} onChange={(e) => app.setField("tTitle1", e.target.value)} />
+          </Field>
+          <Field label="Title 2">
+            <TextInput value={s(st, "tTitle2")} onChange={(e) => app.setField("tTitle2", e.target.value)} />
+          </Field>
+        </FocusBlock>
+        <FocusBlock id="tsub" title="Subtitle">
+          <Field label="Subtitle 1">
+            <TextInput value={s(st, "tSub1")} onChange={(e) => app.setField("tSub1", e.target.value)} />
+          </Field>
+          <Field label="Subtitle 2">
+            <TextInput value={s(st, "tSub2")} onChange={(e) => app.setField("tSub2", e.target.value)} />
+          </Field>
+        </FocusBlock>
       </div>
     );
   }
 
   return (
     <div className="grid gap-4">
-      <Field label="Brand">
-        <TextInput value={s(st, "eBrand")} onChange={(e) => app.setField("eBrand", e.target.value)} />
-      </Field>
-      <Field label="Name 1">
-        <TextInput value={s(st, "eName1")} onChange={(e) => app.setField("eName1", e.target.value)} />
-      </Field>
-      <Field label="Name 2">
-        <TextInput value={s(st, "eName2")} onChange={(e) => app.setField("eName2", e.target.value)} />
-      </Field>
-      <Field label="Name 3">
-        <TextInput value={s(st, "eName3")} onChange={(e) => app.setField("eName3", e.target.value)} />
-      </Field>
-      <Field label="Name 1 (Arabic)">
-        <TextInput value={s(st, "eName1Ar")} onChange={(e) => app.setField("eName1Ar", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Name 2 (Arabic)">
-        <TextInput value={s(st, "eName2Ar")} onChange={(e) => app.setField("eName2Ar", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Ingredients language">
-        <LangSelect value={s(st, "eLangIng", "both")} onChange={(v) => app.setField("eLangIng", v)} />
-      </Field>
-      <Field label="Ingredients title">
-        <TextInput value={s(st, "eIngTitle")} onChange={(e) => app.setField("eIngTitle", e.target.value)} />
-      </Field>
-      <Field label="Ingredients">
-        <TextArea rows={4} value={s(st, "eIngredients")} onChange={(e) => app.setField("eIngredients", e.target.value)} />
-      </Field>
-      <Field label="Allergen">
-        <TextInput value={s(st, "eAllergen")} onChange={(e) => app.setField("eAllergen", e.target.value)} />
-      </Field>
-      <Field label="Ingredients title (Arabic)">
-        <TextInput value={s(st, "eIngTitleAr")} onChange={(e) => app.setField("eIngTitleAr", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Ingredients (Arabic)">
-        <TextArea rows={3} value={s(st, "eIngredientsAr")} onChange={(e) => app.setField("eIngredientsAr", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Allergen (Arabic)">
-        <TextInput value={s(st, "eAllergenAr")} onChange={(e) => app.setField("eAllergenAr", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Tips language">
-        <LangSelect value={s(st, "eLangTip", "both")} onChange={(v) => app.setField("eLangTip", v)} />
-      </Field>
-      <Field label="Tip title">
-        <TextInput value={s(st, "eTipTitle")} onChange={(e) => app.setField("eTipTitle", e.target.value)} />
-      </Field>
-      <Field label="Tip body">
-        <TextArea rows={3} value={s(st, "eTipBody")} onChange={(e) => app.setField("eTipBody", e.target.value)} />
-      </Field>
-      <Field label="Tip title (Arabic)">
-        <TextInput value={s(st, "eTipTitleAr")} onChange={(e) => app.setField("eTipTitleAr", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Tip body (Arabic)">
-        <TextArea rows={2} value={s(st, "eTipBodyAr")} onChange={(e) => app.setField("eTipBodyAr", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Tip icon 1">
-        <TextInput value={s(st, "eTipIcon1")} onChange={(e) => app.setField("eTipIcon1", e.target.value)} />
-      </Field>
-      <Field label="Tip icon 2">
-        <TextInput value={s(st, "eTipIcon2")} onChange={(e) => app.setField("eTipIcon2", e.target.value)} />
-      </Field>
-      <Field label="Dates language">
-        <LangSelect value={s(st, "eLangDates", "both")} onChange={(v) => app.setField("eLangDates", v)} />
-      </Field>
-      <Field label="Date label 1">
-        <TextInput value={s(st, "eDateLabel1")} onChange={(e) => app.setField("eDateLabel1", e.target.value)} />
-      </Field>
-      <Field label="Date 1">
-        <TextInput value={s(st, "eDate1")} onChange={(e) => app.setField("eDate1", e.target.value)} />
-      </Field>
-      <Field label="Date label 2">
-        <TextInput value={s(st, "eDateLabel2")} onChange={(e) => app.setField("eDateLabel2", e.target.value)} />
-      </Field>
-      <Field label="Date 2">
-        <TextInput value={s(st, "eDate2")} onChange={(e) => app.setField("eDate2", e.target.value)} />
-      </Field>
-      <Field label="Store">
-        <TextInput value={s(st, "eStore")} onChange={(e) => app.setField("eStore", e.target.value)} />
-      </Field>
-      <Field label="Date label 1 (Arabic)">
-        <TextInput value={s(st, "eDateLabel1Ar")} onChange={(e) => app.setField("eDateLabel1Ar", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Date label 2 (Arabic)">
-        <TextInput value={s(st, "eDateLabel2Ar")} onChange={(e) => app.setField("eDateLabel2Ar", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Store (Arabic)">
-        <TextInput value={s(st, "eStoreAr")} onChange={(e) => app.setField("eStoreAr", e.target.value)} dir="rtl" />
-      </Field>
-      <Field label="Weight">
-        <TextInput value={s(st, "eWeight")} onChange={(e) => app.setField("eWeight", e.target.value)} />
-      </Field>
-      <Field label="Logo language">
-        <LangSelect value={s(st, "eLangLogo", "both")} onChange={(v) => app.setField("eLangLogo", v)} />
-      </Field>
-      <Field label="Custom title">
-        <TextInput value={s(st, "eCusTitle")} onChange={(e) => app.setField("eCusTitle", e.target.value)} />
-      </Field>
-      <Field label="Custom body">
-        <TextArea rows={2} value={s(st, "eCusBody")} onChange={(e) => app.setField("eCusBody", e.target.value)} />
-      </Field>
-      <Field label="Custom body (Arabic)">
-        <TextArea rows={2} value={s(st, "eCusBodyAr")} onChange={(e) => app.setField("eCusBodyAr", e.target.value)} dir="rtl" />
-      </Field>
-      <div className="grid gap-2">
-        <p className="text-xs text-[var(--bb-muted)]">Ingredient badges (emoji or short mark)</p>
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="grid grid-cols-2 gap-2">
-            <Field label={`Icon ${i}`}>
-              <TextInput value={s(st, `eIcon${i}`)} onChange={(e) => app.setField(`eIcon${i}`, e.target.value)} />
-            </Field>
-            <Field label={`Label ${i}`}>
-              <TextInput value={s(st, `eBadge${i}`)} onChange={(e) => app.setField(`eBadge${i}`, e.target.value)} />
-            </Field>
-          </div>
-        ))}
-      </div>
+      <FocusBlock id="logo" title="Logo">
+        <Field label="Letters on the disc">
+          <TextInput value={s(st, "eBrand")} onChange={(e) => app.setField("eBrand", e.target.value)} />
+        </Field>
+        <Field label="Logo language">
+          <LangSelect value={s(st, "eLangLogo", "both")} onChange={(v) => app.setField("eLangLogo", v)} />
+        </Field>
+      </FocusBlock>
+      <FocusBlock id="brand" title="Brand names">
+        <Field label="Name 1">
+          <TextInput value={s(st, "eName1")} onChange={(e) => app.setField("eName1", e.target.value)} />
+        </Field>
+        <Field label="Name 2">
+          <TextInput value={s(st, "eName2")} onChange={(e) => app.setField("eName2", e.target.value)} />
+        </Field>
+        <Field label="Name 3">
+          <TextInput value={s(st, "eName3")} onChange={(e) => app.setField("eName3", e.target.value)} />
+        </Field>
+        <Field label="Name 1 (Arabic)">
+          <TextInput value={s(st, "eName1Ar")} onChange={(e) => app.setField("eName1Ar", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Name 2 (Arabic)">
+          <TextInput value={s(st, "eName2Ar")} onChange={(e) => app.setField("eName2Ar", e.target.value)} dir="rtl" />
+        </Field>
+      </FocusBlock>
+      <FocusBlock id="ing" title="Ingredients">
+        <Field label="Ingredients language">
+          <LangSelect value={s(st, "eLangIng", "both")} onChange={(v) => app.setField("eLangIng", v)} />
+        </Field>
+        <Field label="Ingredients title">
+          <TextInput value={s(st, "eIngTitle")} onChange={(e) => app.setField("eIngTitle", e.target.value)} />
+        </Field>
+        <Field label="Ingredients">
+          <TextArea rows={4} value={s(st, "eIngredients")} onChange={(e) => app.setField("eIngredients", e.target.value)} />
+        </Field>
+        <Field label="Allergen">
+          <TextInput value={s(st, "eAllergen")} onChange={(e) => app.setField("eAllergen", e.target.value)} />
+        </Field>
+        <Field label="Ingredients title (Arabic)">
+          <TextInput value={s(st, "eIngTitleAr")} onChange={(e) => app.setField("eIngTitleAr", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Ingredients (Arabic)">
+          <TextArea rows={3} value={s(st, "eIngredientsAr")} onChange={(e) => app.setField("eIngredientsAr", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Allergen (Arabic)">
+          <TextInput value={s(st, "eAllergenAr")} onChange={(e) => app.setField("eAllergenAr", e.target.value)} dir="rtl" />
+        </Field>
+        <div className="grid gap-2">
+          <p className="text-xs text-[var(--bb-muted)]">Ingredient badges (emoji or short mark)</p>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="grid grid-cols-2 gap-2">
+              <Field label={`Icon ${i}`}>
+                <TextInput value={s(st, `eIcon${i}`)} onChange={(e) => app.setField(`eIcon${i}`, e.target.value)} />
+              </Field>
+              <Field label={`Label ${i}`}>
+                <TextInput value={s(st, `eBadge${i}`)} onChange={(e) => app.setField(`eBadge${i}`, e.target.value)} />
+              </Field>
+            </div>
+          ))}
+        </div>
+      </FocusBlock>
+      <FocusBlock id="tip" title="Tips">
+        <Field label="Tips language">
+          <LangSelect value={s(st, "eLangTip", "both")} onChange={(v) => app.setField("eLangTip", v)} />
+        </Field>
+        <Field label="Tip title">
+          <TextInput value={s(st, "eTipTitle")} onChange={(e) => app.setField("eTipTitle", e.target.value)} />
+        </Field>
+        <Field label="Tip body">
+          <TextArea rows={3} value={s(st, "eTipBody")} onChange={(e) => app.setField("eTipBody", e.target.value)} />
+        </Field>
+        <Field label="Tip title (Arabic)">
+          <TextInput value={s(st, "eTipTitleAr")} onChange={(e) => app.setField("eTipTitleAr", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Tip body (Arabic)">
+          <TextArea rows={2} value={s(st, "eTipBodyAr")} onChange={(e) => app.setField("eTipBodyAr", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Tip icon 1">
+          <TextInput value={s(st, "eTipIcon1")} onChange={(e) => app.setField("eTipIcon1", e.target.value)} />
+        </Field>
+        <Field label="Tip icon 2">
+          <TextInput value={s(st, "eTipIcon2")} onChange={(e) => app.setField("eTipIcon2", e.target.value)} />
+        </Field>
+      </FocusBlock>
+      <FocusBlock id="dates" title="Dates">
+        <Field label="Dates language">
+          <LangSelect value={s(st, "eLangDates", "both")} onChange={(v) => app.setField("eLangDates", v)} />
+        </Field>
+        <Field label="Date label 1">
+          <TextInput value={s(st, "eDateLabel1")} onChange={(e) => app.setField("eDateLabel1", e.target.value)} />
+        </Field>
+        <Field label="Date 1">
+          <TextInput value={s(st, "eDate1")} onChange={(e) => app.setField("eDate1", e.target.value)} />
+        </Field>
+        <Field label="Date label 2">
+          <TextInput value={s(st, "eDateLabel2")} onChange={(e) => app.setField("eDateLabel2", e.target.value)} />
+        </Field>
+        <Field label="Date 2">
+          <TextInput value={s(st, "eDate2")} onChange={(e) => app.setField("eDate2", e.target.value)} />
+        </Field>
+        <Field label="Store">
+          <TextInput value={s(st, "eStore")} onChange={(e) => app.setField("eStore", e.target.value)} />
+        </Field>
+        <Field label="Date label 1 (Arabic)">
+          <TextInput value={s(st, "eDateLabel1Ar")} onChange={(e) => app.setField("eDateLabel1Ar", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Date label 2 (Arabic)">
+          <TextInput value={s(st, "eDateLabel2Ar")} onChange={(e) => app.setField("eDateLabel2Ar", e.target.value)} dir="rtl" />
+        </Field>
+        <Field label="Store (Arabic)">
+          <TextInput value={s(st, "eStoreAr")} onChange={(e) => app.setField("eStoreAr", e.target.value)} dir="rtl" />
+        </Field>
+      </FocusBlock>
+      <FocusBlock id="weight" title="Weight">
+        <Field label="Weight">
+          <TextInput value={s(st, "eWeight")} onChange={(e) => app.setField("eWeight", e.target.value)} />
+        </Field>
+      </FocusBlock>
+      <FocusBlock id="custom" title="Custom">
+        <Field label="Custom title">
+          <TextInput value={s(st, "eCusTitle")} onChange={(e) => app.setField("eCusTitle", e.target.value)} />
+        </Field>
+        <Field label="Custom body">
+          <TextArea rows={2} value={s(st, "eCusBody")} onChange={(e) => app.setField("eCusBody", e.target.value)} />
+        </Field>
+        <Field label="Custom body (Arabic)">
+          <TextArea rows={2} value={s(st, "eCusBodyAr")} onChange={(e) => app.setField("eCusBodyAr", e.target.value)} dir="rtl" />
+        </Field>
+      </FocusBlock>
     </div>
   );
 }
@@ -281,7 +342,8 @@ export function NutritionPanel() {
     </Field>
   );
   return (
-    <div className="grid gap-3">
+    <FocusBlock id="nut" title="Nutrition">
+      <div className="grid gap-3">
       {numField("nSrv", "Serving size")}
       {numField("nCal", "Calories")}
       <div className="grid grid-cols-2 gap-2">
@@ -316,6 +378,7 @@ export function NutritionPanel() {
         {row("cNProt", "Protein")}
       </div>
     </div>
+    </FocusBlock>
   );
 }
 
@@ -340,7 +403,7 @@ export function LayoutPanel() {
       <div className="grid gap-1.5">
         {sec("chkS1", "Ingredients")}
         {sec("chkS2", "Nutrition")}
-        {sec("chkS3", "Logo / brand")}
+        {sec("chkS3", "Logo column")}
         {sec("chkS4", "Tips")}
         {sec("chkS5", "Dates")}
         {sec("chkS6", "Custom", false)}

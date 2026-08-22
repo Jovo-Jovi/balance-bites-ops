@@ -78,16 +78,18 @@ export async function listLabelAssets(): Promise<LabelAssetItem[]> {
   return body.items || [];
 }
 
-export async function deleteLabelAsset(objectKey: string): Promise<void> {
+export async function deleteLabelAssetFolder(templateId: string): Promise<number> {
   assertStorageEnabled();
   const res = await fetch(
-    `/api/storage/object?key=${encodeURIComponent(objectKey)}`,
+    `/api/storage/object?templateId=${encodeURIComponent(templateId)}`,
     {
       method: "DELETE",
       headers: await authHeader(),
     },
   );
   if (!res.ok) throw new Error(await readError(res));
+  const body = (await res.json()) as { removed?: number };
+  return Number(body.removed || 0);
 }
 
 export async function uploadBackupJson(

@@ -265,7 +265,8 @@ export function LibraryTool() {
         }
       >
         <p className="text-sm text-[var(--bb-text)]">
-          This removes the template from the cloud library. Sticker SKUs in Finance keep their link until someone updates them there.
+          Deletes this template from the cloud library and every uploaded file in its art folder. This cannot be
+          undone. Design does not change Finance SKUs — pick a new template on the SKU later.
         </p>
       </Modal>
     </div>

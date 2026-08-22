@@ -337,10 +337,14 @@ async function rasterizeSvg(svg: string, wPx: number, hPx: number) {
 async function paintForeignObjects(canvas: HTMLCanvasElement, svgMarkup: string, wPx: number, hPx: number) {
   if (!/<foreignObject[\s>]/i.test(svgMarkup)) return;
   const { toCanvas } = await import("html-to-image");
+  const fonts = await printFontCss();
+  const markup = svgMarkup.replace(/^<\?xml[^>]*>/, "").replace(/@import\s+url\([^)]+\);?/g, "");
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<link rel="stylesheet" href="${PRINT_FONTS}"/>
-<style>html,body{margin:0;padding:0;width:${wPx}px;height:${hPx}px;overflow:hidden;background:transparent}svg{display:block;width:${wPx}px;height:${hPx}px}</style>
-</head><body>${svgMarkup.replace(/^<\?xml[^>]*>/, "")}</body></html>`;
+<style>${fonts}
+html,body{margin:0;padding:0;width:${wPx}px;height:${hPx}px;overflow:hidden;background:transparent}
+svg{display:block;width:${wPx}px;height:${hPx}px}
+</style>
+</head><body>${markup}</body></html>`;
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   iframe.style.cssText = `position:fixed;left:-10000px;top:0;width:${wPx}px;height:${hPx}px;border:0;opacity:1;pointer-events:none;`;
@@ -386,6 +390,8 @@ async function paintForeignObjects(canvas: HTMLCanvasElement, svgMarkup: string,
         height: fh,
         pixelRatio: Math.max(2, Math.min(4, canvas.width / Math.max(fw, 1))),
         cacheBust: false,
+        skipFonts: true,
+        fontEmbedCSS: fonts || " ",
       });
       ctx.save();
       ctx.setTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e - iframeRect.left, ctm.f - iframeRect.top);

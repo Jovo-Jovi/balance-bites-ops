@@ -224,6 +224,12 @@ Do not start Wave C (libraries rail) until this is tested.
 
 ---
 
+## 2026-08-22 — Print match, split logo/brand, full delete, PNG fonts
+
+Studio gold boxes and print SVG now use the same placements: top lid at 32/58/78%, circle photo/weight/dates at overlay %, wrap last column fills leftover width, wrap text is one full-sticker `foreignObject` so columns are not clipped. Wrap/taper **Logo** (disc) and **Brand** (names) are separate hit-boxes. Delete removes `bb_label_templates` plus R2 `label_assets/{id}/` (Finance SKUs are not rewritten). PNG pack inlines Google Fonts CSS and sets `skipFonts` so `html-to-image` does not read cross-origin `cssRules`.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

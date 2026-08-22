@@ -29,7 +29,7 @@ Inspector tabs depend on the **open face**. A control that does not change this 
 
 | id | Wrap / taper | Circle / outlines | Top lid | Composite |
 |---|---|---|---|---|
-| Copy | Brand, names EN/AR, ingredients, tips, dates, weight, custom, badges | Logo, brand, product, flavor, weight, dates | Logo, titles, subtitles | Zones already on the die-cut |
+| Copy | Logo disc + brand names (separate), ingredients, tips, dates, weight, custom, badges | Logo, brand, product, flavor, weight, dates | Logo, titles, subtitles | Zones already on the die-cut |
 | Nutrition | Serving, calories, macros, DV, row on/off | — | — | — |
 | Layout | `chkS*`, order, `sw*`, badge toggles | — | — | — (Layers) |
 | Type | Wrap font/size sliders | Circle font/size keys | Lid sizes | — |
@@ -37,7 +37,7 @@ Inspector tabs depend on the **open face**. A control that does not change this 
 | Color | Packs + label / ink / logo circle | Packs + flavor ink | Packs + ink | Packs + part colors via Layers |
 | Images | `hxBg*` / `hxCProd` / `hxQr` | Product photo + paper | — | Same + composite photos |
 | Icons | — | — | — | Repo catalog + A–Z stamps |
-| Layers | Print cut + section boxes | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
+| Layers | Print cut + section boxes (logo disc ≠ brand names) | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
 
 No fourth Design workspace tool.
 

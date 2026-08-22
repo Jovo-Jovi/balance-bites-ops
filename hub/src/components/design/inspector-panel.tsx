@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
 import { hasExactArt } from "@/lib/design/art";
 import type { PreviewFace } from "@/lib/design/layout";
+import { familyFocus } from "@/lib/design/layout";
 import { ImagesPanel, IconsPanel } from "./art-panel";
 import {
   ColorFields,
@@ -124,13 +125,26 @@ function FlavorPacks() {
 }
 
 export function FaceInspector({ face }: { face: PreviewFace }) {
+  const app = useDesignApp();
   const tabs = tabsFor(face);
   const [panel, setPanel] = useState<TabId>(tabs[0].id);
+  const focus = familyFocus(app.selectedId);
 
   useEffect(() => {
     const ids = tabsFor(face).map((tab) => tab.id);
     if (!ids.includes(panel)) setPanel(ids[0]);
   }, [face, panel]);
+
+  useEffect(() => {
+    if (!focus) return;
+    setPanel((prev) => {
+      if (focus.tab === "nutrition") return "nutrition";
+      if (prev === "type" || prev === "size" || prev === "color" || prev === "images" || prev === "icons" || prev === "layers") {
+        return prev;
+      }
+      return "copy";
+    });
+  }, [app.selectedId, focus]);
 
   return (
     <div>

@@ -28,6 +28,8 @@ import {
 } from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
 import { exportFileBase } from "@/lib/design/prepress";
+import { isStorageEnabled } from "@/lib/firebase-config";
+import { deleteLabelAssetFolder } from "@/lib/storage";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
   applyFlavorPack,
@@ -61,7 +63,6 @@ import {
   ungroupSelected,
 } from "@/lib/design/studio-ops";
 import type { DesignType, LabelMode, LabelState, LabelTemplate, StickerSku } from "@/lib/design/types";
-import { isStorageEnabled } from "@/lib/firebase-config";
 import { removeDesignKey, writeDesignKey } from "@/lib/design/write";
 
 type ClipPick = { step: "main" | "inner"; mainId?: string };
@@ -440,7 +441,16 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             setCurrent(null);
             go("library", null);
           }
-          toast.push("Deleted.", "ok");
+          if (isStorageEnabled()) {
+            try {
+              const n = await deleteLabelAssetFolder(id);
+              toast.push(n ? `Deleted (${n} art file${n === 1 ? "" : "s"}).` : "Deleted.", "ok");
+            } catch {
+              toast.push("Template removed. Some uploaded art could not be deleted.", "warn");
+            }
+          } else {
+            toast.push("Deleted.", "ok");
+          }
         } catch (err) {
           toast.push(err instanceof Error ? err.message : "Could not delete.", "bad");
         } finally {

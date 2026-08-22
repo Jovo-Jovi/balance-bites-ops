@@ -142,3 +142,16 @@ export async function listR2Prefix(prefix = LABEL_ASSETS_PREFIX, max = 400) {
   } while (token);
   return items;
 }
+
+export async function deleteR2Prefix(prefix: string) {
+  let removed = 0;
+  for (;;) {
+    const batch = await listR2Prefix(prefix, 100);
+    if (!batch.length) return removed;
+    for (const it of batch) {
+      await deleteR2Object(it.key);
+      removed += 1;
+    }
+    if (batch.length < 100) return removed;
+  }
+}
