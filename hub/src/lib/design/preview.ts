@@ -4,7 +4,7 @@ import { familyPreviewSvg, circleShape } from "./family-preview";
 import { iconInner } from "./icons";
 import { artboardOf, circlePx, previewFace } from "./layout";
 import { getDesignSpec } from "./specs";
-import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
 
 function str(state: LabelState, key: string, fallback = "") {
   const v = state[key];
@@ -440,28 +440,32 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   const txt = str(state, "cTxtMain", "#ffffff");
   const comp = state._composite;
   const clipId = clipIdOf(template);
-  const stamps = lite ? [] : [...(state._stamps || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
-  const stampMarkup = stamps
-    .map((s: LabelStamp) =>
-      iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot, s.letterStyle),
-    )
-    .join("");
+  const stamps = lite ? [] : [...(state._stamps || [])];
 
   if (spec.composite && comp) {
-    const parts = [...(comp.parts || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
-    const zones = [...(comp.zones || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
+    const parts = [...(comp.parts || [])];
+    const zones = [...(comp.zones || [])];
     const exactArt = parts.some((p) => p.showImage);
     const boardFill =
       lite || !exactArt ? `<rect width="100" height="100" fill="${esc(comp.bg || fill)}" />` : "";
+    const stack: { z: number; html: string }[] = [];
+    for (const p of parts) stack.push({ z: p.z || 0, html: partShape(p, lite) });
+    for (const z of zones) stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
+    for (const s of stamps) {
+      stack.push({
+        z: s.z || 0,
+        html: iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot, s.letterStyle),
+      });
+    }
+    const photo = productLayer(state, false, lite);
+    if (photo) stack.push({ z: 0.5, html: photo });
+    stack.sort((a, b) => a.z - b.z);
     const inner = `
       <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
         ${boardFill}
         ${bgLayers(state, lite)}
-        ${parts.map((p) => partShape(p, lite)).join("")}
-        ${productLayer(state, false, lite)}
-        ${zones.map((z) => zoneMarkup(z, comp.txt || txt, state, lite)).join("")}
-        ${stampMarkup}
+        ${stack.map((item) => item.html).join("")}
         ${qrLayer(state, lite)}
       </g>`;
     return wrapPreviewSvg(inner, template, state, opts);

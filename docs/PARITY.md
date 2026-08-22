@@ -85,7 +85,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Print house constants (1.5 mm bleed, 300 DPI) + SVG preview/download
 - [x] Print / PDF / SVG at exact artboard cm (no A4 scale, `print-color-adjust`, print fonts). File name `{Name}_{w}x{h}cm`
 - [x] Print house cut stroke as an editable border around the die-cut (size mm + colour)
-- [x] Studio Layers can select Print cut (same stroke fields as Print house)
+- [x] Studio Layers Up / Down restack composite shapes, logo, and text in one z-order (live interact list)
 - [x] Studio background uploads (`hxBg*` / `hxCProd`) on any family — Studio **Images** tab
 - [x] Composite extra photos as image zones (live `addProductPhotos`); pick from R2 or the device
 - [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)

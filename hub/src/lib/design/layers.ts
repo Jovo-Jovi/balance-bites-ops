@@ -39,6 +39,7 @@ export type CanvasItem = {
   h: number;
   rot?: number;
   fan?: number;
+  z?: number;
   lock: boolean;
 };
 
@@ -142,7 +143,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
       id: PHOTO_LAYER,
       kind: "photo",
       label: "Product photo",
-      z: 35,
+      z: 0.5,
       removable: false,
     });
   }
@@ -151,7 +152,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
       id: QR_LAYER,
       kind: "qr",
       label: "QR / mark",
-      z: 36,
+      z: 100,
       removable: false,
     });
   }
@@ -202,6 +203,7 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
       w: part.w,
       h: part.h,
       rot: part.rot,
+      z: part.z || 0,
       lock: Boolean(part.lock) && part.showImage !== true,
     });
   }
@@ -214,6 +216,7 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
       w: zone.w,
       h: zone.h,
       rot: zone.rot,
+      z: zone.z || 0,
       lock: Boolean(zone.lock) && zone.kind !== "image" && zone.kind !== "icon",
     });
   }
@@ -227,16 +230,17 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
       w: stamp.w,
       h: stamp.h,
       rot: stamp.rot,
+      z: stamp.z || 0,
       lock: false,
     });
   }
   if (face === "composite") {
   if (usableImage(state.hxCProd) || isAssetRef(state.hxCProd)) {
     const box = productPhotoBox(state, circular);
-    items.push({ id: PHOTO_LAYER, kind: "photo", ...box, lock: false });
+    items.push({ id: PHOTO_LAYER, kind: "photo", ...box, z: 0.5, lock: false });
   }
   if (usableImage(state.hxQr) || isAssetRef(state.hxQr)) {
-    items.push({ id: QR_LAYER, kind: "qr", x: 86, y: 86, w: 16, h: 16, lock: false });
+    items.push({ id: QR_LAYER, kind: "qr", x: 86, y: 86, w: 16, h: 16, z: 100, lock: false });
   }
   for (const slot of [...BG_SLOTS, ...BG_MORE]) {
     if (slot.key === "hxQr") continue;
@@ -257,7 +261,7 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
     });
   }
   }
-  return items;
+  return items.sort((a, b) => (a.z || 0) - (b.z || 0) || a.id.localeCompare(b.id));
 }
 
 export function patchLayer(
@@ -298,28 +302,22 @@ export function moveLayer(state: LabelState, id: string, dir: -1 | 1): LabelStat
   for (const part of state._composite?.parts || []) items.push({ id: part.id, z: part.z || 0, kind: "part" });
   for (const zone of state._composite?.zones || []) items.push({ id: zone.id, z: zone.z || 0, kind: "zone" });
   for (const stamp of state._stamps || []) items.push({ id: stamp.id, z: stamp.z || 0, kind: "stamp" });
-  items.sort((a, b) => a.z - b.z);
+  items.sort((a, b) => a.z - b.z || a.id.localeCompare(b.id));
   const index = items.findIndex((item) => item.id === id);
-  const swapWith = index + dir;
-  if (index < 0 || swapWith < 0 || swapWith >= items.length) return state;
-  const zA = items[index].z;
-  const zB = items[swapWith].z;
-  const nextZ = new Map<string, number>();
-  if (zA === zB) {
-    nextZ.set(items[index].id, zA + dir);
-  } else {
-    nextZ.set(items[index].id, zB);
-    nextZ.set(items[swapWith].id, zA);
-  }
-  const applyZ = (itemId: string, z: number) => nextZ.get(itemId) ?? z;
+  const next = index + dir;
+  if (index < 0 || next < 0 || next >= items.length) return state;
+  const ordered = items.slice();
+  const [moved] = ordered.splice(index, 1);
+  ordered.splice(next, 0, moved);
+  const zOf = new Map(ordered.map((item, i) => [item.id, i]));
   return {
     ...state,
-    _stamps: (state._stamps || []).map((s) => ({ ...s, z: applyZ(s.id, s.z || 0) })),
+    _stamps: (state._stamps || []).map((s) => ({ ...s, z: zOf.get(s.id) ?? (s.z || 0) })),
     _composite: state._composite
       ? {
           ...state._composite,
-          parts: (state._composite.parts || []).map((p) => ({ ...p, z: applyZ(p.id, p.z || 0) })),
-          zones: (state._composite.zones || []).map((z) => ({ ...z, z: applyZ(z.id, z.z || 0) })),
+          parts: (state._composite.parts || []).map((p) => ({ ...p, z: zOf.get(p.id) ?? (p.z || 0) })),
+          zones: (state._composite.zones || []).map((z) => ({ ...z, z: zOf.get(z.id) ?? (z.z || 0) })),
         }
       : state._composite,
   };

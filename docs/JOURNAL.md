@@ -212,6 +212,8 @@ Proposed follow-up, waiting for confirm: [DESIGN-STUDIO.md](DESIGN-STUDIO.md). A
 
 Confirmed waves A→D; chrome label **Studio** (`?tab=atelier`). Wave A only: live `BBComposite` add-shape, shift multi-select, merge, group/ungroup, trim (group clip), preview/approve cut, cut = selected, undo. Raster union/intersect ported in `boolean-cut.ts` — not Paper.js. Wrap/taper starters kept. PNG pack, libraries rail, and generic sections wait for test.
 
+Layers Up / Down now restack composite shapes, logo, and text in one z-order (live `getInteractList`). The preview used to paint every shape first and every logo after, so sending a logo behind a die did nothing on the sticker.
+
 ---
 
 ## Still not done (do not tick as shipped)

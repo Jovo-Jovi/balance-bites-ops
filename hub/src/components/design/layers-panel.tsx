@@ -14,16 +14,19 @@ export function LayersPanel() {
   const selectedItem = listCanvasItems(t).find((item) => item.id === app.selectedId);
   const strokeMm = String(t.state.sCutStrokeMm ?? CUT_STROKE_MM);
   const strokeColor = String(t.state.cCutStroke || CUT_STROKE_COLOR);
+  const stackIds = layers.filter((l) => l.kind === "part" || l.kind === "zone" || l.kind === "stamp").map((l) => l.id);
 
   return (
     <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        Print cut is the die-cut stroke. Tap a row, then drag to move or use the round handle to rotate.
+        Print cut is the die-cut stroke. Up / Down restack logo, text, and shapes on the sticker. Tap a row, then drag to move.
       </p>
       <ul className="flex flex-col gap-2">
-        {layers.map((layer, i) => {
+        {layers.map((layer) => {
           const selected = app.selectedIds.includes(layer.id) || app.selectedId === layer.id;
           const cut = layer.kind === "cut";
+          const stackAt = stackIds.indexOf(layer.id);
+          const inStack = stackAt >= 0;
           return (
             <li
               key={layer.id}
@@ -70,12 +73,12 @@ export function LayersPanel() {
                   </label>
                 ) : null}
                 <div className="flex gap-1">
-                  <ActionBtn tone="ghost" disabled={cut || i === 0} onClick={() => app.moveLayer(layer.id, 1)}>
+                  <ActionBtn tone="ghost" disabled={!inStack || stackAt === 0} onClick={() => app.moveLayer(layer.id, 1)}>
                     Up
                   </ActionBtn>
                   <ActionBtn
                     tone="ghost"
-                    disabled={cut || i === layers.length - 1}
+                    disabled={!inStack || stackAt === stackIds.length - 1}
                     onClick={() => app.moveLayer(layer.id, -1)}
                   >
                     Down

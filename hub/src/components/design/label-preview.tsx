@@ -125,10 +125,10 @@ export function LabelPreview({
                   aria-pressed={on}
                   className={`absolute box-border touch-none ${
                     on
-                      ? "z-20 border-2 border-[var(--bb-gold)]"
+                      ? "border-2 border-[var(--bb-gold)]"
                       : multi
-                        ? "z-10 cursor-grab border-2 border-dashed border-[var(--bb-gold)]"
-                        : "z-10 cursor-grab border border-transparent hover:border-[var(--bb-line)]"
+                        ? "cursor-grab border-2 border-dashed border-[var(--bb-gold)]"
+                        : "cursor-grab border border-transparent hover:border-[var(--bb-line)]"
                   }`}
                   style={{
                     left: `${item.x - item.w / 2}%`,
@@ -137,6 +137,7 @@ export function LabelPreview({
                     height: `${item.h}%`,
                     transform: item.rot ? `rotate(${item.rot}deg)` : undefined,
                     transformOrigin: "center center",
+                    zIndex: (on ? 1000 : 10) + Math.round((item.z || 0) * 10),
                   }}
                   onPointerDown={(e) => {
                     if ((e.target as HTMLElement).closest("[data-inline-edit]")) return;
