@@ -22,6 +22,26 @@ export function fillOf(state: LabelState) {
   return s(state, "cLabel", "#2e7d32");
 }
 
+const PRINT_INK =
+  "-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;forced-color-adjust:none";
+
+export function logoDiscHtml(
+  sz: number,
+  ring: boolean,
+  thick: number,
+  disc: string,
+  ink: string,
+  text: string,
+  fontName: string,
+  fs: number,
+) {
+  const r = sz / 2;
+  const rr = Math.max(1, r - (ring ? thick / 2 : 0));
+  const fill = ring ? "none" : disc;
+  const stroke = ring ? `stroke="${esc(disc)}" stroke-width="${thick}"` : `stroke="none"`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="flex-shrink:0;display:block;overflow:visible"><circle cx="${r}" cy="${r}" r="${rr}" fill="${esc(fill)}" ${stroke}/><text x="${r}" y="${r}" text-anchor="middle" dominant-baseline="central" font-family="${esc(fontName)},sans-serif" font-weight="900" font-size="${fs}" fill="${esc(ink)}">${html(text)}</text></svg>`;
+}
+
 function qrMark(size: number, bg: string, fg: string) {
   const p = [
     [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1],
@@ -35,11 +55,11 @@ function qrMark(size: number, bg: string, fg: string) {
   const cell = Math.max(1, Math.floor(size / 17));
   const bits = p.flatMap((row) =>
     row.map(
-      (bit) =>
-        `<div style="width:${cell}px;height:${cell}px;background:${bit ? fg : bg}"></div>`,
+        (bit) =>
+        `<div style="width:${cell}px;height:${cell}px;background:${bit ? fg : bg};${PRINT_INK}"></div>`,
     ),
   );
-  return `<div style="display:inline-grid;grid-template-columns:repeat(17,${cell}px);background:${bg};padding:${cell}px">${bits.join("")}</div>`;
+  return `<div style="display:inline-grid;grid-template-columns:repeat(17,${cell}px);background:${bg};padding:${cell}px;${PRINT_INK}">${bits.join("")}</div>`;
 }
 
 function badges(state: LabelState, lite: boolean, scale = 1) {
@@ -78,7 +98,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   const pad = Math.round(h * 0.07);
   const padS = Math.round(h * 0.04);
   const wrap = (inner: string) =>
-    `<div style="width:100%;height:100%;overflow:hidden;box-sizing:border-box">${inner}</div>`;
+    `<div style="width:100%;height:100%;overflow:hidden;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
 
   if (k === "1") {
     const lang = s(state, "eLangIng", "both");
@@ -126,7 +146,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
       rows.push({ l: `<span style="padding-left:8px">Total Sugars ${n(state, "nSug", 0)}g</span>`, r: "" });
     if (flag(state, "cNProt", true)) rows.push({ l: `<b>Protein</b> ${n(state, "nProt", 0)}g`, r: "" });
     return wrap(
-      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center">
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);${PRINT_INK};display:flex;align-items:center;justify-content:center">
         <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:4px 5px;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;transform:scale(${scale}) translate(${x}px,${y}px)">
           <div style="font-family:${esc(FH)};font-weight:800;font-size:${sTitle}px;color:${ink};border-bottom:2.5px solid ${ink};line-height:1.1">Nutrition Facts</div>
           <div style="font-size:${sBody * 0.9}px;color:${mut};padding:2px 0">${html(s(state, "nSrv"))}</div>
@@ -155,7 +175,6 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     const ring = s(state, "eLogoCircleStyle", "full") === "ring";
     const thick = n(state, "sLogoCircleThick", 1.5);
     const circle = s(state, "cLogoCircle", "#ffffff");
-    const ls = ring ? `background:transparent;border:${thick}px solid ${circle}` : `background:${circle};border:none`;
     const names = [s(state, "eName1"), s(state, "eName2"), s(state, "eName3")].filter(Boolean);
     const arNames = [s(state, "eName1Ar"), s(state, "eName2Ar")].filter(Boolean);
     const boxOn = flag(state, "chkName2Box", false);
@@ -164,7 +183,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
         ? names
             .map((l) =>
               boxOn && l === s(state, "eName2")
-                ? `<div style="background:${s(state, "cName2Bg", "#ffffff")};color:${s(state, "cName2Txt", fillOf(state))};padding:1px 6px;border-radius:2px;display:inline-block;margin:1px 0">${html(l)}</div>`
+                ? `<div style="background:${s(state, "cName2Bg", "#ffffff")};color:${s(state, "cName2Txt", fillOf(state))};padding:1px 6px;border-radius:2px;display:inline-block;margin:1px 0;${PRINT_INK}">${html(l)}</div>`
                 : `<div>${html(l)}</div>`,
             )
             .join("")
@@ -177,9 +196,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
         : "";
     return wrap(
       `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${h * 0.03}px;padding:${padS}px;transform:translate(${n(state, "sLogoPosX", 0)}px,${n(state, "sLogoPosY", 0)}px)">
-        <div style="width:${sz}px;height:${sz}px;border-radius:50%;${ls};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <span style="font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sLogoFS", 20)}px;color:${s(state, "cLogoTxt", fillOf(state))}">${html(s(state, "eBrand", "BB"))}</span>
-        </div>
+        ${logoDiscHtml(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20))}
         <div style="font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;max-width:100%;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1">${nameHtml}${arHtml}</div>
         ${flag(state, "chkLogoBadges", true) ? badges(state, lite, 0.9) : ""}
       </div>`,
@@ -258,5 +275,5 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
 }
 
 export function sectionBox(w: number, h: number, inner: string) {
-  return `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;overflow:hidden;box-sizing:border-box">${inner}</div>`;
+  return `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;overflow:hidden;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
 }

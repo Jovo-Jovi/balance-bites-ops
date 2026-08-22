@@ -1,6 +1,6 @@
 import { BG_MORE, BG_SLOTS, usableImage } from "./art";
 import { getIcon } from "./icons";
-import { familyBoxes, familyBoxById, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem } from "./layout";
+import { familyBoxes, familyBoxById, familyTextField, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s } from "./layout";
 import { bgPanKeys, productPhotoBox } from "./preview";
 import { isAssetRef } from "./templates";
 import type { LabelState, LabelTemplate } from "./types";
@@ -38,6 +38,7 @@ export type CanvasItem = {
   w: number;
   h: number;
   rot?: number;
+  fan?: number;
   lock: boolean;
 };
 
@@ -53,6 +54,17 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
   if (kind === "text") return "Text";
   if (kind === "image") return "Photo";
   return kind || "Layer";
+}
+
+export function canvasEditText(template: LabelTemplate, id: string): { value: string; multiline: boolean } | null {
+  const fam = familyTextField(id);
+  if (fam) return { value: s(template.state, fam.field), multiline: fam.multiline };
+  const zone = template.state._composite?.zones?.find((z) => z.id === id);
+  if (zone && (zone.kind === "text" || zone.kind === "logo")) {
+    const fromField = zone.field ? s(template.state, zone.field) : "";
+    return { value: String(zone.text ?? fromField), multiline: zone.kind === "text" };
+  }
+  return null;
 }
 
 export function listLayers(template: LabelTemplate): DesignLayer[] {
@@ -73,7 +85,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
     familyBoxes(template).forEach((box, i) => {
       layers.push({
         id: box.id,
-        kind: box.id === PHOTO_LAYER ? "photo" : "zone",
+        kind: box.id === PHOTO_LAYER ? "photo" : box.id === QR_LAYER ? "qr" : "zone",
         label: box.label,
         z: 40 - i,
         lock: box.lock,
@@ -83,6 +95,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
   }
   const comp = face === "composite" ? state._composite : undefined;
   if (comp) {
+    const partCount = (comp.parts || []).length;
     for (const part of comp.parts || []) {
       layers.push({
         id: part.id,
@@ -90,8 +103,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         label: part.name || (part.type === "silhouette" ? "Cut shape" : part.type || "Shape"),
         z: part.z || 0,
         color: part.color,
-        lock: true,
-        removable: false,
+        lock: Boolean(part.lock),
+        removable: partCount > 1 && !part.lock,
       });
     }
     for (const zone of comp.zones || []) {
@@ -167,12 +180,13 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
     for (const box of familyBoxes(template)) {
       items.push({
         id: box.id,
-        kind: box.id === PHOTO_LAYER ? "photo" : "zone",
+        kind: box.id === PHOTO_LAYER ? "photo" : box.id === QR_LAYER ? "qr" : "zone",
         x: box.x,
         y: box.y,
         w: box.w,
         h: box.h,
         rot: box.rot,
+        fan: box.fan,
         lock: box.lock,
       });
     }
@@ -325,7 +339,7 @@ export function rotateItem(template: LabelTemplate, id: string, rot: number): La
   if (a > 180) a -= 360;
   if (a < -180) a += 360;
   a = Math.round(a);
-  if (familyBoxByIdSafe(template, id)) return rotateFamilyItem(state, id, a);
+  if (familyBoxByIdSafe(template, id)) return rotateFamilyItem(template, id, a);
   return {
     ...state,
     _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, rot: a } : s)),
@@ -354,6 +368,27 @@ export function moveItem(template: LabelTemplate, id: string, x: number, y: numb
     const field = id.slice(5);
     const pan = bgPanKeys(field);
     return { ...state, [pan.x]: String(nx), [pan.y]: String(ny) };
+  }
+  const part = state._composite?.parts?.find((p) => p.id === id);
+  const zone = state._composite?.zones?.find((z) => z.id === id);
+  const gid = part?.layerGroup || zone?.layerGroup;
+  if (gid && state._composite) {
+    const src = part || zone;
+    const dx = nx - (src?.x || 0);
+    const dy = ny - (src?.y || 0);
+    return {
+      ...state,
+      _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, x: nx, y: ny } : s)),
+      _composite: {
+        ...state._composite,
+        parts: (state._composite.parts || []).map((p) =>
+          p.layerGroup === gid ? { ...p, x: p.x + dx, y: p.y + dy } : p,
+        ),
+        zones: (state._composite.zones || []).map((z) =>
+          z.layerGroup === gid ? { ...z, x: z.x + dx, y: z.y + dy } : z,
+        ),
+      },
+    };
   }
   return {
     ...state,

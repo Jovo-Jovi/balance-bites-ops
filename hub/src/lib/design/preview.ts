@@ -1,4 +1,5 @@
 import { usableImage } from "./art";
+import { partFillPath } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { iconInner } from "./icons";
 import { artboardOf, circlePx, previewFace } from "./layout";
@@ -112,6 +113,8 @@ function partShape(part: CompositePart, lite = false) {
   if (t === "pentagon") return partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" fill="${esc(fill)}" />`);
   if (t === "octagon") return partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" fill="${esc(fill)}" />`);
   if (t === "star") return partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" fill="${esc(fill)}" />`);
+  const d = partFillPath(part);
+  if (d) return `<path d="${esc(d)}" fill="${esc(fill)}" />`;
   return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${esc(fill)}" />`);
 }
 
@@ -297,7 +300,7 @@ function esc(s: string) {
 export const CUT_STROKE_MM = 0.25;
 export const CUT_STROKE_COLOR = "#FF00FF";
 
-export type LabelPreviewOpts = { showCut?: boolean; lite?: boolean };
+export type LabelPreviewOpts = { showCut?: boolean; lite?: boolean; physical?: boolean };
 
 export function cutStrokeOf(state: LabelState) {
   const raw = Number(state.sCutStrokeMm);
@@ -410,13 +413,17 @@ function cutOverlayMm(template: LabelTemplate, state: LabelState, wMm: number, h
 }
 
 function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
-  if (!opts?.showCut) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" role="img">${inner}</svg>`;
-  }
   const { wCm, hCm } = artboardOf(template, state);
+  const size = opts?.physical ? `width="${wCm}cm" height="${hCm}cm"` : `width="100%" height="100%"`;
+  const css = opts?.physical
+    ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
+    : "";
+  if (!opts?.showCut) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" ${size} color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
+  }
   const wMm = wCm * 10;
   const hMm = hCm * 10;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wMm} ${hMm}" preserveAspectRatio="none" width="100%" height="100%" role="img">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wMm} ${hMm}" preserveAspectRatio="none" ${size} color-interpolation="sRGB" role="img">${css}
     <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none">${inner}</svg>
     ${cutOverlayMm(template, state, wMm, hMm)}
   </svg>`;
@@ -426,7 +433,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   const spec = getDesignSpec(template.designType);
   const lite = Boolean(opts?.lite);
   if (!spec.composite || !state._composite) {
-    return familyPreviewSvg(template, state, lite, Boolean(opts?.showCut));
+    return familyPreviewSvg(template, state, lite, Boolean(opts?.showCut), Boolean(opts?.physical));
   }
 
   const fill = str(state, "cLabel", "#2e7d32");

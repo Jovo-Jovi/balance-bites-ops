@@ -196,8 +196,26 @@ Taper (and the other families) were remapped into `viewBox="0 0 100 100"` with `
 
 ---
 
+## 2026-08-22 — Print cm, wrap colors, in-place edit
+
+Print preview and Save as PDF were scaling onto A4 (`@page size: auto` + 10 mm margin) and dropping CSS backgrounds in `foreignObject`. Print / SVG now use the artboard in centimetres, `print-color-adjust: exact`, and the same Google fonts as Atelier. Logo discs are SVG, not HTML `background`. Downloaded files are `{Name}_{w}x{h}cm.svg` (print PDF title matches). Rectangular wrap SVG had `width="100%"` so viewers stretched it — physical cm + SVG fill. Taper/wrap QR and weight are their own hit-boxes; selecting a text section opens an in-place field.
+
+---
+
+## 2026-08-22 — Design Studio plan (not built)
+
+Proposed follow-up, waiting for confirm: [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Atelier would become a label **studio** (Canva-shaped libraries rail, live composite join/trim/cut/merge, Isolated PNG cut packs, user-named sections). Not a Canva/Polotno clone. Not implemented in this note.
+
+---
+
+## 2026-08-22 — Studio Wave A (composite die-cut)
+
+Confirmed waves A→D; chrome label **Studio** (`?tab=atelier`). Wave A only: live `BBComposite` add-shape, shift multi-select, merge, group/ungroup, trim (group clip), preview/approve cut, cut = selected, undo. Raster union/intersect ported in `boolean-cut.ts` — not Paper.js. Wrap/taper starters kept. PNG pack, libraries rail, and generic sections wait for test.
+
+---
+
 ## Still not done (do not tick as shipped)
 
-- Design follow-up: full composite drawing / PNG cut pack / writing preset folders into tenant templates
+- Design Waves B–D: PNG cut pack / libraries rail / user-named sections; writing preset folders into tenant templates
 - Finance tabs and ledger formulas
 - Merge `feat/design` → `main` when asked

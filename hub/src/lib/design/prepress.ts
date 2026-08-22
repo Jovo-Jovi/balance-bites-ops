@@ -14,6 +14,9 @@ export const PRINT_PACK_EXCLUDE: Record<string, string> = {
   art_popcorn_red: "Licensed likeness — not for commercial print pack",
 };
 
+const PRINT_FONTS =
+  "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&display=swap";
+
 export function pxFromMm(mm: number) {
   return Math.max(1, Math.round((mm / 25.4) * DPI));
 }
@@ -30,26 +33,44 @@ export function printExcludeNote(template: LabelTemplate, state: LabelState) {
   );
 }
 
+function cmLabel(n: number) {
+  const v = Math.round(n * 100) / 100;
+  return String(v);
+}
+
+export function exportFileBase(template: LabelTemplate) {
+  const { wCm, hCm } = artboardCm(template);
+  const safe = template.name.replace(/[^\w\- ]+/g, "_").trim() || "label";
+  return `${safe}_${cmLabel(wCm)}x${cmLabel(hCm)}cm`;
+}
+
+function exportSvgMarkup(template: LabelTemplate, state: LabelState) {
+  return labelPreviewSvg(template, state, { showCut: true, physical: true });
+}
+
 export function downloadSvg(template: LabelTemplate, state: LabelState) {
-  const svg = labelPreviewSvg(template, state, { showCut: true });
+  const svg = exportSvgMarkup(template, state);
   const blob = new Blob([svg], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${template.name.replace(/[^\w\- ]+/g, "_") || "label"}.svg`;
+  a.download = `${exportFileBase(template)}.svg`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 export function printPreview(template: LabelTemplate, state: LabelState) {
   const { wCm, hCm } = artboardCm(template);
-  const svg = labelPreviewSvg(template, state, { showCut: true });
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(template.name)}</title>
+  const svg = exportSvgMarkup(template, state);
+  const title = exportFileBase(template);
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(title)}</title>
+<link rel="stylesheet" href="${PRINT_FONTS}">
 <style>
-  @page { size: auto; margin: 10mm; }
-  body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
-  .sheet { width: ${wCm}cm; height: ${hCm}cm; overflow: visible; }
-  svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  @page { size: ${wCm}cm ${hCm}cm; margin: 0; }
+  html, body { margin: 0; padding: 0; width: ${wCm}cm; height: ${hCm}cm; background: #fff; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; forced-color-adjust: none !important; }
+  .sheet { width: ${wCm}cm; height: ${hCm}cm; overflow: hidden; }
+  svg { width: ${wCm}cm; height: ${hCm}cm; display: block; }
 </style></head><body><div class="sheet">${svg}</div>
 <script>window.onload=function(){window.print();};<\/script></body></html>`;
   const w = window.open("", "_blank", "width=820,height=960");

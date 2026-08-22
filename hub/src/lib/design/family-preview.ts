@@ -2,17 +2,18 @@ import { usableImage } from "./art";
 import { getDesignSpec } from "./specs";
 import {
   PPC,
+  artboardOf,
   backPx,
   backSections,
-  calcTaper,
-  circlePx,
   flag,
   n,
   previewFace,
   s,
+  taperSectors,
   topPx,
+  circlePx,
 } from "./layout";
-import { fillOf, inkOf, mutOf, sectionBox, sectionHtml } from "./section-html";
+import { fillOf, inkOf, logoDiscHtml, mutOf, sectionBox, sectionHtml } from "./section-html";
 import type { LabelState, LabelTemplate } from "./types";
 
 function esc(v: string) {
@@ -72,8 +73,21 @@ function outlineGeomPx(kind: string, W: number, H: number, radiusPx = 0) {
   return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" />`;
 }
 
-function svgDoc(viewBox: string, inner: string) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" role="img">${inner}</svg>`;
+const PRINT_STYLE = `<style type="text/css"><![CDATA[
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&display=swap");
+*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}
+foreignObject,div,span,img,svg,circle,rect,text{color-adjust:exact!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+]]></style>`;
+
+function svgDoc(
+  viewBox: string,
+  inner: string,
+  opts?: { wCm?: number; hCm?: number; printCss?: boolean },
+) {
+  const physical = Boolean(opts?.wCm && opts?.hCm);
+  const size = physical ? `width="${opts!.wCm}cm" height="${opts!.hCm}cm"` : `width="100%" height="100%"`;
+  const par = physical ? "none" : "xMidYMid meet";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" preserveAspectRatio="${par}" ${size} color-interpolation="sRGB" role="img">${opts?.printCss ? PRINT_STYLE : ""}${inner}</svg>`;
 }
 
 function cutStroke(state: LabelState) {
@@ -108,7 +122,7 @@ function zone(x: string, y: string, w: string, h: string, extra: string, inner: 
   return `<div style="position:absolute;left:${x};top:${y};width:${w};height:${h};box-sizing:border-box;${extra}">${inner}</div>`;
 }
 
-function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean) {
+function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean, svgOpts: { wCm?: number; hCm?: number; printCss?: boolean }) {
   const spec = getDesignSpec(template.designType);
   const { W, H } = circlePx(state);
   const shape = circleShape(state, spec.outline);
@@ -124,10 +138,6 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
   const thick = n(state, "tLogoCircleThick", 1.5);
   const logoSz = n(state, "sCLogoSz", 45);
   const logoFS = logoSz * 0.45;
-  const logoTS = ring
-    ? `background:transparent;border:${thick}px solid ${ink};`
-    : `background:${ink};border:none;`;
-  const logoTC = ring ? ink : fill;
   const pSz = n(state, "sCProdSz", 80);
   const pSc = n(state, "sCProdScale", 1);
   const photo = lite ? "" : usableImage(state.hxCProd);
@@ -138,7 +148,7 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
   const d2 = flag(state, "bCShowDate2", true) ? s(state, "eCDate2") : "";
   const botPad = n(state, "sCBotPad", 8);
 
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;box-sizing:border-box;background:${esc(fill)};color:${esc(ink)};font-family:${esc(fh)},sans-serif">
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;box-sizing:border-box;background:transparent;color:${esc(ink)};font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
     ${
       s(state, "tLogoTxt")
         ? zone(
@@ -146,8 +156,8 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
             "10%",
             `${logoSz}px`,
             `${logoSz}px`,
-            `transform:translate(-50%,-50%) translate(${n(state, "sCLogoX", 0)}px,${n(state, "sCLogoY", 0)}px);z-index:5;font-weight:900;font-size:${logoFS}px`,
-            `<div style="${logoTS}color:${esc(logoTC)};width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center">${html(s(state, "tLogoTxt", "BB"))}</div>`,
+            `transform:translate(-50%,-50%) translate(${n(state, "sCLogoX", 0)}px,${n(state, "sCLogoY", 0)}px);z-index:5`,
+            logoDiscHtml(logoSz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt", "BB"), fh, logoFS),
           )
         : ""
     }
@@ -207,13 +217,14 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
   const geom = outlineGeomPx(shape, W, H, radius);
   const inner = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
     <g clip-path="url(#${clipId})">
+      <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}">${body}</foreignObject>
     </g>
     ${showCut ? cutGroup(state, geom) : ""}`;
-  return svgDoc(`0 0 ${W} ${H}`, inner);
+  return svgDoc(`0 0 ${W} ${H}`, inner, svgOpts);
 }
 
-function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean) {
+function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean, svgOpts: { wCm?: number; hCm?: number; printCss?: boolean }) {
   const { W, H } = topPx(state);
   const fill = fillOf(state);
   const ink = inkOf(state);
@@ -226,13 +237,11 @@ function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean) {
   const clipId = `bbtop-${safeId(template.id)}`;
   const ring = s(state, "tLogoCircleStyle", "full") === "ring";
   const thick = n(state, "tLogoCircleThick", 1.5);
-  const ts = ring ? `background:transparent;border:${thick}px solid ${ink}` : `background:${ink};border:none`;
-  const tc = ring ? ink : fill;
   const sz = n(state, "sTCircleSz", 32);
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:${esc(fill)};color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;box-sizing:border-box;font-family:${esc(fh)},sans-serif">
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;box-sizing:border-box;font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
     ${
       s(state, "tLogoTxt")
-        ? `<div style="position:relative;width:${sz}px;height:${sz}px;margin-bottom:8px;transform:translate(${n(state, "sTLogoX", 0)}px,${n(state, "sTLogoY", 0)}px);font-weight:900;font-size:${n(state, "sTLogoFS", 15)}px"><div style="${ts};color:${esc(tc)};width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center">${html(s(state, "tLogoTxt"))}</div></div>`
+        ? `<div style="position:relative;width:${sz}px;height:${sz}px;margin-bottom:8px;transform:translate(${n(state, "sTLogoX", 0)}px,${n(state, "sTLogoY", 0)}px)">${logoDiscHtml(sz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt"), fh, n(state, "sTLogoFS", 15))}</div>`
         : ""
     }
     ${
@@ -248,12 +257,15 @@ function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean) {
   </div>`;
   const geom = outlineGeomPx(shape, W, H);
   const inner = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
-    <g clip-path="url(#${clipId})"><foreignObject x="0" y="0" width="${W}" height="${H}">${body}</foreignObject></g>
+    <g clip-path="url(#${clipId})">
+      <g fill="${esc(fill)}">${geom}</g>
+      <foreignObject x="0" y="0" width="${W}" height="${H}">${body}</foreignObject>
+    </g>
     ${showCut ? cutGroup(state, geom) : ""}`;
-  return svgDoc(`0 0 ${W} ${H}`, inner);
+  return svgDoc(`0 0 ${W} ${H}`, inner, svgOpts);
 }
 
-function drawBack(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean) {
+function drawBack(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean, svgOpts: { wCm?: number; hCm?: number; printCss?: boolean }) {
   const { W, H } = backPx(state);
   const fill = fillOf(state);
   const uid = `bk-${safeId(template.id)}`;
@@ -271,58 +283,39 @@ function drawBack(template: LabelTemplate, state: LabelState, lite: boolean, sho
         `<g clip-path="url(#${clip})" transform="translate(${cx} ${cy}) scale(${z}) translate(${-cx} ${-cy})"><image href="${esc(href)}" x="${sec.l}" y="0" width="${sec.w}" height="${H}" opacity="${o}" preserveAspectRatio="xMidYMid meet" /></g>`,
       );
     }
-    parts.push(
-      `<foreignObject x="${sec.l}" y="0" width="${sec.w}" height="${H}">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</foreignObject>`,
-    );
+    const rot = n(state, `sSec${sec.k}Rot`, 0);
+    const rcx = sec.l + sec.w / 2;
+    const rcy = H / 2;
+    const fo = `<foreignObject x="${sec.l}" y="0" width="${sec.w}" height="${H}">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</foreignObject>`;
+    parts.push(rot ? `<g transform="rotate(${rot},${rcx},${rcy})">${fo}</g>` : fo);
     if (sec.l > 0) {
       parts.push(`<line x1="${sec.l}" y1="0" x2="${sec.l}" y2="${H}" stroke="rgba(255,255,255,.18)" stroke-width="1" />`);
     }
   }
   if (showCut) parts.push(cutGroup(state, `<rect x="0" y="0" width="${W}" height="${H}" />`));
-  return svgDoc(`0 0 ${W} ${H}`, parts.join(""));
+  return svgDoc(`0 0 ${W} ${H}`, parts.join(""), svgOpts);
 }
 
-function drawTaper(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean) {
-  const g = calcTaper(state);
+function drawTaper(
+  template: LabelTemplate,
+  state: LabelState,
+  lite: boolean,
+  showCut: boolean,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean },
+) {
+  const { g, secs } = taperSectors(state);
   if (!g.R1 || !g.R2 || !g.arcDeg || !g.vbW || !g.vbH) {
-    return svgDoc("0 0 100 100", `<text x="8" y="54" font-size="10" fill="#c00">Taper geometry error</text>`);
+    return svgDoc("0 0 100 100", `<text x="8" y="54" font-size="10" fill="#c00">Taper geometry error</text>`, svgOpts);
   }
   const fill = fillOf(state);
-  const { W } = backPx(state);
-  const secs = backSections(state, W);
   const half = g.arcDeg / 2;
-  const active = secs.reduce((a, sec) => a + sec.w, 0) || 1;
   const uid = `tp-${safeId(template.id)}`;
-  let cur = -half;
-  const secData = secs.map((sec) => {
-    const span = g.arcDeg * (sec.w / active);
-    const sa = cur;
-    const ea = cur + span;
-    const mid = (sa + ea) / 2;
-    cur = ea;
-    const gap = -0.5;
-    const aPts: number[][] = [];
-    for (const ang of [sa, ea, mid]) {
-      const r = (ang * Math.PI) / 180;
-      aPts.push([g.cx + g.R1 * Math.sin(r), g.cy - g.R1 * Math.cos(r)]);
-      aPts.push([g.cx + g.R2 * Math.sin(r), g.cy - g.R2 * Math.cos(r)]);
-    }
-    const xs = aPts.map((p) => p[0]);
-    const ys = aPts.map((p) => p[1]);
-    const fW = Math.max(...xs) - Math.min(...xs);
-    const fH = Math.max(...ys) - Math.min(...ys);
-    return {
-      k: sec.k,
-      sa,
-      ea,
-      saG: sa + gap / 2,
-      eaG: ea - gap / 2,
-      mid,
-      fW,
-      fH,
-      clipId: `${uid}c${sec.k}`,
-    };
-  });
+  const secData = secs.map((sec) => ({
+    ...sec,
+    saG: sec.sa - 0.25,
+    eaG: sec.ea + 0.25,
+    clipId: `${uid}c${sec.k}`,
+  }));
 
   const fan = sectorPath(g.cx, g.cy, g.R1, g.R2, -half, half);
   const parts = [`<path d="${fan}" fill="${esc(fill)}" />`];
@@ -360,7 +353,7 @@ function drawTaper(template: LabelTemplate, state: LabelState, lite: boolean, sh
     parts.push(`<g clip-path="url(#${d.clipId})">
       <g transform="rotate(${d.mid + n(state, `sSec${d.k}Rot`, 0)},${g.cx},${g.cy})">
         <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact">
             <div style="width:${innerW}px;height:${innerH}px;overflow:hidden">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
           </div>
         </foreignObject>
@@ -368,15 +361,23 @@ function drawTaper(template: LabelTemplate, state: LabelState, lite: boolean, sh
     </g>`);
   }
   if (showCut) parts.push(cutGroup(state, `<path d="${fan}" />`));
-  return svgDoc(`${g.minX} ${g.minY} ${g.vbW} ${g.vbH}`, parts.join(""));
+  return svgDoc(`${g.minX} ${g.minY} ${g.vbW} ${g.vbH}`, parts.join(""), svgOpts);
 }
 
 /** Complete SVG document. Native pixel viewBox — do not remap to 0–100. */
-export function familyPreviewSvg(template: LabelTemplate, state: LabelState, lite = false, showCut = false) {
+export function familyPreviewSvg(
+  template: LabelTemplate,
+  state: LabelState,
+  lite = false,
+  showCut = false,
+  physical = false,
+) {
+  const board = artboardOf(template, state);
+  const svgOpts = physical ? { wCm: board.wCm, hCm: board.hCm, printCss: true } : undefined;
   const face = previewFace(template);
-  if (face === "circle") return drawCircle(template, state, lite, showCut);
-  if (face === "top") return drawTop(template, state, showCut);
-  if (face === "taper") return drawTaper(template, state, lite, showCut);
-  if (face === "back") return drawBack(template, state, lite, showCut);
-  return svgDoc("0 0 100 100", "");
+  if (face === "circle") return drawCircle(template, state, lite, showCut, svgOpts || {});
+  if (face === "top") return drawTop(template, state, showCut, svgOpts || {});
+  if (face === "taper") return drawTaper(template, state, lite, showCut, svgOpts || {});
+  if (face === "back") return drawBack(template, state, lite, showCut, svgOpts || {});
+  return svgDoc("0 0 100 100", "", svgOpts);
 }

@@ -38,6 +38,8 @@ Treat these as the specification. Search inside them; do not guess modules.
 | `C:\Users\Marco\Desktop\balance-bites-ops\docs\DATA.md` | Who writes which `bb_*` key; derived vs stored |
 | `C:\Users\Marco\Desktop\balance-bites-ops\docs\BRAND-UI.md` | Hub UX, fonts, colors, language |
 | `C:\Users\Marco\Desktop\balance-bites-ops\README.md` | Product summary |
+| `C:\Users\Marco\Desktop\balance-bites-ops\docs\DESIGN.md` | Design app map (library / studio / print) |
+| `C:\Users\Marco\Desktop\balance-bites-ops\docs\DESIGN-STUDIO.md` | Proposed studio waves — **confirm before coding** |
 | `C:\Users\Marco\Desktop\balance-bites-ops\SETUP.md` | Firebase/Vercel human steps |
 | `C:\Users\Marco\Desktop\balance-bites-ops\.env.example` | Env var names |
 
@@ -164,11 +166,12 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 - [x] Deep link `bb_label_open` from finance stickers
 - [x] Product select from `bb_products`; sticker SKUs read-only
 - [x] Print house bleed/DPI + SVG preview + editable cut stroke
-- [x] Atelier Copy / Images / Icons / Layers; drag, rotate, resize
+- [x] Studio Copy / Images / Icons / Layers; drag, rotate, resize
 - [x] Live faces: composite `_composite`; circular `buildCircleLabel`; rect wrap / top lid; taper `calcTaper`
-- [x] Icon picker in Atelier (repo catalog + live A–Z letters; not a Firestore dump)
+- [x] Icon picker in Studio (repo catalog + live A–Z letters; not a Firestore dump)
 - [x] Character art from repo `public/design-presets/` (`artref:`)
-- [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
+- [x] Composite Studio Wave A (add shape / merge / group / trim / preview+approve cut)
+- [ ] PNG cut pack (Wave B) / libraries rail (Wave C) / user-named sections (Wave D) — [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md)
 - [ ] Applying `assets/presets/` folders into tenant templates / Jelly Kids dump
 - [ ] Desktop folder scan of `bbLabel-*.json` (pick a file instead)
 
@@ -210,4 +213,4 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub and invoices are on `main`. Design is native on `feat/design`. Next is Finance — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub and invoices are on `main`. Design is native on `feat/design`. Studio PNG/composite is **proposed** (`docs/DESIGN-STUDIO.md`) — confirm waves before coding. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.

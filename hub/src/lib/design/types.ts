@@ -46,6 +46,11 @@ export type CompositePart = {
   showImage?: boolean;
   artKey?: string;
   lock?: boolean;
+  lockAspect?: boolean;
+  texture?: string;
+  layerGroup?: string;
+  joinGroup?: string;
+  joinRole?: "main" | "inner";
   borderColor?: string;
   borderWidth?: number | string;
 };
@@ -76,6 +81,8 @@ export type CompositeZone = {
   shape?: string;
   fill?: string;
   letterStyle?: string;
+  layerGroup?: string;
+  lockAspect?: boolean;
 };
 
 export type LabelStamp = {
@@ -102,6 +109,9 @@ export type CompositeBlob = {
   zones?: CompositeZone[];
   unionPath?: string;
   presetId?: string | null;
+  cutSourceIds?: string[] | null;
+  cutZoneId?: string | null;
+  cutGroupId?: string | null;
 };
 
 export type LabelState = Record<string, unknown> & {

@@ -45,10 +45,10 @@ Hub card: **Design** — **ported** to native React (filtered tools). Do not wra
 
 | File | Role in live HTML | Hub |
 |---|---|---|
-| `balance-bites-sticker.html` | Shell, left panel, artboard, FileStore | Native Library + Atelier + Print house ([DESIGN.md](DESIGN.md)) |
-| `bb-prepress.js` | Print-house export (bleed, crop, color) | Constants + SVG preview / cut stroke; PNG cut pack is a gap |
-| `bb-composite-label.js` | Composite label layout | Preview + round-trip `state._composite` + move/rotate/resize; freeform drawing is a gap |
-| `bb-icon-library.js` | Icon stamps on labels | Atelier **Icons** tab (repo catalog + live A–Z letters). Not dumped into Firestore |
+| `balance-bites-sticker.html` | Shell, left panel, artboard, FileStore | Native Library + Studio + Print house ([DESIGN.md](DESIGN.md)) |
+| `bb-prepress.js` | Print-house export (bleed, crop, color) | Constants + SVG preview / cut stroke; PNG cut pack is Wave B ([DESIGN-STUDIO.md](DESIGN-STUDIO.md)) |
+| `bb-composite-label.js` | Composite label layout | Wave A: add shape / merge / group / trim / cut (`boolean-cut.ts`). PNG pack still Wave B |
+| `bb-icon-library.js` | Icon stamps on labels | Studio **Icons** tab (repo catalog + live A–Z letters). Not dumped into Firestore |
 | `bb-jelly-kids.js` | Jelly Kids preset behavior | Gap — do not dump into Firestore |
 | `assets/presets/` | Art preset payloads (repo, not tenant) | Preview via `hub/public/design-presets/`. Do not dump folders into Firestore |
 

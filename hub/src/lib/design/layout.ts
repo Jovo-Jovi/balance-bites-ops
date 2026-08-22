@@ -160,6 +160,8 @@ export type FamilyBox = {
   w: number;
   h: number;
   rot: number;
+  /** Sector fan angle in degrees. Overlay rot = fan + stored sSec*Rot. */
+  fan?: number;
   lock: boolean;
   restX: number;
   restY: number;
@@ -169,6 +171,20 @@ export type FamilyBox = {
   wKey?: string;
   hKey?: string;
 };
+
+function rotOffset(localX: number, localY: number, deg: number) {
+  const r = (deg * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  return { x: localX * c - localY * s, y: localX * s + localY * c };
+}
+
+function unrotOffset(dx: number, dy: number, deg: number) {
+  const r = (deg * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  return { x: dx * c + dy * s, y: -dx * s + dy * c };
+}
 
 export const FAM = {
   logo: "__fam:logo",
@@ -186,6 +202,8 @@ export const FAM = {
   blogo: "__fam:blogo",
   tip: "__fam:tip",
   bdates: "__fam:bdates",
+  bwt: "__fam:bwt",
+  cus: "__fam:cus",
 } as const;
 
 function pct(px: number, total: number) {
@@ -396,123 +414,291 @@ export function backSections(state: LabelState, W: number): BackSection[] {
   return out;
 }
 
+export type TaperSector = {
+  k: string;
+  sa: number;
+  ea: number;
+  mid: number;
+  fW: number;
+  fH: number;
+};
+
+export function taperSectors(state: LabelState): { g: TaperGeo; secs: TaperSector[] } {
+  const g = calcTaper(state);
+  const { W } = backPx(state);
+  const secs = backSections(state, W);
+  const half = g.arcDeg / 2;
+  const active = secs.reduce((a, sec) => a + sec.w, 0) || 1;
+  let cur = -half;
+  return {
+    g,
+    secs: secs.map((sec) => {
+      const span = g.arcDeg * (sec.w / active);
+      const sa = cur;
+      const ea = cur + span;
+      const mid = (sa + ea) / 2;
+      cur = ea;
+      const aPts: number[][] = [];
+      for (const ang of [sa, ea, mid]) {
+        const r = (ang * Math.PI) / 180;
+        aPts.push([g.cx + g.R1 * Math.sin(r), g.cy - g.R1 * Math.cos(r)]);
+        aPts.push([g.cx + g.R2 * Math.sin(r), g.cy - g.R2 * Math.cos(r)]);
+      }
+      const xs = aPts.map((p) => p[0]);
+      const ys = aPts.map((p) => p[1]);
+      return {
+        k: sec.k,
+        sa,
+        ea,
+        mid,
+        fW: Math.max(...xs) - Math.min(...xs),
+        fH: Math.max(...ys) - Math.min(...ys),
+      };
+    }),
+  };
+}
+
+function fanXy(g: TaperGeo, ang: number, radius: number) {
+  const r = (ang * Math.PI) / 180;
+  return { x: g.cx + radius * Math.sin(r), y: g.cy - radius * Math.cos(r) };
+}
+
+function vbPct(g: TaperGeo, x: number, y: number) {
+  return {
+    x: g.vbW ? ((x - g.minX) / g.vbW) * 100 : 50,
+    y: g.vbH ? ((y - g.minY) / g.vbH) * 100 : 50,
+  };
+}
+
+const WRAP_META: Record<string, { id: string; label: string; ox: string; oy: string }> = {
+  "1": { id: FAM.ing, label: "Ingredients", ox: "sIngPosX", oy: "sIngPosY" },
+  "2": { id: FAM.nut, label: "Nutrition", ox: "sNutPosX", oy: "sNutPosY" },
+  "3": { id: FAM.blogo, label: "Logo / brand", ox: "sLogoPosX", oy: "sLogoPosY" },
+  "4": { id: FAM.tip, label: "Tips", ox: "sTipPosX", oy: "sTipPosY" },
+  "5": { id: FAM.bdates, label: "Dates", ox: "sDatePosX", oy: "sDatePosY" },
+  "6": { id: FAM.cus, label: "Custom", ox: "", oy: "" },
+};
+
+export function familyTextField(id: string): { field: string; multiline: boolean } | null {
+  const map: Record<string, { field: string; multiline: boolean }> = {
+    [FAM.ing]: { field: "eIngredients", multiline: true },
+    [FAM.nut]: { field: "nCal", multiline: false },
+    [FAM.blogo]: { field: "eName1", multiline: false },
+    [FAM.tip]: { field: "eTipBody", multiline: true },
+    [FAM.bdates]: { field: "eDate1", multiline: false },
+    [FAM.bwt]: { field: "eWeight", multiline: false },
+    [FAM.cus]: { field: "eCusBody", multiline: true },
+    [FAM.logo]: { field: "tLogoTxt", multiline: false },
+    [FAM.brand]: { field: "eCBrand1", multiline: false },
+    [FAM.flavor]: { field: "eCFlavorTxt", multiline: false },
+    [FAM.weight]: { field: "eWeight", multiline: false },
+    [FAM.dates]: { field: "eCDate1", multiline: false },
+    [FAM.tlogo]: { field: "tLogoTxt", multiline: false },
+    [FAM.ttitle]: { field: "tTitle1", multiline: false },
+    [FAM.tsub]: { field: "tSub1", multiline: false },
+  };
+  return map[id] || null;
+}
+
 export function backBoxes(state: LabelState): FamilyBox[] {
   const { W, H } = backPx(state);
-  const labels: Record<string, string> = {
-    "1": "Ingredients",
-    "2": "Nutrition",
-    "3": "Logo / brand",
-    "4": "Tips",
-    "5": "Dates",
-    "6": "Custom",
+  const boxes: FamilyBox[] = [];
+  for (const sec of backSections(state, W)) {
+    const meta = WRAP_META[sec.k] || { id: `__fam:sec${sec.k}`, label: `Section ${sec.k}`, ox: "", oy: "" };
+    const restX = pct(sec.l + sec.w / 2, W);
+    const cw = pct(Math.max(24, sec.w * 0.88), W);
+    const rot = n(state, `sSec${sec.k}Rot`, 0);
+    const home = (restYPct: number, ox: string, oy: string) => {
+      const fromC = ((restYPct - 50) / 100) * H;
+      const rest = rotOffset(0, fromC, rot);
+      const world = rotOffset(n(state, ox, 0), fromC + n(state, oy, 0), rot);
+      return {
+        x: restX + pct(world.x, W),
+        y: 50 + pct(world.y, H),
+        restX: restX + pct(rest.x, W),
+        restY: 50 + pct(rest.y, H),
+      };
+    };
+    if (sec.k === "5") {
+      const dates = home(28, "sDatePosX", "sDatePosY");
+      boxes.push({
+        id: FAM.bdates,
+        label: "Dates",
+        x: dates.x,
+        y: dates.y,
+        w: cw,
+        h: 40,
+        rot,
+        fan: 0,
+        lock: false,
+        restX: dates.restX,
+        restY: dates.restY,
+        ox: "sDatePosX",
+        oy: "sDatePosY",
+      });
+      const qsz = n(state, "sQrSz", 44);
+      const qr = home(70, "sQrPosX", "sQrPosY");
+      boxes.push({
+        id: FAM.qr,
+        label: "QR",
+        x: qr.x,
+        y: qr.y,
+        w: pct(qsz, W),
+        h: pct(qsz, H),
+        rot,
+        fan: 0,
+        lock: false,
+        restX: qr.restX,
+        restY: qr.restY,
+        ox: "sQrPosX",
+        oy: "sQrPosY",
+        size: "sQrSz",
+      });
+      const wt = home(90, "sWtPosX", "sWtPosY");
+      boxes.push({
+        id: FAM.bwt,
+        label: "Weight",
+        x: wt.x,
+        y: wt.y,
+        w: cw,
+        h: 16,
+        rot,
+        fan: 0,
+        lock: false,
+        restX: wt.restX,
+        restY: wt.restY,
+        ox: "sWtPosX",
+        oy: "sWtPosY",
+      });
+      continue;
+    }
+    const at = meta.ox ? home(50, meta.ox, meta.oy) : { x: restX, y: 50, restX, restY: 50 };
+    boxes.push({
+      id: meta.id,
+      label: meta.label,
+      x: at.x,
+      y: at.y,
+      w: cw,
+      h: 78,
+      rot,
+      fan: 0,
+      lock: false,
+      restX: at.restX,
+      restY: at.restY,
+      ox: meta.ox || undefined,
+      oy: meta.oy || undefined,
+    });
+  }
+  return boxes;
+}
+
+function taperPlaced(
+  g: TaperGeo,
+  state: LabelState,
+  deg: number,
+  radius: number,
+  ox: string,
+  oy: string,
+  rot: number,
+) {
+  const p = fanXy(g, deg, radius);
+  const rest = vbPct(g, p.x, p.y);
+  const world = rotOffset(n(state, ox, 0), n(state, oy, 0), rot);
+  return {
+    x: rest.x + pct(world.x, g.vbW),
+    y: rest.y + pct(world.y, g.vbH),
+    restX: rest.x,
+    restY: rest.y,
+    rot,
   };
-  const ids: Record<string, string> = {
-    "1": FAM.ing,
-    "2": FAM.nut,
-    "3": FAM.blogo,
-    "4": FAM.tip,
-    "5": FAM.bdates,
-  };
-  const ox: Record<string, string> = {
-    "1": "sIngPosX",
-    "2": "sNutPosX",
-    "3": "sLogoPosX",
-    "4": "sTipPosX",
-    "5": "sDatePosX",
-  };
-  const oy: Record<string, string> = {
-    "1": "sIngPosY",
-    "2": "sNutPosY",
-    "3": "sLogoPosY",
-    "4": "sTipPosY",
-    "5": "sDatePosY",
-  };
-  return backSections(state, W).map((sec) => ({
-    id: ids[sec.k] || `__fam:sec${sec.k}`,
-    label: labels[sec.k] || `Section ${sec.k}`,
-    x: pct(sec.l + sec.w / 2, W) + pct(n(state, ox[sec.k] || "", 0), W),
-    y: 50 + pct(n(state, oy[sec.k] || "", 0), H),
-    w: pct(sec.w, W),
-    h: 100,
-    rot: n(state, `sSec${sec.k}Rot`, 0),
-    lock: false,
-    restX: pct(sec.l + sec.w / 2, W),
-    restY: 50,
-    ox: ox[sec.k],
-    oy: oy[sec.k],
-  }));
 }
 
 export function taperBoxes(state: LabelState): FamilyBox[] {
-  const g = calcTaper(state);
-  const { W } = backPx(state);
-  const labels: Record<string, string> = {
-    "1": "Ingredients",
-    "2": "Nutrition",
-    "3": "Logo / brand",
-    "4": "Tips",
-    "5": "Dates",
-    "6": "Custom",
-  };
-  const ids: Record<string, string> = {
-    "1": FAM.ing,
-    "2": FAM.nut,
-    "3": FAM.blogo,
-    "4": FAM.tip,
-    "5": FAM.bdates,
-  };
-  const ox: Record<string, string> = {
-    "1": "sIngPosX",
-    "2": "sNutPosX",
-    "3": "sLogoPosX",
-    "4": "sTipPosX",
-    "5": "sDatePosX",
-  };
-  const oy: Record<string, string> = {
-    "1": "sIngPosY",
-    "2": "sNutPosY",
-    "3": "sLogoPosY",
-    "4": "sTipPosY",
-    "5": "sDatePosY",
-  };
-  const secs = backSections(state, W);
-  const active = secs.reduce((sum, sec) => sum + sec.w, 0) || 1;
-  let cur = -g.arcDeg / 2;
-  return secs.map((sec) => {
-    const span = g.arcDeg * (sec.w / active);
-    const mid = cur + span / 2;
-    cur += span;
-    const r = (mid * Math.PI) / 180;
+  const { g, secs } = taperSectors(state);
+  const boxes: FamilyBox[] = [];
+  for (const sec of secs) {
+    const meta = WRAP_META[sec.k] || { id: `__fam:sec${sec.k}`, label: `Section ${sec.k}`, ox: "", oy: "" };
+    const userRot = n(state, `sSec${sec.k}Rot`, 0);
+    const rot = sec.mid + userRot;
     const midR = (g.R1 + g.R2) / 2;
-    const px = g.cx + midR * Math.sin(r);
-    const py = g.cy - midR * Math.cos(r);
-    const restX = g.vbW ? ((px - g.minX) / g.vbW) * 100 : 50;
-    const restY = g.vbH ? ((py - g.minY) / g.vbH) * 100 : 50;
-    const aPts: number[][] = [];
-    for (const ang of [mid - span / 2, mid + span / 2, mid]) {
-      const ar = (ang * Math.PI) / 180;
-      aPts.push([g.cx + g.R1 * Math.sin(ar), g.cy - g.R1 * Math.cos(ar)]);
-      aPts.push([g.cx + g.R2 * Math.sin(ar), g.cy - g.R2 * Math.cos(ar)]);
+    const w = g.vbW ? (sec.fW / g.vbW) * 100 * 0.72 : 14;
+    const h = g.vbH ? (sec.fH / g.vbH) * 100 * 0.55 : 18;
+    if (sec.k === "5") {
+      const dateAt = taperPlaced(g, state, rot, g.R2 + (g.R1 - g.R2) * 0.62, "sDatePosX", "sDatePosY", rot);
+      boxes.push({
+        id: FAM.bdates,
+        label: "Dates",
+        x: dateAt.x,
+        y: dateAt.y,
+        w,
+        h: h * 0.7,
+        rot,
+        fan: sec.mid,
+        lock: false,
+        restX: dateAt.restX,
+        restY: dateAt.restY,
+        ox: "sDatePosX",
+        oy: "sDatePosY",
+      });
+      const qrAt = taperPlaced(g, state, rot, g.R2 + (g.R1 - g.R2) * 0.28, "sQrPosX", "sQrPosY", rot);
+      const qsz = n(state, "sQrSz", 44);
+      boxes.push({
+        id: FAM.qr,
+        label: "QR",
+        x: qrAt.x,
+        y: qrAt.y,
+        w: g.vbW ? (qsz / g.vbW) * 100 : 8,
+        h: g.vbH ? (qsz / g.vbH) * 100 : 8,
+        rot,
+        fan: sec.mid,
+        lock: false,
+        restX: qrAt.restX,
+        restY: qrAt.restY,
+        ox: "sQrPosX",
+        oy: "sQrPosY",
+        size: "sQrSz",
+      });
+      const wtAt = taperPlaced(g, state, rot, g.R2 + (g.R1 - g.R2) * 0.12, "sWtPosX", "sWtPosY", rot);
+      boxes.push({
+        id: FAM.bwt,
+        label: "Weight",
+        x: wtAt.x,
+        y: wtAt.y,
+        w,
+        h: h * 0.35,
+        rot,
+        fan: sec.mid,
+        lock: false,
+        restX: wtAt.restX,
+        restY: wtAt.restY,
+        ox: "sWtPosX",
+        oy: "sWtPosY",
+      });
+      continue;
     }
-    const xs = aPts.map((p) => p[0]);
-    const ys = aPts.map((p) => p[1]);
-    const fW = Math.max(...xs) - Math.min(...xs);
-    const fH = Math.max(...ys) - Math.min(...ys);
-    return {
-      id: ids[sec.k] || `__fam:sec${sec.k}`,
-      label: labels[sec.k] || `Section ${sec.k}`,
-      x: restX + pct(n(state, ox[sec.k] || "", 0), g.vbW),
-      y: restY + pct(n(state, oy[sec.k] || "", 0), g.vbH),
-      w: g.vbW ? (fW / g.vbW) * 100 : 18,
-      h: g.vbH ? (fH / g.vbH) * 100 : 24,
-      rot: n(state, `sSec${sec.k}Rot`, 0),
+    const at = meta.ox
+      ? taperPlaced(g, state, rot, midR, meta.ox, meta.oy, rot)
+      : (() => {
+          const p = vbPct(g, fanXy(g, rot, midR).x, fanXy(g, rot, midR).y);
+          return { x: p.x, y: p.y, restX: p.x, restY: p.y, rot };
+        })();
+    boxes.push({
+      id: meta.id,
+      label: meta.label,
+      x: at.x,
+      y: at.y,
+      w,
+      h,
+      rot,
+      fan: sec.mid,
       lock: false,
-      restX,
-      restY,
-      ox: ox[sec.k],
-      oy: oy[sec.k],
-    };
-  });
+      restX: at.restX,
+      restY: at.restY,
+      ox: meta.ox || undefined,
+      oy: meta.oy || undefined,
+    });
+  }
+  return boxes;
 }
 
 export function familyBoxes(template: LabelTemplate): FamilyBox[] {
@@ -534,10 +720,13 @@ export function moveFamilyItem(template: LabelTemplate, id: string, x: number, y
   const board = artboardOf(template);
   const W = board.wCm * PPC;
   const H = board.hCm * PPC;
+  const face = previewFace(template);
+  const twist = face === "taper" || face === "back" ? box.rot || 0 : 0;
+  const local = unrotOffset(((x - box.restX) / 100) * W, ((y - box.restY) / 100) * H, twist);
   return {
     ...template.state,
-    [box.ox]: String(Math.round(((x - box.restX) / 100) * W)),
-    [box.oy]: String(Math.round(((y - box.restY) / 100) * H)),
+    [box.ox]: String(Math.round(local.x)),
+    [box.oy]: String(Math.round(local.y)),
   };
 }
 
@@ -568,15 +757,17 @@ const ROT_KEYS: Record<string, string> = {
   [FAM.blogo]: "sSec3Rot",
   [FAM.tip]: "sSec4Rot",
   [FAM.bdates]: "sSec5Rot",
+  [FAM.cus]: "sSec6Rot",
 };
 
-export function rotateFamilyItem(state: LabelState, id: string, rot: number): LabelState {
+export function rotateFamilyItem(template: LabelTemplate, id: string, rot: number): LabelState {
   const key = ROT_KEYS[id];
-  if (!key) return state;
-  let a = rot % 360;
+  if (!key) return template.state;
+  const box = familyBoxById(template, id);
+  let a = (rot - (box?.fan || 0)) % 360;
   if (a > 180) a -= 360;
   if (a < -180) a += 360;
-  return { ...state, [key]: String(Math.round(a)) };
+  return { ...template.state, [key]: String(Math.round(a)) };
 }
 
 export function familyRotKey(id: string) {

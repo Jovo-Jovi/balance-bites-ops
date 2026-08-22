@@ -1,17 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { CUT_LAYER } from "@/lib/design/layers";
-import { n, previewFace } from "@/lib/design/layout";
+import { familyTextField, n, previewFace } from "@/lib/design/layout";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
 import { productOptions, specOf, useDesignApp } from "./design-context";
 import { FaceInspector } from "./inspector-panel";
 import { LabelPreview } from "./label-preview";
+import { StudioCutBar } from "./studio-cut-bar";
 
-export function AtelierTool() {
+export function StudioTool() {
   const app = useDesignApp();
   const t = app.current;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      e.preventDefault();
+      app.undoStudio();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [app]);
   if (!t) {
     return <Empty>Open a template from the library, or create a new one.</Empty>;
   }
@@ -106,10 +119,13 @@ export function AtelierTool() {
         </p>
       </div>
 
+      <StudioCutBar />
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
           <p className="mb-2 text-xs text-[var(--bb-muted)]">
-            Tap a layer to select it. Drag to move, round handle to rotate, corner to resize.
+            Tap a section to type in it. Drag the gold border to move; round handle rotates; corner resizes. Taper QR and
+            weight are separate from the dates block. Shift-click to multi-select shapes.
           </p>
           <div className="overflow-auto">
             <div
@@ -122,12 +138,19 @@ export function AtelierTool() {
               <LabelPreview
                 template={t}
                 interactive
-                showCut={app.selectedId === CUT_LAYER}
+                showCut={app.selectedId === CUT_LAYER || Boolean(app.cutPreview)}
                 selectedId={app.selectedId}
+                selectedIds={app.selectedIds}
                 onSelect={app.selectLayer}
                 onMove={app.moveItem}
                 onResize={app.resizeItem}
                 onRotate={app.rotateItem}
+                onDragEnd={app.syncCutPath}
+                onEdit={(id, text) => {
+                  const fam = familyTextField(id);
+                  if (fam) app.setField(fam.field, text);
+                  else app.patchLayer(id, { text });
+                }}
                 className="max-w-full"
               />
             </div>
@@ -141,3 +164,5 @@ export function AtelierTool() {
     </div>
   );
 }
+
+export const AtelierTool = StudioTool;

@@ -5,7 +5,9 @@ Entry: `/design` → `DesignApp` → `DesignProvider`. English chrome. Arabic pr
 
 This is **not** a paste of the sticker HTML and **not** an iframe. Tools are filtered to the work that belongs in this app.
 
-When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, atelier, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
+When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, studio, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
+
+**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Wave A (composite die-cut tools + Studio chrome) is in test on `feat/design`. Waves B–D wait until Wave A is confirmed.
 
 Branch while this slice is open: `feat/design`. Live templates were seeded 2026-08-21 (Desktop `bb_label_templates.json` → Firestore; 73 files on R2). Do **not** re-seed or run `import:apply` unless asked.
 
@@ -14,14 +16,14 @@ Branch while this slice is open: `feat/design`. Live templates were seeded 2026-
 | id | Label | Component | Notes |
 |---|---|---|---|
 | `library` | Library | `library-tool.tsx` | Default. List, search, new, import JSON, duplicate, delete |
-| `atelier` | Atelier | `atelier-tool.tsx` | Canvas first; face-aware inspector; name / family / product / lock / Save at the top |
+| `atelier` | Studio | `atelier-tool.tsx` (`StudioTool`) | Canvas first; Composite die-cut bar; face-aware inspector. Keep `?tab=atelier` |
 | `print` | Print house | `print-tool.tsx` | Bleed / DPI / editable cut-stroke / SVG / JSON |
 
 Old ids still resolve: `templates` → library, `prepress` → print, `libraries` / `link` → atelier.
 
 Deep link: `bb_label_open` (ts within 120s, then **removed**) or `?template=` / `?id=`. Sticker `templateKey` is used when the payload has a sticker id but no template id. Finance owns `bb_stickers` writes.
 
-## Atelier sections (not workspace tabs)
+## Studio sections (not workspace tabs)
 
 Inspector tabs depend on the **open face**. A control that does not change this face is hidden. Flavor packs tint the sticker, not linen chrome. No Theme tab.
 
@@ -50,7 +52,7 @@ Live `labelMode` is used only if that family allows it (`DESIGN_SPECS.modes`). C
 | `rect_top` | back or top | Back: `buildLabel` sections. Top: `buildTopLabel` | Back `sW`×`sH` (live default 17×4.5, saved often 18×4.5). Top `tSz`×`tSz` |
 | `taper_top` | taper or top | Taper: live `buildTaperedLabel` pixel viewBox (`minX minY vbW vbH`), rotate around apex, section HTML. Top: `buildTopLabel` | Taper **padded SVG** `vbW/PPC`×`vbH/PPC` (same as live `wrapTapered`, not the print bbox). Top `tSz` |
 
-Rect / taper Atelier shows **Back wrap** (or **Taper wrap**) / **Top lid** so the saved wrap and lid can both be checked.
+Rect / taper Studio shows **Back wrap** (or **Taper wrap**) / **Top lid** so the saved wrap and lid can both be checked.
 
 Family faces emit a complete SVG with native pixel `viewBox` and `preserveAspectRatio="xMidYMid meet"`. Do **not** remap them to `viewBox="0 0 100 100"` `preserveAspectRatio="none"` (that squash is why taper looked wrong). Composite stays 0–100.
 
@@ -61,13 +63,14 @@ hub/src/components/design/
   design-app.tsx
   design-context.tsx
   library-tool.tsx
-  atelier-tool.tsx
+  atelier-tool.tsx  StudioTool (chrome label Studio; tab id atelier)
+  studio-cut-bar.tsx Composite add-shape / merge / group / trim / cut
   inspector-panel.tsx face-aware Copy / Nutrition / Layout / Type / Size / Color
   art-panel.tsx     Images tab + Icons tab
   copy-panel.tsx    copy + nutrition/layout/type/size/color fields
-  layers-panel.tsx  z-order, select, color, rotate, print-cut stroke
+  layers-panel.tsx  z-order, shift multi-select, color, rotate, print-cut stroke
   print-tool.tsx
-  label-preview.tsx tap / drag / rotate / resize overlay
+  label-preview.tsx tap / drag / rotate / resize overlay; shift multi-select
 hub/src/lib/design/
   write.ts          writeDesignKey / removeDesignKey
   types.ts
@@ -83,7 +86,10 @@ hub/src/lib/design/
   art.ts            bg slots, stamps, addProductPhotos, fill-cut-with-paper
   art-presets.ts    artref: / assets/presets/ → /design-presets/*.svg
   product-match.ts  template name → current bb_products when productId is empty
-  layers.ts         layer list / move / rotate / recolor / drag
+  layers.ts         layer list / move / rotate / recolor / drag; grouped parts move together
+  part-types.ts     live PART_TYPES + add-shape factory
+  boolean-cut.ts    live raster union / intersect / Moore contour
+  studio-ops.ts     merge / group / trim / cut ops on LabelState
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
 hub/src/app/api/storage/list/route.ts   list R2 prefix for Images → Storage
@@ -106,7 +112,7 @@ This slice does **not** write `bb_color_presets` / `bb_active_theme` / `bb_activ
 
 `writeDesignKey` rejects catalog and stickers. Empty cloud must **not** dump flavor packs, Jelly Kids, sample templates, or `assets/presets/` into Firestore.
 
-Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a template. Finance **links** a SKU to a template id; it does not own atelier drawing.
+Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a template. Finance **links** a SKU to a template id; it does not own studio drawing.
 
 ## Assets
 
@@ -119,12 +125,13 @@ Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a tem
 
 `NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs.
 
-Popcorn-blue / popcorn-red stay in Library and Atelier. They are excluded from the commercial print pack (`PRINT_PACK_EXCLUDE`) because of licensed likeness.
+Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from the commercial print pack (`PRINT_PACK_EXCLUDE`) because of licensed likeness.
 
 ## Canvas
 
-- Tap a layer (preview or Layers list) to select.
-- Drag to **move**. Round handle (and Layers slider −180°…180°) to **rotate**. Corner to **resize**.
+- Tap a layer (preview or Layers list) to select. Selected text sections open an in-place field.
+- Drag the gold border to **move** (a short click does not nudge). Round handle (and Layers slider −180°…180°) to **rotate**. Corner to **resize**.
+- Taper / wrap **QR** and **weight** are separate from dates (`sQrPosX/Y`, `sQrSz`, `sWtPosX/Y`). Taper boxes follow the fan so inner items move in the sector.
 - Composite: `rot` on parts, zones, stamps. Family faces: live offset keys (`sCLogoX` / `sCBrandX` / …) plus `sC*Rot` / `sT*Rot` / `sSec*Rot`.
 - **Print cut** (`__cut__`) is listed and can show the overlay; it is not draggable.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. The previous sticker’s photos must not stay on screen.
@@ -134,6 +141,8 @@ Popcorn-blue / popcorn-red stay in Library and Atelier. They are excluded from t
 - 1.5 mm bleed, 300 DPI.
 - Cut stroke: `sCutStrokeMm` (default 0.25 mm) and `cCutStroke` (default magenta). Same fields as Layers → Print cut.
 - SVG preview / download / print window. PNG cut-path pack from live `bb-prepress.js` is still a gap.
+- Print preview and Download SVG use the **physical artboard** (`width`/`height` in cm, `@page` size matching, `print-color-adjust: exact`, Montserrat / DM Sans / Tajawal loaded in the print window). Default file name is `{Name}_{w}x{h}cm` (SVG, PDF title, JSON).
+- Family fills (die + logo discs) are SVG geometry so Chrome Save-as-PDF does not drop CSS backgrounds. Wrap/taper HTML still uses `print-color-adjust` on section roots.
 
 ## Cloud seed (2026-08-21)
 
@@ -143,16 +152,17 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 
 | Live HTML | Hub |
 |---|---|
-| New / Templates / Product / Theme left tabs | New + product live inside Library / Atelier |
+| New / Templates / Product / Theme left tabs | New + product live inside Library / Studio |
 | Theme / `bb_color_presets` editor | Invoices → Look (one list) |
-| Icon library, Jelly Kids, `assets/presets/` dump | Atelier icon picker (repo catalog). No fourth tab. Flavor packs stay code-only |
+| Icon library, Jelly Kids, `assets/presets/` dump | Studio icon picker (repo catalog). No fourth tab. Flavor packs stay code-only |
 | Folder-connect, `bbLabel-*` disk scan | Import a JSON file the user picks |
-| Full BBComposite drawing + PNG cut pack | Preview + round-trip `state._composite`; SVG export |
+| Full BBComposite drawing + PNG cut pack | Wave A: add shape / merge / group / trim / preview+approve cut. PNG pack is Wave B |
 
 ## Explicit gaps
 
-- Freeform composite drawing (`bb-composite-label.js` tools beyond preview + `rot` / move / resize)
-- PNG cut-path print pack from `bb-prepress.js`
+- PNG cut-path print pack from `bb-prepress.js` / Isolated Output — Wave B in [DESIGN-STUDIO.md](DESIGN-STUDIO.md)
+- Studio libraries rail (Canva-shaped, label-scoped) — Wave C
+- User-named sections (blank sticker from scratch, not only Ingredients / Nutrition) — Wave D
 - Applying repo `assets/presets/` folders **into** tenant templates (preview already resolves `artref:` from `public/design-presets/`)
 - Scanning Desktop `bbLabel-*.json` (import the file instead)
 - Auto-seed of any template or gold theme when Firestore is empty
@@ -165,13 +175,15 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 3. Delete refuses to wipe a multi-template library if one id would empty the array (live `LabelTemplateMgr.remove` guard).
 4. Hub chrome stays linen. Flavor packs tint the label, not the workspace.
 5. Family preview uses live formulas in **pixel** artboard space (see table). Taper uses the padded SVG viewBox, not a stretched print bbox.
-6. Library cards are compact thumbs (lazy character art; other families lite). Full preview lives in Atelier.
+6. Library cards are compact thumbs (lazy character art; other families lite). Full preview lives in Studio.
 7. Images tab is not a fourth workspace tool. Device or `__r2__:`; do not store the same PNG twice.
 8. A–Z letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block).
 9. Flavor pack **Loaded** is the colors already on this template. Listed packs only highlight after you apply one.
 10. Layers include **Print cut**; mm + colour match Print house.
 11. Character art fills the part box with path stroke; clip is `unionPath`. White full-canvas fills were stripped from repo preset SVGs.
 12. Empty `productId` matches `bb_products` by template name (e.g. popcorn-yellow → فشار بالكراميل). Saving writes that link.
+13. Print / SVG / PDF stay at artboard centimetres (not A4 with margins). File names include `{w}x{h}cm`.
+14. Do not ship a Canva clone or a commercial editor SDK. Studio libraries stay label-scoped ([DESIGN-STUDIO.md](DESIGN-STUDIO.md)).
 
 ## Do not rebuild here
 

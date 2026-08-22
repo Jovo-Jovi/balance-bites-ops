@@ -17,7 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
 import { addProductPhotos, applyIconToState, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState } from "@/lib/design/layers";
+import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -27,11 +27,13 @@ import {
   type FlavorSnapshot,
 } from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
+import { exportFileBase } from "@/lib/design/prepress";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
   applyFlavorPack,
   createTemplate,
   duplicateTemplate,
+  ensureCompositeState,
   exportPayload,
   flavorKeyFromState,
   formatWeight,
@@ -44,9 +46,25 @@ import {
   safeRemoveTemplate,
   toR2Ref,
 } from "@/lib/design/templates";
+import type { CutPreview } from "@/lib/design/studio-ops";
+import {
+  addShape,
+  applyClipJoin,
+  approveCutPreview,
+  cancelCutPreview,
+  groupSelectedLayers,
+  mergeSelectedParts,
+  previewWholeCut,
+  removePart,
+  setCutToSelected,
+  syncCutPath as syncCutPathInState,
+  ungroupSelected,
+} from "@/lib/design/studio-ops";
 import type { DesignType, LabelMode, LabelState, LabelTemplate, StickerSku } from "@/lib/design/types";
 import { isStorageEnabled } from "@/lib/firebase-config";
 import { removeDesignKey, writeDesignKey } from "@/lib/design/write";
+
+type ClipPick = { step: "main" | "inner"; mainId?: string };
 
 type DesignContextValue = {
   templates: LabelTemplate[];
@@ -54,6 +72,10 @@ type DesignContextValue = {
   stickers: StickerSku[];
   current: LabelTemplate | null;
   selectedId: string | null;
+  selectedIds: string[];
+  canUndo: boolean;
+  clipPick: ClipPick | null;
+  cutPreview: CutPreview | null;
   busy: boolean;
   loadedFlavor: FlavorSnapshot | null;
   loadedFlavorOn: boolean;
@@ -89,11 +111,22 @@ type DesignContextValue = {
   removeArt: (id: string) => void;
   patchLayer: (id: string, patch: { color?: string; text?: string }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
-  selectLayer: (id: string | null) => void;
+  selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
   moveItem: (id: string, x: number, y: number) => void;
   resizeItem: (id: string, w: number, h: number) => void;
   rotateItem: (id: string, rot: number) => void;
   setFillCut: (on: boolean) => void;
+  addStudioShape: (type: string) => void;
+  mergeStudioParts: () => void;
+  groupStudioLayers: () => void;
+  ungroupStudioLayers: () => void;
+  startStudioTrim: () => void;
+  cutStudioSelection: () => void;
+  previewStudioCut: () => void;
+  approveStudioCut: () => void;
+  cancelStudioCut: () => void;
+  undoStudio: () => void;
+  syncCutPath: () => void;
   save: () => Promise<boolean>;
   saveAsNew: () => Promise<boolean>;
   linkedStickers: StickerSku[];
@@ -131,13 +164,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const labelOpen = useCloudKey<unknown>("bb_label_open");
   const templates = useMemo(() => normalizeTemplates(templatesRaw), [templatesRaw]);
   const [current, setCurrent] = useState<LabelTemplate | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [loadedFlavor, setLoadedFlavor] = useState<FlavorSnapshot | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [clipPick, setClipPick] = useState<ClipPick | null>(null);
+  const [cutPreview, setCutPreview] = useState<CutPreview | null>(null);
   const consumedTs = useRef(0);
   const wantedId = useRef<string | null>(null);
   const loadSeq = useRef(0);
   const assetOrigins = useRef<Record<string, Record<string, string>>>({});
+  const undoStack = useRef<LabelState[]>([]);
+  const selectedId = selectedIds[selectedIds.length - 1] || null;
 
   const go = useCallback(
     (tab: string, id?: string | null) => {
@@ -177,7 +215,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     async (t: LabelTemplate) => {
       const seq = ++loadSeq.current;
       wantedId.current = t.id;
-      setSelectedId(null);
+      setSelectedIds([]);
+      setClipPick(null);
+      setCutPreview(null);
+      undoStack.current = [];
+      setCanUndo(false);
       setCurrent(t);
       assetOrigins.current[t.id] = collectAssetRefs(t.state);
       setLoadedFlavor(flavorSnapshot(t.state));
@@ -247,6 +289,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const pushUndo = useCallback((state: LabelState) => {
+    undoStack.current.push(JSON.parse(JSON.stringify(state)) as LabelState);
+    if (undoStack.current.length > 30) undoStack.current.shift();
+    setCanUndo(true);
+  }, []);
+
   const value = useMemo<DesignContextValue>(() => {
     const linkedStickers = current
       ? stickers.filter((s) => s.templateKey && s.templateKey === current.id)
@@ -258,6 +306,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       stickers,
       current,
       selectedId,
+      selectedIds,
+      canUndo,
+      clipPick,
+      cutPreview,
       busy,
       loadedFlavor,
       loadedFlavorOn: Boolean(current && loadedFlavor && flavorSnapshotEquals(current.state, loadedFlavor)),
@@ -421,7 +473,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${current.name.replace(/[^\w\- ]+/g, "_") || "label"}.json`;
+        a.download = `${exportFileBase(current)}.json`;
         a.click();
         URL.revokeObjectURL(url);
       },
@@ -432,12 +484,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       setFamily: (designType) => {
         if (!current || current.designLocked) return;
         const spec = getDesignSpec(designType);
+        let state: LabelState = { ...current.state, _designType: designType, _isTapered: spec.isTapered };
+        if (spec.composite) {
+          const pack = flavorPackById(current.flavorKey) || FLAVOR_PACKS[0];
+          state = ensureCompositeState(state, pack);
+        }
         replaceCurrent({
           ...current,
           designType,
           labelMode: spec.defaultMode,
           isTapered: spec.isTapered,
-          state: { ...current.state, _designType: designType, _isTapered: spec.isTapered },
+          state,
         });
       },
       setLabelMode: (mode) => {
@@ -529,6 +586,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       removeArt: (id) => {
         if (!current) return;
+        if (current.state._composite?.parts?.some((p) => p.id === id)) {
+          const op = removePart(current.state, id);
+          if (!op.ok) {
+            toast.push(op.message, "warn");
+            return;
+          }
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds(op.selectIds);
+          toast.push(op.message, "ok");
+          return;
+        }
         replaceCurrent({ ...current, state: removeArtItem(current.state, id) });
       },
       patchLayer: (id, patch) => {
@@ -539,7 +608,42 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         if (!current) return;
         replaceCurrent({ ...current, state: moveLayerInState(current.state, id, dir) });
       },
-      selectLayer: (id) => setSelectedId(id),
+      selectLayer: (id, opts) => {
+        if (clipPick && id && current?.state._composite?.parts?.some((p) => p.id === id)) {
+          if (clipPick.step === "main") {
+            setClipPick({ step: "inner", mainId: id });
+            setSelectedIds([id]);
+            toast.push("Trim: tap the other shape (cut to inside the main).", "ok");
+            return;
+          }
+          if (id === clipPick.mainId) {
+            toast.push("Pick a different shape for the inner layer.", "warn");
+            return;
+          }
+          const mainId = clipPick.mainId;
+          setClipPick(null);
+          if (!mainId) return;
+          const op = applyClipJoin(current.state, mainId, id);
+          if (!op.ok) {
+            toast.push(op.message, "warn");
+            return;
+          }
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds(op.selectIds);
+          toast.push(op.message, "ok");
+          return;
+        }
+        if (!id) {
+          setSelectedIds([]);
+          return;
+        }
+        if (opts?.shift) {
+          setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+        } else {
+          setSelectedIds([id]);
+        }
+      },
       moveItem: (id, x, y) => {
         if (!current) return;
         replaceCurrent({ ...current, state: moveItemInState(current, id, x, y) });
@@ -555,6 +659,124 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       setFillCut: (on) => {
         if (!current) return;
         replaceCurrent({ ...current, state: setFillCutWithPaper(current.state, on) });
+      },
+      addStudioShape: (type) => {
+        if (!current) return;
+        const op = addShape(current.state, type);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
+      },
+      mergeStudioParts: () => {
+        if (!current) return;
+        const op = mergeSelectedParts(current.state, selectedIds);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
+      },
+      groupStudioLayers: () => {
+        if (!current) return;
+        const op = groupSelectedLayers(current.state, selectedIds);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        if (op.message) toast.push(op.message, "ok");
+      },
+      ungroupStudioLayers: () => {
+        if (!current) return;
+        const op = ungroupSelected(current.state, selectedIds);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
+      },
+      startStudioTrim: () => {
+        setClipPick({ step: "main" });
+        setSelectedIds([]);
+        toast.push("Trim: tap the MAIN shape (border).", "ok");
+      },
+      cutStudioSelection: () => {
+        if (!current) return;
+        const op = setCutToSelected(current.state, selectedIds);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setCutPreview(null);
+        toast.push(op.message, "ok");
+      },
+      previewStudioCut: () => {
+        if (!current) return;
+        const op = previewWholeCut(current.state, selectedIds);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setCutPreview(op.preview || null);
+        toast.push(op.message, "ok");
+      },
+      approveStudioCut: () => {
+        if (!current || !cutPreview) {
+          toast.push("Preview a cut first.", "warn");
+          return;
+        }
+        const op = approveCutPreview(current.state, cutPreview);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setCutPreview(null);
+        setSelectedIds([CUT_LAYER]);
+        toast.push(op.message, "ok");
+      },
+      cancelStudioCut: () => {
+        if (!current || !cutPreview) return;
+        const op = cancelCutPreview(current.state, cutPreview);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        replaceCurrent({ ...current, state: op.state });
+        setCutPreview(null);
+        toast.push(op.message, "ok");
+      },
+      undoStudio: () => {
+        if (!current) return;
+        const prev = undoStack.current.pop();
+        setCanUndo(undoStack.current.length > 0);
+        if (!prev) return;
+        setCutPreview(null);
+        setClipPick(null);
+        replaceCurrent({ ...current, state: prev });
+        toast.push("Undone.", "ok");
+      },
+      syncCutPath: () => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: syncCutPathInState(current.state) });
       },
       save: async () => {
         if (!current) return false;
@@ -615,6 +837,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     stickers,
     current,
     selectedId,
+    selectedIds,
+    canUndo,
+    clipPick,
+    cutPreview,
     busy,
     loadedFlavor,
     go,
@@ -622,6 +848,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     persist,
     loadIntoCurrent,
     replaceCurrent,
+    pushUndo,
     toast,
   ]);
 

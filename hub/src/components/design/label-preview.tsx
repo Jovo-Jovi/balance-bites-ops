@@ -2,7 +2,7 @@
 
 import { useRef, type PointerEvent } from "react";
 import { artboardCm, labelPreviewSvg } from "@/lib/design/preview";
-import { listCanvasItems } from "@/lib/design/layers";
+import { canvasEditText, listCanvasItems } from "@/lib/design/layers";
 import type { LabelTemplate } from "@/lib/design/types";
 
 export function LabelPreview({
@@ -11,20 +11,26 @@ export function LabelPreview({
   showCut = false,
   interactive = false,
   selectedId = null,
+  selectedIds = [],
   onSelect,
   onMove,
   onResize,
   onRotate,
+  onDragEnd,
+  onEdit,
 }: {
   template: LabelTemplate;
   className?: string;
   showCut?: boolean;
   interactive?: boolean;
   selectedId?: string | null;
-  onSelect?: (id: string | null) => void;
+  selectedIds?: string[];
+  onSelect?: (id: string | null, opts?: { shift?: boolean }) => void;
   onMove?: (id: string, x: number, y: number) => void;
   onResize?: (id: string, w: number, h: number) => void;
   onRotate?: (id: string, rot: number) => void;
+  onDragEnd?: (id?: string) => void;
+  onEdit?: (id: string, text: string) => void;
 }) {
   const svg = labelPreviewSvg(template, template.state, { showCut });
   const { wCm, hCm } = artboardCm(template);
@@ -40,6 +46,7 @@ export function LabelPreview({
     origH: number;
     origRot: number;
     startAngle: number;
+    armed: boolean;
   } | null>(null);
   const items = interactive ? listCanvasItems(template) : [];
 
@@ -56,6 +63,11 @@ export function LabelPreview({
       const ang = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI;
       onRotate?.(d.id, d.origRot + ang - d.startAngle);
       return;
+    }
+    const dist = Math.hypot(e.clientX - d.startX, e.clientY - d.startY);
+    if (!d.armed) {
+      if (dist < 5) return;
+      d.armed = true;
     }
     const dx = ((e.clientX - d.startX) / r.width) * 100;
     const dy = ((e.clientY - d.startY) / r.height) * 100;
@@ -75,7 +87,9 @@ export function LabelPreview({
         onPointerUp={
           interactive
             ? () => {
+                const d = drag.current;
                 drag.current = null;
+                if (d?.armed) onDragEnd?.(d.id);
               }
             : undefined
         }
@@ -101,16 +115,20 @@ export function LabelPreview({
             <div className="pointer-events-none absolute inset-0" dangerouslySetInnerHTML={{ __html: svg }} />
             {items.map((item) => {
               const on = selectedId === item.id;
+              const multi = selectedIds.includes(item.id);
+              const draft = on && onEdit ? canvasEditText(template, item.id) : null;
               return (
                 <div
                   key={item.id}
                   role="button"
                   tabIndex={0}
                   aria-pressed={on}
-                  className={`absolute box-border cursor-grab touch-none ${
+                  className={`absolute box-border touch-none ${
                     on
                       ? "z-20 border-2 border-[var(--bb-gold)]"
-                      : "z-10 border border-transparent hover:border-[var(--bb-line)]"
+                      : multi
+                        ? "z-10 cursor-grab border-2 border-dashed border-[var(--bb-gold)]"
+                        : "z-10 cursor-grab border border-transparent hover:border-[var(--bb-line)]"
                   }`}
                   style={{
                     left: `${item.x - item.w / 2}%`,
@@ -121,9 +139,10 @@ export function LabelPreview({
                     transformOrigin: "center center",
                   }}
                   onPointerDown={(e) => {
+                    if ((e.target as HTMLElement).closest("[data-inline-edit]")) return;
                     e.stopPropagation();
                     e.currentTarget.setPointerCapture(e.pointerId);
-                    onSelect?.(item.id);
+                    onSelect?.(item.id, { shift: e.shiftKey });
                     drag.current = {
                       id: item.id,
                       mode: "move",
@@ -135,13 +154,37 @@ export function LabelPreview({
                       origH: item.h,
                       origRot: item.rot || 0,
                       startAngle: 0,
+                      armed: false,
                     };
                   }}
                   onPointerMove={applyPointer}
                   onPointerUp={() => {
+                    const d = drag.current;
                     drag.current = null;
+                    if (d?.armed) onDragEnd?.(d.id);
                   }}
                 >
+                  {draft ? (
+                    draft.multiline ? (
+                      <textarea
+                        data-inline-edit=""
+                        autoFocus
+                        value={draft.value}
+                        onChange={(e) => onEdit?.(item.id, e.target.value)}
+                        className="absolute inset-1 z-30 resize-none rounded border border-[var(--bb-gold)] bg-[var(--bb-panel)]/95 px-1 py-0.5 text-[11px] leading-tight text-[var(--bb-text)] outline-none"
+                        onPointerDown={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <input
+                        data-inline-edit=""
+                        autoFocus
+                        value={draft.value}
+                        onChange={(e) => onEdit?.(item.id, e.target.value)}
+                        className="absolute inset-x-1 top-1/2 z-30 -translate-y-1/2 rounded border border-[var(--bb-gold)] bg-[var(--bb-panel)]/95 px-1 py-0.5 text-[11px] text-[var(--bb-text)] outline-none"
+                        onPointerDown={(e) => e.stopPropagation()}
+                      />
+                    )
+                  ) : null}
                   {on ? (
                     <>
                       <span
@@ -164,6 +207,7 @@ export function LabelPreview({
                             origH: item.h,
                             origRot: item.rot || 0,
                             startAngle: (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI,
+                            armed: true,
                           };
                         }}
                       />
@@ -183,6 +227,7 @@ export function LabelPreview({
                             origH: item.h,
                             origRot: item.rot || 0,
                             startAngle: 0,
+                            armed: false,
                           };
                         }}
                       />

@@ -3,7 +3,7 @@
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
 import { artboardCm, CUT_STROKE_COLOR, CUT_STROKE_MM, cutStrokeOf } from "@/lib/design/preview";
-import { BLEED_MM, DPI, downloadSvg, printExcludeNote, printPreview, pxFromMm } from "@/lib/design/prepress";
+import { BLEED_MM, DPI, downloadSvg, exportFileBase, printExcludeNote, printPreview, pxFromMm } from "@/lib/design/prepress";
 import { specOf, useDesignApp } from "./design-context";
 import { LabelPreview } from "./label-preview";
 
@@ -30,10 +30,17 @@ export function PrintTool() {
   const exclude = printExcludeNote(t, t.state);
   const bleedPx = pxFromMm(BLEED_MM);
   const cut = cutStrokeOf(t.state);
+  const fileBase = exportFileBase(t);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-      <div className="min-w-0 flex-1 space-y-4">
+      <div className="min-w-0 flex-1">
+        <p className="mb-2 text-xs text-[var(--bb-muted)]">
+          Print and SVG use the artboard {size.wCm} × {size.hCm} cm. Saved name: {fileBase}
+        </p>
+        <LabelPreview template={t} showCut className="max-w-full" />
+      </div>
+      <aside className="w-full shrink-0 space-y-4 lg:sticky lg:top-24 lg:w-[26rem]">
         <p className="text-sm text-[var(--bb-muted)]">
           {BLEED_MM} mm bleed · {cut.mm} mm cut border · {DPI} DPI.
         </p>
@@ -117,12 +124,9 @@ export function PrintTool() {
             Export JSON
           </ActionBtn>
           <ActionBtn tone="ghost" onClick={() => app.openAtelier()}>
-            Back to atelier
+            Back to studio
           </ActionBtn>
         </div>
-      </div>
-      <aside className="lg:w-80">
-        <LabelPreview template={t} showCut />
       </aside>
     </div>
   );

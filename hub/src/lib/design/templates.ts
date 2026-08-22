@@ -164,7 +164,7 @@ function uid(prefix: string) {
   return genId(prefix);
 }
 
-function starterComposite(pack: FlavorPack): CompositeBlob {
+export function starterComposite(pack: FlavorPack): CompositeBlob {
   return {
     version: 1,
     artboard: { wCm: 8, hCm: 8 },
@@ -301,6 +301,16 @@ export function starterState(designType: DesignType, pack: FlavorPack): LabelSta
     base._composite = starterComposite(pack);
   }
   return base;
+}
+
+export function ensureCompositeState(state: LabelState, pack: FlavorPack): LabelState {
+  if (state._composite?.parts?.length) return state;
+  return {
+    ...state,
+    cW: String(state.cW || "8"),
+    cH: String(state.cH || "8"),
+    _composite: starterComposite(pack),
+  };
 }
 
 export function createTemplate(opts: {

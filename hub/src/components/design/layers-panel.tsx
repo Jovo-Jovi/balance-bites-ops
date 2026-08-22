@@ -22,7 +22,7 @@ export function LayersPanel() {
       </p>
       <ul className="flex flex-col gap-2">
         {layers.map((layer, i) => {
-          const selected = app.selectedId === layer.id;
+          const selected = app.selectedIds.includes(layer.id) || app.selectedId === layer.id;
           const cut = layer.kind === "cut";
           return (
             <li
@@ -37,7 +37,10 @@ export function LayersPanel() {
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  onClick={() => app.selectLayer(selected ? null : layer.id)}
+                  onClick={(e) => {
+                    if (app.selectedId === layer.id && !e.shiftKey && !app.clipPick) app.selectLayer(null);
+                    else app.selectLayer(layer.id, { shift: e.shiftKey });
+                  }}
                 >
                   {layer.iconId ? (
                     <span
@@ -85,14 +88,16 @@ export function LayersPanel() {
                 </div>
               </div>
               {selected && selectedItem && !cut ? (
-                <Field label={`Rotate ${Math.round(selectedItem.rot || 0)}°`}>
+                <Field label={`Rotate ${Math.round((selectedItem.rot || 0) - (selectedItem.fan || 0))}°`}>
                   <input
                     type="range"
                     min={-180}
                     max={180}
                     step={1}
-                    value={Math.round(selectedItem.rot || 0)}
-                    onChange={(e) => app.rotateItem(layer.id, Number(e.target.value))}
+                    value={Math.round((selectedItem.rot || 0) - (selectedItem.fan || 0))}
+                    onChange={(e) =>
+                      app.rotateItem(layer.id, Number(e.target.value) + (selectedItem.fan || 0))
+                    }
                     className="w-full accent-[var(--bb-gold)]"
                   />
                 </Field>
