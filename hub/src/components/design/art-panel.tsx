@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Accordion, ActionBtn, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
 import { isStorageEnabled } from "@/lib/firebase-config";
@@ -20,8 +20,8 @@ import {
   iconSvg,
 } from "@/lib/design/icons";
 import { isAssetRef } from "@/lib/design/templates";
-import { listLabelAssets } from "@/lib/storage";
-import { parseLabelAssetKey } from "@/lib/storage-paths";
+import { listLabelAssets, type LabelAssetItem } from "@/lib/storage";
+import { isBinaryImageKey, parseLabelAssetKey } from "@/lib/storage-paths";
 import { useDesignApp } from "./design-context";
 
 function str(state: Record<string, unknown>, key: string) {
@@ -29,6 +29,97 @@ function str(state: Record<string, unknown>, key: string) {
 }
 
 type StorageTarget = { field: string } | { zoneId: string } | { addPhotos: true };
+
+function chipClass(on: boolean) {
+  return `rounded-full border px-2.5 py-1 text-[11px] ${
+    on
+      ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+      : "border-[var(--bb-line)] text-[var(--bb-text)]"
+  }`;
+}
+
+function storageLabel(item: LabelAssetItem, names: Map<string, string>) {
+  const p = parseLabelAssetKey(item.key);
+  if (!p) {
+    const parts = item.key.split("/").filter(Boolean);
+    return parts.slice(-2).join(" · ") || item.key;
+  }
+  return `${names.get(p.templateId) || p.templateId} · ${p.fileName.replace(/\.txt$/i, "")}`;
+}
+
+function bytesLabel(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function StorageThumb({ item }: { item: LabelAssetItem }) {
+  const box = useRef<HTMLDivElement>(null);
+  const binary = isBinaryImageKey(item.key);
+  const [src, setSrc] = useState(binary ? item.url || "" : "");
+  const [failed, setFailed] = useState(false);
+  const [seen, setSeen] = useState(binary);
+
+  useEffect(() => {
+    if (binary) {
+      setSrc(item.url || "");
+      return;
+    }
+    const el = box.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) setSeen(true);
+      },
+      { rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [binary, item.url]);
+
+  useEffect(() => {
+    if (!seen || src || failed || !item.url || binary) return;
+    let stop = false;
+    void fetch(item.url)
+      .then((res) => (res.ok ? res.text() : ""))
+      .then((text) => {
+        if (stop) return;
+        const trimmed = text.trimStart();
+        if (trimmed.startsWith("data:image") || trimmed.startsWith("<svg") || trimmed.startsWith("data:image/svg")) {
+          setSrc(text);
+        } else {
+          setFailed(true);
+        }
+      })
+      .catch(() => {
+        if (!stop) setFailed(true);
+      });
+    return () => {
+      stop = true;
+    };
+  }, [seen, src, failed, item.url, binary]);
+
+  return (
+    <div
+      ref={box}
+      className="aspect-square overflow-hidden bg-[color-mix(in_srgb,var(--bb-line)_28%,var(--bb-panel))]"
+    >
+      {src && !failed ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="flex h-full items-center justify-center px-2 text-center text-[11px] text-[var(--bb-muted)]">
+          {failed ? "No preview" : seen ? "…" : ""}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function StoragePicker({
   open,
@@ -41,7 +132,7 @@ function StoragePicker({
 }) {
   const app = useDesignApp();
   const toast = useToast();
-  const [items, setItems] = useState<{ key: string; size: number }[]>([]);
+  const [items, setItems] = useState<LabelAssetItem[]>([]);
   const [scope, setScope] = useState<"this" | "all">("all");
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -51,6 +142,7 @@ function StoragePicker({
   useEffect(() => {
     if (!open) return;
     setPicked([]);
+    setQ("");
     setLoading(true);
     void listLabelAssets()
       .then(setItems)
@@ -65,9 +157,8 @@ function StoragePicker({
 
   const filtered = items.filter((it) => {
     const p = parseLabelAssetKey(it.key);
-    if (!p) return false;
-    if (scope === "this" && app.current && p.templateId !== app.current.id) return false;
-    const label = `${names.get(p.templateId) || p.templateId} ${p.fileName}`;
+    if (scope === "this" && app.current && p && p.templateId !== app.current.id) return false;
+    const label = storageLabel(it, names);
     if (q && !label.toLowerCase().includes(q.trim().toLowerCase())) return false;
     return true;
   });
@@ -83,16 +174,21 @@ function StoragePicker({
     }
   }
 
+  function toggle(key: string) {
+    setPicked((cur) => (cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]));
+  }
+
   return (
     <Modal
       open={open}
       title="Choose from storage"
       onClose={onClose}
       closeLabel="Close"
+      wide
       footer={
         multiple ? (
           <ActionBtn disabled={!picked.length || app.busy} onClick={() => void useKeys(picked)}>
-            Use selected
+            Use selected{picked.length ? ` (${picked.length})` : ""}
           </ActionBtn>
         ) : undefined
       }
@@ -100,27 +196,11 @@ function StoragePicker({
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
         Reuse a file already on R2 instead of uploading a duplicate. Device upload is still on the slot.
       </p>
-      <div className="mb-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={`rounded-full border px-3 py-1 text-xs ${
-            scope === "this"
-              ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
-              : "border-[var(--bb-line)] text-[var(--bb-text)]"
-          }`}
-          onClick={() => setScope("this")}
-        >
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        <button type="button" className={chipClass(scope === "this")} onClick={() => setScope("this")}>
           This template
         </button>
-        <button
-          type="button"
-          className={`rounded-full border px-3 py-1 text-xs ${
-            scope === "all"
-              ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
-              : "border-[var(--bb-line)] text-[var(--bb-text)]"
-          }`}
-          onClick={() => setScope("all")}
-        >
+        <button type="button" className={chipClass(scope === "all")} onClick={() => setScope("all")}>
           All templates
         </button>
       </div>
@@ -130,39 +210,33 @@ function StoragePicker({
       ) : filtered.length === 0 ? (
         <p className="mt-3 text-sm text-[var(--bb-muted)]">No stored label files in this view.</p>
       ) : (
-        <ul className="mt-3 max-h-64 overflow-auto">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {filtered.map((it) => {
-            const p = parseLabelAssetKey(it.key);
-            const label = p
-              ? `${names.get(p.templateId) || p.templateId} · ${p.fileName.replace(/\.txt$/, "")}`
-              : it.key;
             const on = picked.includes(it.key);
+            const label = storageLabel(it, names);
             return (
-              <li key={it.key}>
-                {multiple ? (
-                  <label className="flex cursor-pointer items-center gap-2 border-b border-[var(--bb-line)] py-2 text-sm text-[var(--bb-text)]">
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={() =>
-                        setPicked((cur) => (on ? cur.filter((k) => k !== it.key) : [...cur, it.key]))
-                      }
-                    />
-                    <span className="min-w-0 truncate">{label}</span>
-                  </label>
-                ) : (
-                  <button
-                    type="button"
-                    className="w-full truncate border-b border-[var(--bb-line)] py-2 text-left text-sm text-[var(--bb-text)] hover:text-[var(--bb-title)]"
-                    onClick={() => void useKeys([it.key])}
-                  >
-                    {label}
-                  </button>
-                )}
-              </li>
+              <button
+                key={it.key}
+                type="button"
+                title={label}
+                aria-pressed={multiple ? on : undefined}
+                className={`overflow-hidden rounded-[var(--bb-radius)] border bg-[var(--bb-panel)] text-left ${
+                  on ? "border-[var(--bb-title)] ring-1 ring-[var(--bb-title)]" : "border-[var(--bb-line)] hover:border-[var(--bb-gold)]"
+                }`}
+                onClick={() => {
+                  if (multiple) toggle(it.key);
+                  else void useKeys([it.key]);
+                }}
+              >
+                <StorageThumb item={it} />
+                <span className="block px-2 py-1.5">
+                  <span className="block truncate text-xs text-[var(--bb-text)]">{label}</span>
+                  <span className="block text-[10px] text-[var(--bb-muted)]">{bytesLabel(it.size)}</span>
+                </span>
+              </button>
             );
           })}
-        </ul>
+        </div>
       )}
     </Modal>
   );

@@ -54,7 +54,7 @@ Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore 
 
 ## Import rule
 
-Never commit live `bb_invoices.json` or customer files. Zip `saved data` privately, import into Firestore with a one-off script, then keep the zip offline.
+Never commit live `bb_invoices.json` or customer files. Zip `saved data` privately, import into Firestore with a one-off script, then keep the zip offline. **2026-08-22:** JSON keys from Desktop were written (`bb-saved-data-2026-08-22.zip` on Desktop). Further applies must use `--only=` or `--all` (`npm --keys` is stolen by npm).
 
 ## CloudStore extras (hub v1)
 

@@ -1,6 +1,6 @@
 import { isStorageEnabled } from "@/lib/firebase-config";
 import { getLabelAssetUrl, uploadLabelAsset } from "@/lib/storage";
-import { labelAssetKey } from "@/lib/storage-paths";
+import { isBinaryImageKey, labelAssetKey } from "@/lib/storage-paths";
 import {
   assetFieldName,
   cloneState,
@@ -17,9 +17,14 @@ async function readRef(templateId: string, value: string) {
   const r2 = r2KeyFromRef(value);
   if (r2) {
     const url = await getLabelAssetUrl(r2);
+    if (isBinaryImageKey(r2)) return url;
     const res = await fetch(url);
     if (!res.ok) return null;
-    return res.text();
+    const type = res.headers.get("content-type") || "";
+    if (type.startsWith("image/")) return url;
+    const text = await res.text();
+    if (text.startsWith("data:") || text.trimStart().startsWith("<svg")) return text;
+    return url;
   }
   const field = assetFieldName(value);
   if (!field) return null;

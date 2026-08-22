@@ -110,6 +110,7 @@ export function Modal({
   children,
   footer,
   closeLabel = "إغلاق",
+  wide = false,
 }: {
   open: boolean;
   title: string;
@@ -117,6 +118,7 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
   closeLabel?: string;
+  wide?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -149,7 +151,11 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="my-0 flex max-h-[min(88dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] shadow-[0_18px_48px_color-mix(in_srgb,var(--bb-title)_28%,transparent)] sm:my-auto"
+        className={`my-0 flex w-full flex-col overflow-hidden rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] shadow-[0_18px_48px_color-mix(in_srgb,var(--bb-title)_28%,transparent)] sm:my-auto ${
+          wide
+            ? "max-h-[min(92dvh,52rem)] max-w-4xl"
+            : "max-h-[min(88dvh,40rem)] max-w-lg"
+        }`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-[var(--bb-line)]/60 px-4 py-3">
           <h2 className="text-base text-[var(--bb-title)]">{title}</h2>

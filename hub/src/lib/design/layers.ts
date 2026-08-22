@@ -417,6 +417,7 @@ export function stickerCopyFields(template: LabelTemplate) {
       { id: "tTitle1", label: "Title", text: String(state.tTitle1 || ""), color: "", field: "tTitle1" },
       { id: "tTitle2", label: "Title 2", text: String(state.tTitle2 || ""), color: "", field: "tTitle2" },
       { id: "tSub1", label: "Subtitle", text: String(state.tSub1 || ""), color: "", field: "tSub1" },
+      { id: "tSub2", label: "Subtitle 2", text: String(state.tSub2 || ""), color: "", field: "tSub2" },
     ];
   }
   if (face === "circle") {

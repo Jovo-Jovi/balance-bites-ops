@@ -1,17 +1,18 @@
 import { usableImage } from "./art";
 import { getDesignSpec } from "./specs";
 import {
+  PPC,
   backPx,
   backSections,
   calcTaper,
-  circleBoxes,
+  circlePx,
   flag,
   n,
   previewFace,
   s,
-  topBoxes,
-  type TaperGeo,
+  topPx,
 } from "./layout";
+import { fillOf, inkOf, mutOf, sectionBox, sectionHtml } from "./section-html";
 import type { LabelState, LabelTemplate } from "./types";
 
 function esc(v: string) {
@@ -23,47 +24,31 @@ function html(v: string) {
 function font(state: LabelState, key: string, fallback: string) {
   return s(state, key, fallback).replace(/^['"]+|['"]+$/g, "") || fallback;
 }
+function safeId(id: string) {
+  return id.replace(/[^a-zA-Z0-9_-]/g, "") || "x";
+}
 
-function polygon(sides: number, cx: number, cy: number, rx: number, ry: number, rot = -90) {
+function regularPoly(sides: number, cx: number, cy: number, rx: number, ry: number, rotationDeg = 0) {
+  const rot = (rotationDeg * Math.PI) / 180;
   const pts: string[] = [];
   for (let i = 0; i < sides; i++) {
-    const a = ((rot + (i * 360) / sides) * Math.PI) / 180;
+    const a = rot + (Math.PI * 2 * i) / sides - Math.PI / 2;
     pts.push(`${cx + rx * Math.cos(a)},${cy + ry * Math.sin(a)}`);
   }
   return pts.join(" ");
 }
 
-function starPts(cx: number, cy: number, rx: number, ry: number) {
+function starPoly(cx: number, cy: number, rox: number, roy: number, rix: number, riy: number, rotationDeg = 0) {
+  const nPts = 5;
+  const rot = (rotationDeg * Math.PI) / 180;
   const pts: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    const a = ((-90 + i * 36) * Math.PI) / 180;
-    const f = i % 2 === 0 ? 1 : 0.45;
-    pts.push(`${cx + rx * f * Math.cos(a)},${cy + ry * f * Math.sin(a)}`);
+  for (let i = 0; i < nPts * 2; i++) {
+    const ox = i % 2 === 0 ? rox : rix;
+    const oy = i % 2 === 0 ? roy : riy;
+    const a = rot + (Math.PI * i) / nPts - Math.PI / 2;
+    pts.push(`${cx + ox * Math.cos(a)},${cy + oy * Math.sin(a)}`);
   }
   return pts.join(" ");
-}
-
-export function outlineClip(kind: string) {
-  if (kind === "square") return `<rect x="0" y="0" width="100" height="100" />`;
-  if (kind === "rounded_sq") return `<rect x="0" y="0" width="100" height="100" rx="12" />`;
-  if (kind === "diamond") return `<polygon points="${polygon(4, 50, 50, 50, 50, 45)}" />`;
-  if (kind === "hexagon") return `<polygon points="${polygon(6, 50, 50, 50, 50)}" />`;
-  if (kind === "pentagon") return `<polygon points="${polygon(5, 50, 50, 50, 50)}" />`;
-  if (kind === "octagon") return `<polygon points="${polygon(8, 50, 50, 48, 48, 22.5)}" />`;
-  if (kind === "star") return `<polygon points="${starPts(50, 50, 50, 50)}" />`;
-  return `<circle cx="50" cy="50" r="50" />`;
-}
-
-function outlineFill(kind: string, fill: string) {
-  const c = esc(fill);
-  if (kind === "square") return `<rect width="100" height="100" fill="${c}" />`;
-  if (kind === "rounded_sq") return `<rect width="100" height="100" rx="12" fill="${c}" />`;
-  if (kind === "diamond") return `<polygon points="${polygon(4, 50, 50, 50, 50, 45)}" fill="${c}" />`;
-  if (kind === "hexagon") return `<polygon points="${polygon(6, 50, 50, 50, 50)}" fill="${c}" />`;
-  if (kind === "pentagon") return `<polygon points="${polygon(5, 50, 50, 50, 50)}" fill="${c}" />`;
-  if (kind === "octagon") return `<polygon points="${polygon(8, 50, 50, 48, 48, 22.5)}" fill="${c}" />`;
-  if (kind === "star") return `<polygon points="${starPts(50, 50, 50, 50)}" fill="${c}" />`;
-  return `<circle cx="50" cy="50" r="50" fill="${c}" />`;
 }
 
 export function circleShape(state: LabelState, specOutline: string | null) {
@@ -71,293 +56,37 @@ export function circleShape(state: LabelState, specOutline: string | null) {
   return raw === "round" ? "circle" : raw || "circle";
 }
 
-function gBox(x: number, y: number, w: number, h: number, rot: number, inner: string) {
-  const rotAttr = rot ? ` transform="rotate(${rot} ${x} ${y})"` : "";
-  return `<g${rotAttr}><svg x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="none">${inner}</svg></g>`;
+function outlineGeomPx(kind: string, W: number, H: number, radiusPx = 0) {
+  const cx = W / 2;
+  const cy = H / 2;
+  const rx = W / 2;
+  const ry = H / 2;
+  const rr = Math.max(radiusPx, kind === "rounded_sq" ? 18 : 0);
+  if (kind === "square") return `<rect x="0" y="0" width="${W}" height="${H}" rx="${radiusPx}" />`;
+  if (kind === "rounded_sq") return `<rect x="0" y="0" width="${W}" height="${H}" rx="${rr}" />`;
+  if (kind === "diamond") return `<polygon points="${regularPoly(4, cx, cy, rx, ry, 45)}" />`;
+  if (kind === "hexagon") return `<polygon points="${regularPoly(6, cx, cy, rx, ry)}" />`;
+  if (kind === "pentagon") return `<polygon points="${regularPoly(5, cx, cy, rx, ry)}" />`;
+  if (kind === "octagon") return `<polygon points="${regularPoly(8, cx, cy, rx * 0.96, ry * 0.96, 22.5)}" />`;
+  if (kind === "star") return `<polygon points="${starPoly(cx, cy, rx, ry, W * 0.22, H * 0.22)}" />`;
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" />`;
 }
 
-function fillOf(state: LabelState) {
-  return s(state, "cLabel", "#2e7d32");
+function svgDoc(viewBox: string, inner: string) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" role="img">${inner}</svg>`;
 }
 
-function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean) {
-  const spec = getDesignSpec(template.designType);
-  const shape = circleShape(state, spec.outline);
-  const fill = fillOf(state);
-  const ink = s(state, "cTxtMain", "#ffffff");
-  const flavorClr = s(state, "cCFlavorClr", "#1a1a1a");
-  const fh = font(state, "fntHeading", "Montserrat");
-  const fb = font(state, "fntBody", "DM Sans");
-  const clipId = `bbfam-${template.id.replace(/[^a-zA-Z0-9_-]/g, "") || "x"}`;
-  const ring = s(state, "tLogoCircleStyle", "full") === "ring";
-  const parts = [
-    `<defs><clipPath id="${clipId}">${outlineClip(shape)}</clipPath></defs>`,
-    `<g clip-path="url(#${clipId})">`,
-    outlineFill(shape, fill),
-    `<line x1="12.5" y1="68" x2="87.5" y2="68" stroke="${esc(flavorClr)}" stroke-width="0.4" opacity=".4" />`,
-  ];
-  for (const box of circleBoxes(state)) {
-    if (box.id.endsWith(":logo")) {
-      const txt = esc(s(state, "tLogoTxt", "BB"));
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          ring
-            ? `<circle cx="50" cy="50" r="46" fill="none" stroke="${esc(ink)}" stroke-width="4"/><text x="50" y="54" text-anchor="middle" font-size="34" font-weight="900" font-family="${esc(fh)}" fill="${esc(ink)}">${txt}</text>`
-            : `<circle cx="50" cy="50" r="48" fill="${esc(ink)}"/><text x="50" y="54" text-anchor="middle" font-size="34" font-weight="900" font-family="${esc(fh)}" fill="${esc(fill)}">${txt}</text>`,
-        ),
-      );
-    } else if (box.id.endsWith(":brand")) {
-      const b1 = s(state, "eCBrand1");
-      const b2 = s(state, "eCBrand2");
-      const fs = Math.max(8, n(state, "sCBrandFS", 20) * 0.9);
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          `<text x="50" y="${b2 ? 38 : 54}" text-anchor="middle" font-size="${fs}" font-weight="700" font-family="${esc(fh)}" fill="${esc(ink)}">${esc(b1)}</text>${
-            b2
-              ? `<text x="50" y="70" text-anchor="middle" font-size="${fs}" font-weight="700" font-family="${esc(fh)}" fill="${esc(ink)}">${esc(b2)}</text>`
-              : ""
-          }`,
-        ),
-      );
-    } else if (box.id.endsWith(":flavor")) {
-      const prod = s(state, "eCProdName");
-      const flav = s(state, "eCFlavorTxt");
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          `${prod ? `<text x="6" y="32" font-size="${n(state, "sCProdNameFS", 12)}" font-weight="700" font-family="${esc(fh)}" fill="${esc(flavorClr)}">${esc(prod)}</text>` : ""}${
-            flav
-              ? `<text x="6" y="${prod ? 72 : 50}" font-size="${n(state, "sCFlavorFS", 14)}" font-weight="900" font-family="${esc(fh)}" fill="${esc(flavorClr)}">${esc(flav)}</text>`
-              : ""
-          }`,
-        ),
-      );
-    } else if (box.id === "__photo__") {
-      const href = lite ? "" : usableImage(state.hxCProd);
-      if (href) {
-        parts.push(
-          gBox(box.x, box.y, box.w, box.h, box.rot, `<image href="${esc(href)}" width="100" height="100" preserveAspectRatio="xMidYMid meet" />`),
-        );
-      }
-    } else if (box.id.endsWith(":weight")) {
-      const wt = s(state, "eWeight", "30 gm").replace(/^net\s*weight\s*:?\s*/i, "");
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          `<text x="50" y="38" text-anchor="middle" font-size="18" font-family="${esc(fb)}" fill="${esc(flavorClr)}" opacity=".8">NET WEIGHT</text><text x="50" y="72" text-anchor="middle" font-size="${n(state, "sCWtFS", 8) * 3}" font-weight="700" font-family="${esc(fh)}" fill="${esc(flavorClr)}">${esc(wt)}</text>`,
-        ),
-      );
-    } else if (box.id.endsWith(":dates")) {
-      const d1 = flag(state, "bCShowDate1", true) ? s(state, "eCDate1") : "";
-      const d2 = flag(state, "bCShowDate2", true) ? s(state, "eCDate2") : "";
-      const qr = lite ? "" : usableImage(state.hxQr);
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          `${d1 ? `<text x="50" y="22" text-anchor="middle" font-size="${n(state, "sCDateFS", 6) * 3}" font-family="${esc(fb)}" fill="${esc(flavorClr)}">${esc(d1)}</text>` : ""}${
-            d2
-              ? `<text x="50" y="44" text-anchor="middle" font-size="${n(state, "sCDateFS", 6) * 3}" font-family="${esc(fb)}" fill="${esc(flavorClr)}">${esc(d2)}</text>`
-              : ""
-          }${qr ? `<image href="${esc(qr)}" x="30" y="52" width="40" height="40" preserveAspectRatio="xMidYMid meet" />` : ""}`,
-        ),
-      );
-    }
-  }
-  parts.push("</g>");
-  return parts.join("");
+function cutStroke(state: LabelState) {
+  const raw = Number(state.sCutStrokeMm);
+  const mm = Number.isFinite(raw) ? raw : 0.25;
+  const clamped = Math.max(0, Math.min(8, mm));
+  return { px: clamped * (PPC / 10), color: s(state, "cCutStroke", "#FF00FF") };
 }
 
-function drawTop(template: LabelTemplate, state: LabelState) {
-  const fill = fillOf(state);
-  const ink = s(state, "cTxtMain", "#ffffff");
-  const sub = s(state, "cTxtSub", "#cccccc");
-  const fh = font(state, "fntHeading", "Montserrat");
-  const shapeRaw = s(state, "tShape", "round").toLowerCase();
-  const shape = shapeRaw === "round" ? "circle" : shapeRaw;
-  const clipId = `bbtop-${template.id.replace(/[^a-zA-Z0-9_-]/g, "") || "x"}`;
-  const ring = s(state, "tLogoCircleStyle", "full") === "ring";
-  const parts = [
-    `<defs><clipPath id="${clipId}">${outlineClip(shape)}</clipPath></defs>`,
-    `<g clip-path="url(#${clipId})">${outlineFill(shape, fill)}`,
-  ];
-  for (const box of topBoxes(state)) {
-    if (box.id.endsWith(":tlogo")) {
-      const txt = esc(s(state, "tLogoTxt", "BB"));
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          ring
-            ? `<circle cx="50" cy="50" r="46" fill="none" stroke="${esc(ink)}" stroke-width="4"/><text x="50" y="54" text-anchor="middle" font-size="36" font-weight="900" font-family="${esc(fh)}" fill="${esc(ink)}">${txt}</text>`
-            : `<circle cx="50" cy="50" r="48" fill="${esc(ink)}"/><text x="50" y="54" text-anchor="middle" font-size="36" font-weight="900" font-family="${esc(fh)}" fill="${esc(fill)}">${txt}</text>`,
-        ),
-      );
-    } else if (box.id.endsWith(":ttitle")) {
-      const t1 = s(state, "tTitle1");
-      const t2 = s(state, "tTitle2");
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          `${t1 ? `<text x="50" y="${t2 ? 38 : 54}" text-anchor="middle" font-size="${n(state, "sTTitleFS", 20)}" font-weight="700" font-family="${esc(fh)}" fill="${esc(ink)}">${esc(t1)}</text>` : ""}${
-            t2
-              ? `<text x="50" y="70" text-anchor="middle" font-size="${n(state, "sTTitleFS", 20)}" font-weight="700" font-family="${esc(fh)}" fill="${esc(ink)}">${esc(t2)}</text>`
-              : ""
-          }`,
-        ),
-      );
-    } else if (box.id.endsWith(":tsub")) {
-      const s1 = s(state, "tSub1");
-      const s2 = s(state, "tSub2");
-      parts.push(
-        gBox(
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-          box.rot,
-          `${s1 ? `<text x="50" y="${s2 ? 38 : 54}" text-anchor="middle" font-size="${n(state, "sTSubFS", 7) * 1.8}" font-family="${esc(fh)}" fill="${esc(sub)}">${esc(s1)}</text>` : ""}${
-            s2
-              ? `<text x="50" y="70" text-anchor="middle" font-size="${n(state, "sTSubFS", 7) * 1.8}" font-family="${esc(fh)}" fill="${esc(sub)}">${esc(s2)}</text>`
-              : ""
-          }`,
-        ),
-      );
-    }
-  }
-  parts.push("</g>");
-  return parts.join("");
-}
-
-function nutRows(state: LabelState) {
-  const rows: string[] = [];
-  if (flag(state, "cNFat", true)) rows.push(`Total Fat ${n(state, "nFat", 0)}g`);
-  if (flag(state, "cNSatFat", true)) rows.push(`Sat. Fat ${n(state, "nSatFat", 0)}g`);
-  if (flag(state, "cNChol", true)) rows.push(`Cholesterol ${n(state, "nChol", 0)}mg`);
-  if (flag(state, "cNSod", true)) rows.push(`Sodium ${n(state, "nSod", 0)}mg`);
-  if (flag(state, "cNCarb", true)) rows.push(`Carb. ${n(state, "nCarb", 0)}g`);
-  if (flag(state, "cNFib", true)) rows.push(`Fiber ${n(state, "nFib", 0)}g`);
-  if (flag(state, "cNSug", true)) rows.push(`Sugars ${n(state, "nSug", 0)}g`);
-  if (flag(state, "cNProt", true)) rows.push(`Protein ${n(state, "nProt", 0)}g`);
-  return rows;
-}
-
-function sectionHtml(k: string, state: LabelState, lite: boolean) {
-  const ink = s(state, "cTxtMain", "#ffffff");
-  const mut = s(state, "cTxtSub", "#cccccc");
-  const fh = font(state, "fntHeading", "Montserrat");
-  const fb = font(state, "fntBody", "DM Sans");
-  const far = font(state, "fntArabic", "Tajawal");
-  const wrap = (inner: string) =>
-    `<div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;padding:6%;box-sizing:border-box;overflow:hidden;color:${ink}">${inner}</div>`;
-  if (k === "1") {
-    return wrap(
-      `<div style="font-family:${fh};font-size:${n(state, "sIngFS", 6.5) * 1.3}px;text-transform:uppercase">${html(s(state, "eIngTitle", s(state, "eIngTitleAr", "Ingredients:")))}</div>
-       <div style="font-family:${s(state, "eIngredientsAr") ? far : fb};font-size:${n(state, "sIngFS", 6.5)}px;opacity:.92;line-height:1.2;${s(state, "eIngredientsAr") ? "direction:rtl;text-align:right" : ""}">${html(s(state, "eIngredientsAr") || s(state, "eIngredients"))}</div>`,
-    );
-  }
-  if (k === "2") {
-    const rows = nutRows(state)
-      .map((r) => `<div style="display:flex;justify-content:space-between;font-family:${fb};font-size:${n(state, "sNutBody", 6)}px;border-bottom:1px solid rgba(255,255,255,.12)">${html(r)}</div>`)
-      .join("");
-    return wrap(
-      `<div style="font-family:${fh};font-weight:800;font-size:${n(state, "sNutTitle", 12)}px;border-bottom:2px solid ${ink}">Nutrition Facts</div>
-       <div style="font-size:7px;color:${mut}">${html(s(state, "nSrv"))}</div>
-       <div style="display:flex;justify-content:space-between;font-family:${fh}"><b>Calories</b><b style="font-size:${n(state, "sCalFS", 18)}px">${n(state, "nCal", 0)}</b></div>${rows}`,
-    );
-  }
-  if (k === "3") {
-    const names = [s(state, "eName1"), s(state, "eName2"), s(state, "eName3")].filter(Boolean);
-    const ar = [s(state, "eName1Ar"), s(state, "eName2Ar")].filter(Boolean);
-    const sz = n(state, "sLogoSz", 48);
-    const ring = s(state, "eLogoCircleStyle", "full") === "ring";
-    const circle = s(state, "cLogoCircle", "#ffffff");
-    return wrap(
-      `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:3px">
-        <div style="width:${sz}px;height:${sz}px;border-radius:50%;${ring ? `border:2px solid ${circle}` : `background:${circle}`};display:flex;align-items:center;justify-content:center;font-family:${fh};font-weight:900;font-size:${n(state, "sLogoFS", 20)}px;color:${s(state, "cLogoTxt", fillOf(state))}">${html(s(state, "eBrand", "BB"))}</div>
-        <div style="font-family:${fh};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;text-align:center;text-transform:uppercase;line-height:1.1">${names.map((l) => `<div>${html(l)}</div>`).join("")}${ar.map((l) => `<div style="direction:rtl;font-family:${far}">${html(l)}</div>`).join("")}</div>
-      </div>`,
-    );
-  }
-  if (k === "4") {
-    return wrap(
-      `<div style="font-family:${fh};font-weight:700;font-size:${n(state, "sTipFS", 6.5) * 1.2}px;text-transform:uppercase">${html(s(state, "eTipTitle"))}</div>
-       <div style="font-family:${fb};font-size:${n(state, "sTipFS", 6.5)}px;color:${mut}">${html(s(state, "eTipBody"))}</div>`,
-    );
-  }
-  const qr = lite ? "" : usableImage(state.hxQr);
-  return wrap(
-    `<div style="font-family:${fb};font-size:${n(state, "sDateFS", 6)}px"><i style="color:${mut}">${html(s(state, "eDateLabel1") || s(state, "eDateLabel1Ar"))}</i><div>${html(s(state, "eDate1"))}</div></div>
-     <div style="font-family:${fb};font-size:${n(state, "sDateFS", 6)}px;margin-top:3px">${html(s(state, "eDate2") || s(state, "eStore") || s(state, "eStoreAr"))}</div>
-     ${qr ? `<img src="${esc(qr)}" width="${n(state, "sQrSz", 44)}" height="${n(state, "sQrSz", 44)}" style="background:#fff;margin-top:4px"/>` : ""}
-     <div style="font-family:${fh};font-weight:700;font-size:${n(state, "sWtFS", 8)}px;text-align:center;margin-top:4px">${html(s(state, "eWeight"))}</div>`,
-  );
-}
-
-function posKeys(k: string) {
-  const x: Record<string, string> = { "1": "sIngPosX", "2": "sNutPosX", "3": "sLogoPosX", "4": "sTipPosX", "5": "sDatePosX" };
-  const y: Record<string, string> = { "1": "sIngPosY", "2": "sNutPosY", "3": "sLogoPosY", "4": "sTipPosY", "5": "sDatePosY" };
-  return { x: x[k] || "", y: y[k] || "" };
-}
-
-function bgLayer(state: LabelState, k: string, lite: boolean) {
-  if (lite) return "";
-  const href = usableImage(state[`hxBg${k}`]);
-  if (!href) return "";
-  const o = n(state, `sOpa${k}`, 0.5);
-  const z = Math.max(0.05, n(state, `sZoom${k}`, 100) / 100);
-  const size = 100 * z;
-  return `<image href="${esc(href)}" x="${50 - size / 2}" y="${50 - size / 2}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice" />`;
-}
-
-function drawBack(state: LabelState, lite: boolean) {
-  const { W, H } = backPx(state);
-  const fill = fillOf(state);
-  const parts = [`<rect width="100" height="100" fill="${esc(fill)}" />`];
-  for (const sec of backSections(state, W)) {
-    const x = (sec.l / W) * 100;
-    const w = (sec.w / W) * 100;
-    const keys = posKeys(sec.k);
-    const dx = keys.x ? (n(state, keys.x, 0) / W) * 100 : 0;
-    const dy = keys.y ? (n(state, keys.y, 0) / H) * 100 : 0;
-    const rot = n(state, `sSec${sec.k}Rot`, 0);
-    parts.push(`<g transform="translate(${dx} ${dy}) rotate(${rot} ${x + w / 2} 50)">
-      <svg x="${x}" y="0" width="${w}" height="100" viewBox="0 0 100 100" preserveAspectRatio="none">
-        ${bgLayer(state, sec.k, lite)}
-        <foreignObject x="0" y="0" width="100" height="100">${sectionHtml(sec.k, state, lite)}</foreignObject>
-      </svg>
-    </g>`);
-    if (x > 0.4) parts.push(`<line x1="${x}" y1="4" x2="${x}" y2="96" stroke="rgba(255,255,255,.18)" stroke-width="0.35" />`);
-  }
-  return parts.join("");
+function cutGroup(state: LabelState, geom: string) {
+  const stroke = cutStroke(state);
+  if (stroke.px <= 0) return "";
+  return `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.px}" stroke-linejoin="round" stroke-linecap="round">${geom}</g>`;
 }
 
 function sectorPath(cx: number, cy: number, R1: number, R2: number, startDeg: number, endDeg: number) {
@@ -372,70 +101,282 @@ function sectorPath(cx: number, cy: number, R1: number, R2: number, startDeg: nu
   const y1i = cy - R2 * Math.cos(er);
   const x2i = cx + R2 * Math.sin(sr);
   const y2i = cy - R2 * Math.cos(sr);
-  return { d: `M ${x1o} ${y1o} A ${R1} ${R1} 0 ${la} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${R2} ${R2} 0 ${la} 0 ${x2i} ${y2i} Z`, la, pts: [x1o, y1o, R1, R1, la, 1, x2o, y2o, x1i, y1i, R2, R2, la, 0, x2i, y2i] as number[] };
+  return `M ${x1o} ${y1o} A ${R1} ${R1} 0 ${la} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${R2} ${R2} 0 ${la} 0 ${x2i} ${y2i} Z`;
 }
 
-function mapT(g: TaperGeo, x: number, y: number) {
-  return { x: ((x - g.minX) / g.vbW) * 100, y: ((y - g.minY) / g.vbH) * 100 };
+function zone(x: string, y: string, w: string, h: string, extra: string, inner: string) {
+  return `<div style="position:absolute;left:${x};top:${y};width:${w};height:${h};box-sizing:border-box;${extra}">${inner}</div>`;
 }
 
-function sectorPct(g: TaperGeo, sa: number, ea: number) {
-  const raw = sectorPath(g.cx, g.cy, g.R1, g.R2, sa, ea);
-  const p = raw.pts;
-  const M = mapT(g, p[0], p[1]);
-  const A1 = mapT(g, p[6], p[7]);
-  const L = mapT(g, p[8], p[9]);
-  const A2 = mapT(g, p[14], p[15]);
-  const rx1 = (p[2] / g.vbW) * 100;
-  const ry1 = (p[3] / g.vbH) * 100;
-  const rx2 = (p[10] / g.vbW) * 100;
-  const ry2 = (p[11] / g.vbH) * 100;
-  return `M ${M.x.toFixed(3)} ${M.y.toFixed(3)} A ${rx1.toFixed(3)} ${ry1.toFixed(3)} 0 ${p[4]} 1 ${A1.x.toFixed(3)} ${A1.y.toFixed(3)} L ${L.x.toFixed(3)} ${L.y.toFixed(3)} A ${rx2.toFixed(3)} ${ry2.toFixed(3)} 0 ${p[12]} 0 ${A2.x.toFixed(3)} ${A2.y.toFixed(3)} Z`;
+function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean) {
+  const spec = getDesignSpec(template.designType);
+  const { W, H } = circlePx(state);
+  const shape = circleShape(state, spec.outline);
+  const fill = fillOf(state);
+  const ink = inkOf(state);
+  const flavor = s(state, "cCFlavorClr", "#1a1a1a");
+  const fh = font(state, "fntHeading", "Montserrat");
+  const fb = font(state, "fntBody", "DM Sans");
+  const fWH = s(state, "fWHead", "700");
+  const clipId = `bbfam-${safeId(template.id)}`;
+  const radius = n(state, "sCRadius", 0);
+  const ring = s(state, "tLogoCircleStyle", "full") === "ring";
+  const thick = n(state, "tLogoCircleThick", 1.5);
+  const logoSz = n(state, "sCLogoSz", 45);
+  const logoFS = logoSz * 0.45;
+  const logoTS = ring
+    ? `background:transparent;border:${thick}px solid ${ink};`
+    : `background:${ink};border:none;`;
+  const logoTC = ring ? ink : fill;
+  const pSz = n(state, "sCProdSz", 80);
+  const pSc = n(state, "sCProdScale", 1);
+  const photo = lite ? "" : usableImage(state.hxCProd);
+  const qr = lite ? "" : usableImage(state.hxQr);
+  const qrSz = n(state, "sCQRSize", 26);
+  const wtShow = s(state, "eWeight", "30 gm").replace(/^net\s*weight\s*:?\s*/i, "");
+  const d1 = flag(state, "bCShowDate1", true) ? s(state, "eCDate1") : "";
+  const d2 = flag(state, "bCShowDate2", true) ? s(state, "eCDate2") : "";
+  const botPad = n(state, "sCBotPad", 8);
+
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;box-sizing:border-box;background:${esc(fill)};color:${esc(ink)};font-family:${esc(fh)},sans-serif">
+    ${
+      s(state, "tLogoTxt")
+        ? zone(
+            "50%",
+            "10%",
+            `${logoSz}px`,
+            `${logoSz}px`,
+            `transform:translate(-50%,-50%) translate(${n(state, "sCLogoX", 0)}px,${n(state, "sCLogoY", 0)}px);z-index:5;font-weight:900;font-size:${logoFS}px`,
+            `<div style="${logoTS}color:${esc(logoTC)};width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center">${html(s(state, "tLogoTxt", "BB"))}</div>`,
+          )
+        : ""
+    }
+    ${
+      s(state, "eCBrand1") || s(state, "eCBrand2")
+        ? zone(
+            "50%",
+            "28%",
+            `${n(state, "sCBrandW", 160)}px`,
+            `${n(state, "sCBrandH", 52)}px`,
+            `transform:translate(-50%,-50%) translate(${n(state, "sCBrandX", 0)}px,${n(state, "sCBrandY", 0)}px);z-index:4;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sCBrandFS", 20)}px;line-height:1.05;letter-spacing:.5px;color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center`,
+            `${s(state, "eCBrand1") ? `<div>${html(s(state, "eCBrand1"))}</div>` : ""}${s(state, "eCBrand2") ? `<div>${html(s(state, "eCBrand2"))}</div>` : ""}`,
+          )
+        : ""
+    }
+    ${zone(
+      "50%",
+      "52%",
+      `${n(state, "sCFlavorW", 140)}px`,
+      `${n(state, "sCFlavorH", 60)}px`,
+      `transform:translate(-50%,-50%) translate(${n(state, "sCFlavorX", 0)}px,${n(state, "sCFlavorY", 0)}px);z-index:3;text-align:left;padding:2px 5px;display:flex;flex-direction:column;justify-content:center`,
+      `${s(state, "eCProdName") ? `<div style="font-weight:${esc(fWH)};font-size:${n(state, "sCProdNameFS", 12)}px;color:${esc(flavor)};text-transform:uppercase;letter-spacing:1px;margin-bottom:1px;line-height:1.1">${html(s(state, "eCProdName"))}</div>` : ""}${
+        s(state, "eCFlavorTxt")
+          ? `<div style="font-weight:900;font-size:${n(state, "sCFlavorFS", 14)}px;color:${esc(flavor)};text-transform:uppercase;letter-spacing:.5px;line-height:1.1">${html(s(state, "eCFlavorTxt"))}</div>`
+          : ""
+      }`,
+    )}
+    ${
+      photo
+        ? zone(
+            "auto",
+            "52%",
+            `${pSz}px`,
+            `${pSz}px`,
+            `right:8%;left:auto;transform:translate(${n(state, "sCProdX", 40)}px,calc(-50% + ${n(state, "sCProdY", 0)}px)) scale(${pSc});z-index:4`,
+            `<img src="${esc(photo)}" style="width:100%;height:100%;object-fit:contain" alt=""/>`,
+          )
+        : ""
+    }
+    <div style="position:absolute;bottom:0;width:100%;height:32%;z-index:2;transform:translate(${n(state, "sCBotX", 0)}px,${n(state, "sCBotY", 0)}px)">
+      <div style="width:75%;height:1px;background:${esc(flavor)};opacity:.4;margin:0 auto"></div>
+      <div style="width:100%;height:100%;display:flex;align-items:flex-start;justify-content:space-around;padding-top:${botPad}px;box-sizing:border-box">
+        <div style="width:${n(state, "sCWtW", 90)}px;height:${n(state, "sCWtH", 44)}px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;transform:translate(${n(state, "sCWtX", 0)}px,${n(state, "sCWtY", 0)}px);flex:0 0 auto">
+          <div style="font-family:${esc(fb)},sans-serif;font-size:${n(state, "sCWtFS", 8) * 0.7}px;color:${esc(flavor)};text-transform:uppercase;letter-spacing:.5px;opacity:.8">NET WEIGHT</div>
+          <div style="font-weight:700;font-size:${n(state, "sCWtFS", 8)}px;color:${esc(flavor)}">${html(wtShow)}</div>
+        </div>
+        <div style="width:1px;height:45%;background:${esc(flavor)};opacity:.3;margin-top:2px"></div>
+        <div style="width:${n(state, "sCDateW", 100)}px;height:${n(state, "sCDateH", 70)}px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;padding:2px;transform:translate(${n(state, "sCDateX", 0)}px,${n(state, "sCDateY", 0)}px);flex:0 0 auto">
+          ${d1 ? `<div style="font-family:${esc(fb)},sans-serif;font-size:${n(state, "sCDateFS", 6)}px;color:${esc(flavor)};opacity:.9;line-height:1">${html(d1)}</div>` : ""}
+          ${d2 ? `<div style="font-family:${esc(fb)},sans-serif;font-size:${n(state, "sCDateFS", 6)}px;color:${esc(flavor)};opacity:.9;line-height:1">${html(d2)}</div>` : ""}
+          ${qr ? `<div style="width:${qrSz}px;height:${qrSz}px;background:#fff;padding:1px;border-radius:2px;margin-top:2px;transform:translate(${n(state, "sCQRX", 0)}px,${n(state, "sCQRY", 0)}px)"><img src="${esc(qr)}" style="width:100%;height:100%;object-fit:contain" alt=""/></div>` : ""}
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  const geom = outlineGeomPx(shape, W, H, radius);
+  const inner = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
+    <g clip-path="url(#${clipId})">
+      <foreignObject x="0" y="0" width="${W}" height="${H}">${body}</foreignObject>
+    </g>
+    ${showCut ? cutGroup(state, geom) : ""}`;
+  return svgDoc(`0 0 ${W} ${H}`, inner);
 }
 
-function drawTaper(state: LabelState, lite: boolean) {
+function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean) {
+  const { W, H } = topPx(state);
+  const fill = fillOf(state);
+  const ink = inkOf(state);
+  const sub = mutOf(state);
+  const fh = font(state, "fntHeading", "Montserrat");
+  const fWH = s(state, "fWHead", "700");
+  const fWB = s(state, "fWBody", "400");
+  const shapeRaw = s(state, "tShape", "round").toLowerCase();
+  const shape = shapeRaw === "round" ? "circle" : shapeRaw;
+  const clipId = `bbtop-${safeId(template.id)}`;
+  const ring = s(state, "tLogoCircleStyle", "full") === "ring";
+  const thick = n(state, "tLogoCircleThick", 1.5);
+  const ts = ring ? `background:transparent;border:${thick}px solid ${ink}` : `background:${ink};border:none`;
+  const tc = ring ? ink : fill;
+  const sz = n(state, "sTCircleSz", 32);
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:${esc(fill)};color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;box-sizing:border-box;font-family:${esc(fh)},sans-serif">
+    ${
+      s(state, "tLogoTxt")
+        ? `<div style="position:relative;width:${sz}px;height:${sz}px;margin-bottom:8px;transform:translate(${n(state, "sTLogoX", 0)}px,${n(state, "sTLogoY", 0)}px);font-weight:900;font-size:${n(state, "sTLogoFS", 15)}px"><div style="${ts};color:${esc(tc)};width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center">${html(s(state, "tLogoTxt"))}</div></div>`
+        : ""
+    }
+    ${
+      s(state, "tTitle1") || s(state, "tTitle2")
+        ? `<div style="position:relative;width:${n(state, "sTTitleW", 180)}px;height:${n(state, "sTTitleH", 52)}px;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;margin-bottom:6px;letter-spacing:.5px;transform:translate(${n(state, "sTTitleX", 0)}px,${n(state, "sTTitleY", 0)}px);display:flex;flex-direction:column;align-items:center;justify-content:center">${s(state, "tTitle1") ? `<div>${html(s(state, "tTitle1"))}</div>` : ""}${s(state, "tTitle2") ? `<div>${html(s(state, "tTitle2"))}</div>` : ""}</div>`
+        : ""
+    }
+    ${
+      s(state, "tSub1") || s(state, "tSub2")
+        ? `<div style="position:relative;width:${n(state, "sTSubW", 160)}px;height:${n(state, "sTSubH", 36)}px;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};transform:translate(${n(state, "sTSubX", 0)}px,${n(state, "sTSubY", 0)}px);display:flex;flex-direction:column;align-items:center;justify-content:center">${s(state, "tSub1") ? `<div>${html(s(state, "tSub1"))}</div>` : ""}${s(state, "tSub2") ? `<div>${html(s(state, "tSub2"))}</div>` : ""}</div>`
+        : ""
+    }
+  </div>`;
+  const geom = outlineGeomPx(shape, W, H);
+  const inner = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
+    <g clip-path="url(#${clipId})"><foreignObject x="0" y="0" width="${W}" height="${H}">${body}</foreignObject></g>
+    ${showCut ? cutGroup(state, geom) : ""}`;
+  return svgDoc(`0 0 ${W} ${H}`, inner);
+}
+
+function drawBack(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean) {
+  const { W, H } = backPx(state);
+  const fill = fillOf(state);
+  const uid = `bk-${safeId(template.id)}`;
+  const parts = [`<rect width="${W}" height="${H}" fill="${esc(fill)}" />`];
+  for (const sec of backSections(state, W)) {
+    const clip = `${uid}c${sec.k}`;
+    parts.push(`<clipPath id="${clip}"><rect x="${sec.l}" y="0" width="${sec.w}" height="${H}" /></clipPath>`);
+    const href = lite ? "" : usableImage(state[`hxBg${sec.k}`]);
+    if (href) {
+      const o = n(state, `sOpa${sec.k}`, 0.5);
+      const z = Math.max(0.05, n(state, `sZoom${sec.k}`, 100) / 100);
+      const cx = sec.l + sec.w / 2;
+      const cy = H / 2;
+      parts.push(
+        `<g clip-path="url(#${clip})" transform="translate(${cx} ${cy}) scale(${z}) translate(${-cx} ${-cy})"><image href="${esc(href)}" x="${sec.l}" y="0" width="${sec.w}" height="${H}" opacity="${o}" preserveAspectRatio="xMidYMid meet" /></g>`,
+      );
+    }
+    parts.push(
+      `<foreignObject x="${sec.l}" y="0" width="${sec.w}" height="${H}">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</foreignObject>`,
+    );
+    if (sec.l > 0) {
+      parts.push(`<line x1="${sec.l}" y1="0" x2="${sec.l}" y2="${H}" stroke="rgba(255,255,255,.18)" stroke-width="1" />`);
+    }
+  }
+  if (showCut) parts.push(cutGroup(state, `<rect x="0" y="0" width="${W}" height="${H}" />`));
+  return svgDoc(`0 0 ${W} ${H}`, parts.join(""));
+}
+
+function drawTaper(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean) {
   const g = calcTaper(state);
+  if (!g.R1 || !g.R2 || !g.arcDeg || !g.vbW || !g.vbH) {
+    return svgDoc("0 0 100 100", `<text x="8" y="54" font-size="10" fill="#c00">Taper geometry error</text>`);
+  }
   const fill = fillOf(state);
   const { W } = backPx(state);
   const secs = backSections(state, W);
   const half = g.arcDeg / 2;
   const active = secs.reduce((a, sec) => a + sec.w, 0) || 1;
+  const uid = `tp-${safeId(template.id)}`;
   let cur = -half;
-  const parts = [`<path d="${sectorPct(g, -half, half)}" fill="${esc(fill)}" />`];
-  secs.forEach((sec, i) => {
+  const secData = secs.map((sec) => {
     const span = g.arcDeg * (sec.w / active);
     const sa = cur;
     const ea = cur + span;
-    const mid = sa + span / 2;
+    const mid = (sa + ea) / 2;
     cur = ea;
-    const clip = `tpc${i}`;
-    const d = sectorPct(g, sa, ea);
-    const midR = (g.R1 + g.R2) / 2;
+    const gap = -0.5;
     const aPts: number[][] = [];
     for (const ang of [sa, ea, mid]) {
       const r = (ang * Math.PI) / 180;
       aPts.push([g.cx + g.R1 * Math.sin(r), g.cy - g.R1 * Math.cos(r)]);
       aPts.push([g.cx + g.R2 * Math.sin(r), g.cy - g.R2 * Math.cos(r)]);
     }
-    const fW = Math.max(...aPts.map((p) => p[0])) - Math.min(...aPts.map((p) => p[0]));
-    const fH = Math.max(...aPts.map((p) => p[1])) - Math.min(...aPts.map((p) => p[1]));
-    const apex = mapT(g, g.cx, g.cy);
-    const fo = mapT(g, g.cx, g.cy - midR);
-    const foW = (fW / g.vbW) * 100 * 0.92;
-    const foH = (fH / g.vbH) * 100 * 0.82;
-    parts.push(`<clipPath id="${clip}"><path d="${d}" /></clipPath>`);
-    parts.push(`<g clip-path="url(#${clip})"><g transform="rotate(${mid} ${apex.x} ${apex.y})">
-      <foreignObject x="${fo.x - foW / 2}" y="${fo.y - foH / 2}" width="${foW}" height="${foH}">${sectionHtml(sec.k, state, lite)}</foreignObject>
-    </g></g>`);
+    const xs = aPts.map((p) => p[0]);
+    const ys = aPts.map((p) => p[1]);
+    const fW = Math.max(...xs) - Math.min(...xs);
+    const fH = Math.max(...ys) - Math.min(...ys);
+    return {
+      k: sec.k,
+      sa,
+      ea,
+      saG: sa + gap / 2,
+      eaG: ea - gap / 2,
+      mid,
+      fW,
+      fH,
+      clipId: `${uid}c${sec.k}`,
+    };
   });
-  return parts.join("");
+
+  const fan = sectorPath(g.cx, g.cy, g.R1, g.R2, -half, half);
+  const parts = [`<path d="${fan}" fill="${esc(fill)}" />`];
+  for (const d of secData) {
+    parts.push(
+      `<clipPath id="${d.clipId}"><path d="${sectorPath(g.cx, g.cy, g.R1, g.R2, d.saG, d.eaG)}" /></clipPath>`,
+    );
+  }
+  if (!lite) {
+    for (const d of secData) {
+      const href = usableImage(state[`hxBg${d.k}`]);
+      if (!href) continue;
+      const z = n(state, `sZoom${d.k}`, 100) / 100;
+      const imgSz = Math.max(d.fW, d.fH) * 1.5 * z;
+      const r = (d.mid * Math.PI) / 180;
+      const ix = g.cx + ((g.R1 + g.R2) / 2) * Math.sin(r) - imgSz / 2;
+      const iy = g.cy - ((g.R1 + g.R2) / 2) * Math.cos(r) - imgSz / 2;
+      const o = n(state, `sOpa${d.k}`, 0.5);
+      parts.push(
+        `<image href="${esc(href)}" x="${ix}" y="${iy}" width="${imgSz}" height="${imgSz}" opacity="${o}" clip-path="url(#${d.clipId})" preserveAspectRatio="xMidYMid slice" />`,
+      );
+    }
+  }
+  secData.forEach((d, i) => {
+    if (i === 0) return;
+    const r = (d.sa * Math.PI) / 180;
+    parts.push(
+      `<line x1="${g.cx + g.R2 * Math.sin(r)}" y1="${g.cy - g.R2 * Math.cos(r)}" x2="${g.cx + g.R1 * Math.sin(r)}" y2="${g.cy - g.R1 * Math.cos(r)}" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />`,
+    );
+  });
+  for (const d of secData) {
+    const Rmid = (g.R1 + g.R2) / 2;
+    const innerW = d.fW * 0.92;
+    const innerH = d.fH * 0.82;
+    parts.push(`<g clip-path="url(#${d.clipId})">
+      <g transform="rotate(${d.mid + n(state, `sSec${d.k}Rot`, 0)},${g.cx},${g.cy})">
+        <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+            <div style="width:${innerW}px;height:${innerH}px;overflow:hidden">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
+          </div>
+        </foreignObject>
+      </g>
+    </g>`);
+  }
+  if (showCut) parts.push(cutGroup(state, `<path d="${fan}" />`));
+  return svgDoc(`${g.minX} ${g.minY} ${g.vbW} ${g.vbH}`, parts.join(""));
 }
 
-export function familyPreviewSvg(template: LabelTemplate, state: LabelState, lite = false) {
+/** Complete SVG document. Native pixel viewBox — do not remap to 0–100. */
+export function familyPreviewSvg(template: LabelTemplate, state: LabelState, lite = false, showCut = false) {
   const face = previewFace(template);
-  if (face === "circle") return drawCircle(template, state, lite);
-  if (face === "top") return drawTop(template, state);
-  if (face === "taper") return drawTaper(state, lite);
-  if (face === "back") return drawBack(state, lite);
-  return "";
+  if (face === "circle") return drawCircle(template, state, lite, showCut);
+  if (face === "top") return drawTop(template, state, showCut);
+  if (face === "taper") return drawTaper(template, state, lite, showCut);
+  if (face === "back") return drawBack(template, state, lite, showCut);
+  return svgDoc("0 0 100 100", "");
 }

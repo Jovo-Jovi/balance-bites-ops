@@ -33,6 +33,10 @@ export function parseLabelAssetKey(key: string) {
   return { templateId: rest.slice(0, slash), fileName: rest.slice(slash + 1) };
 }
 
+export function isBinaryImageKey(key: string) {
+  return /\.(png|jpe?g|webp|gif|svg|bmp|avif)$/i.test(normalizeStorageKey(key));
+}
+
 export function backupKey(fileName: string) {
   return `${BACKUPS_PREFIX}${sanitizeSegment(fileName)}`;
 }

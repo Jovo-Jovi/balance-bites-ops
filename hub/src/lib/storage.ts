@@ -65,14 +65,16 @@ export async function uploadLabelAsset(
   return key;
 }
 
-export async function listLabelAssets(): Promise<{ key: string; size: number }[]> {
+export type LabelAssetItem = { key: string; size: number; url?: string };
+
+export async function listLabelAssets(): Promise<LabelAssetItem[]> {
   assertStorageEnabled();
   const res = await fetch("/api/storage/list", {
     method: "GET",
     headers: await authHeader(),
   });
   if (!res.ok) throw new Error(await readError(res));
-  const body = (await res.json()) as { items?: { key: string; size: number }[] };
+  const body = (await res.json()) as { items?: LabelAssetItem[] };
   return body.items || [];
 }
 

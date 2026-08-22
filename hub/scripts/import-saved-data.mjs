@@ -5,10 +5,13 @@
  *
  *   cd hub
  *   npm i -D firebase-admin
- *   npm run import:dry -- --dir "C:\Users\Marco\Desktop\BALANCE BITES\invoices customers\saved data"
- *   npm run import:apply -- --dir "..."   # writes
- *   npm run import:apply -- --keys bb_label_templates --assets --no-backups
+ *   npm run import:dry
+ *   node scripts/import-saved-data.mjs --apply --only=bb_invoices,bb_inv2,bb_customers
+ *   node scripts/import-saved-data.mjs --apply --only=bb_label_templates --assets --no-backups
  *     # Design-only: exact saved templates + label_assets to R2 (not git)
+ *
+ * Do not use `npm run import:apply -- --keys …` — npm steals `--keys` as its own config
+ * and the script then writes every JSON file. Use `--only=` or `--all`.
  *
  * Auth: hub/.service-account.json (gitignored), or --sa path, or GOOGLE_APPLICATION_CREDENTIALS.
  * Re-run --apply anytime to refresh Firestore from the Desktop folder.
@@ -37,31 +40,45 @@ const WARN_BYTES = 900 * 1024;
 const DEFAULT_DIR =
   "C:\\Users\\Marco\\Desktop\\BALANCE BITES\\invoices customers\\saved data";
 
+function parseKeyList(raw) {
+  return String(raw || "")
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.startsWith("bb_"));
+}
+
 function parseArgs(argv) {
   const out = {
     apply: false,
     assets: false,
     noBackups: false,
+    all: false,
     keys: null,
     dir: DEFAULT_DIR,
     tenant: keyManifest.tenantId,
     sa: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   };
+  const positional = [];
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") out.apply = true;
     else if (a === "--dry-run") out.apply = false;
     else if (a === "--assets") out.assets = true;
     else if (a === "--no-backups") out.noBackups = true;
-    else if (a === "--keys") {
-      out.keys = String(argv[++i] || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+    else if (a === "--all") out.all = true;
+    else if (a === "--keys" || a === "--only") {
+      out.keys = parseKeyList(argv[++i] || "");
+    } else if (a.startsWith("--only=")) {
+      out.keys = parseKeyList(a.slice("--only=".length));
+    } else if (a.startsWith("--keys=")) {
+      out.keys = parseKeyList(a.slice("--keys=".length));
     } else if (a === "--dir") out.dir = argv[++i];
     else if (a === "--tenant") out.tenant = argv[++i];
     else if (a === "--sa") out.sa = argv[++i];
+    else if (a.startsWith("bb_")) positional.push(...parseKeyList(a));
   }
+  if (!out.keys?.length && positional.length) out.keys = positional;
+  if (!out.keys?.length) out.keys = null;
   return out;
 }
 
@@ -241,8 +258,15 @@ async function main() {
   }
 
   if (!opts.apply) {
-    console.log("\nDry-run complete. Re-run with --apply to overwrite Firestore from this folder.");
+    console.log("\nDry-run complete. Re-run with --apply --only=bb_invoices,… (or --all) to write.");
     return;
+  }
+
+  if (!wantKeys && !opts.all) {
+    console.error(
+      "\nRefusing to write every key. Pass --only=bb_invoices,bb_customers or --all.\nDo not use npm --keys (npm steals that flag).",
+    );
+    process.exit(1);
   }
 
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "balance-bites-ops";

@@ -1,7 +1,7 @@
 import { usableImage } from "./art";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { iconInner } from "./icons";
-import { artboardOf, previewFace } from "./layout";
+import { artboardOf, circlePx, previewFace } from "./layout";
 import { getDesignSpec } from "./specs";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
 
@@ -22,13 +22,19 @@ export function bgPanKeys(srcKey: string) {
 
 export function productPhotoBox(state: LabelState, circular: boolean) {
   const sz = num(state, "sCProdSz", 80);
-  const w = Math.max(10, Math.min(70, sz * 0.45));
-  const xRaw = num(state, "sCProdX", circular ? 40 : 50);
-  const yRaw = num(state, "sCProdY", circular ? 0 : 50);
-  if (circular && xRaw === 40 && yRaw === 0) {
-    return { x: 80, y: 48, w, h: w };
+  if (circular) {
+    const { W, H } = circlePx(state);
+    const pW = W ? (sz / W) * 100 : 20;
+    const pH = H ? (sz / H) * 100 : 20;
+    return {
+      x: 92 - pW / 2 + (W ? (num(state, "sCProdX", 0) / W) * 100 : 0),
+      y: 52 + (H ? (num(state, "sCProdY", 0) / H) * 100 : 0),
+      w: pW,
+      h: pH,
+    };
   }
-  return { x: xRaw || 50, y: yRaw || 50, w, h: w };
+  const w = Math.max(10, Math.min(70, sz * 0.45));
+  return { x: num(state, "sCProdX", 50), y: num(state, "sCProdY", 50), w, h: w };
 }
 
 function polygon(n: number, cx: number, cy: number, rx: number, ry: number, rot = -90) {
@@ -420,8 +426,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   const spec = getDesignSpec(template.designType);
   const lite = Boolean(opts?.lite);
   if (!spec.composite || !state._composite) {
-    const inner = familyPreviewSvg(template, state, lite);
-    return wrapPreviewSvg(inner, template, state, opts);
+    return familyPreviewSvg(template, state, lite, Boolean(opts?.showCut));
   }
 
   const fill = str(state, "cLabel", "#2e7d32");
@@ -455,7 +460,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     return wrapPreviewSvg(inner, template, state, opts);
   }
 
-  return wrapPreviewSvg(familyPreviewSvg(template, state, lite), template, state, opts);
+  return wrapPreviewSvg("", template, state, opts);
 }
 
 export function artboardCm(template: LabelTemplate) {

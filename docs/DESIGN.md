@@ -14,7 +14,7 @@ Branch while this slice is open: `feat/design`. Live templates were seeded 2026-
 | id | Label | Component | Notes |
 |---|---|---|---|
 | `library` | Library | `library-tool.tsx` | Default. List, search, new, import JSON, duplicate, delete |
-| `atelier` | Atelier | `atelier-tool.tsx` | Open template: Copy / Images / Icons / Layers, product, family, preview |
+| `atelier` | Atelier | `atelier-tool.tsx` | Canvas first; face-aware inspector; name / family / product / lock / Save at the top |
 | `print` | Print house | `print-tool.tsx` | Bleed / DPI / editable cut-stroke / SVG / JSON |
 
 Old ids still resolve: `templates` → library, `prepress` → print, `libraries` / `link` → atelier.
@@ -23,12 +23,19 @@ Deep link: `bb_label_open` (ts within 120s, then **removed**) or `?template=` / 
 
 ## Atelier sections (not workspace tabs)
 
-| id | What |
-|---|---|
-| Copy | Text that this **face** actually draws (composite zones, or circle/top/wrap fields) |
-| Images | `hxBg*` / `hxCProd` / `hxQr` plus composite image zones. **Add photos** = live `addProductPhotos`. Device data URL or existing R2 (`__r2__:`) |
-| Icons | Repo catalog + live A–Z `LETTER_STYLES`. Stamp onto the open template. Tiles use hub linen, not `cLabel` |
-| Layers | Z-order, select, color, rotate slider. Always includes **Print cut** |
+Inspector tabs depend on the **open face**. A control that does not change this face is hidden. Flavor packs tint the sticker, not linen chrome. No Theme tab.
+
+| id | Wrap / taper | Circle / outlines | Top lid | Composite |
+|---|---|---|---|---|
+| Copy | Brand, names EN/AR, ingredients, tips, dates, weight, custom, badges | Logo, brand, product, flavor, weight, dates | Logo, titles, subtitles | Zones already on the die-cut |
+| Nutrition | Serving, calories, macros, DV, row on/off | — | — | — |
+| Layout | `chkS*`, order, `sw*`, badge toggles | — | — | — (Layers) |
+| Type | Wrap font/size sliders | Circle font/size keys | Lid sizes | — |
+| Size | `sW`×`sH` **or** cup Ø / `tpCupH` / `tpLblH` / wrap % / `tpOffsetBot`; screen zoom `sScale` | `cW`×`cH`; `sScale` | `tSz`; `sScale` | `cW`×`cH`; `sScale` |
+| Color | Packs + label / ink / logo circle | Packs + flavor ink | Packs + ink | Packs + part colors via Layers |
+| Images | `hxBg*` / `hxCProd` / `hxQr` | Product photo + paper | — | Same + composite photos |
+| Icons | — | — | — | Repo catalog + A–Z stamps |
+| Layers | Print cut + section boxes | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
 
 No fourth Design workspace tool.
 
@@ -41,11 +48,11 @@ Live `labelMode` is used only if that family allows it (`DESIGN_SPECS.modes`). C
 | `composite` | composite | `_composite` parts / zones / `unionPath` | `_composite.artboard` or `cW`×`cH` (default 6×6 cm) |
 | `circular`, `square`, `rounded_sq`, `pentagon`, `hexagon`, `octagon`, `diamond`, `star` | circle | `buildCircleLabel` (logo, brand, flavor, photo, weight, dates). Clip from `cShape` or spec outline | `cW`×`cH` (default 6×6) |
 | `rect_top` | back or top | Back: `buildLabel` sections. Top: `buildTopLabel` | Back `sW`×`sH` (live default 17×4.5, saved often 18×4.5). Top `tSz`×`tSz` |
-| `taper_top` | taper or top | Taper: `calcTaper` fan + section HTML. Top: `buildTopLabel` | Taper bbox from cup Ø / wrap %. Top `tSz` |
+| `taper_top` | taper or top | Taper: live `buildTaperedLabel` pixel viewBox (`minX minY vbW vbH`), rotate around apex, section HTML. Top: `buildTopLabel` | Taper **padded SVG** `vbW/PPC`×`vbH/PPC` (same as live `wrapTapered`, not the print bbox). Top `tSz` |
 
 Rect / taper Atelier shows **Back wrap** (or **Taper wrap**) / **Top lid** so the saved wrap and lid can both be checked.
 
-Do **not** draw non-composite families as a 4-line silhouette on a forced square. That was why only composites matched Desktop JSON.
+Family faces emit a complete SVG with native pixel `viewBox` and `preserveAspectRatio="xMidYMid meet"`. Do **not** remap them to `viewBox="0 0 100 100"` `preserveAspectRatio="none"` (that squash is why taper looked wrong). Composite stays 0–100.
 
 ## Files
 
@@ -55,8 +62,9 @@ hub/src/components/design/
   design-context.tsx
   library-tool.tsx
   atelier-tool.tsx
+  inspector-panel.tsx face-aware Copy / Nutrition / Layout / Type / Size / Color
   art-panel.tsx     Images tab + Icons tab
-  copy-panel.tsx    copy for this family / face
+  copy-panel.tsx    copy + nutrition/layout/type/size/color fields
   layers-panel.tsx  z-order, select, color, rotate, print-cut stroke
   print-tool.tsx
   label-preview.tsx tap / drag / rotate / resize overlay
@@ -65,7 +73,8 @@ hub/src/lib/design/
   types.ts
   specs.ts          DESIGN_SPECS (code only)
   layout.ts         previewFace, artboard cm, family hit-boxes, move/resize/rotate offsets
-  family-preview.ts circle / top / back wrap / taper SVG
+  section-html.ts   wrap/taper section bodies (live getSectionHTML, hub field names)
+  family-preview.ts circle / top / back wrap / taper SVG (pixel viewBox)
   templates.ts      normalize, starter, import/export, safe delete
   assets.ts         strip/hydrate `__asset__:` / `__r2__:`; reuse existing R2 objects
   colors.ts         flavor packs (code only) + Loaded snapshot
@@ -128,7 +137,7 @@ Popcorn-blue / popcorn-red stay in Library and Atelier. They are excluded from t
 
 ## Cloud seed (2026-08-21)
 
-Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32 templates). 73 files on R2 `label_assets/{templateId}/`. Nothing from `saved data` is in git. Re-import only when asked: `npm run import:apply -- --keys bb_label_templates --assets --no-backups`.
+Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32 templates). 73 files on R2 `label_assets/{templateId}/`. Nothing from `saved data` is in git. Re-import templates with `node scripts/import-saved-data.mjs --apply --only=bb_label_templates --assets --no-backups`. **2026-08-22:** other Desktop `bb_*` JSON (including invoices) was written to Firestore; zip kept on Desktop.
 
 ## What we filtered out (on purpose)
 
@@ -155,7 +164,7 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 2. Open template → `?tab=atelier&id=`. The claimed template id wins over a stale URL. Deep link consumes `bb_label_open` then clears it.
 3. Delete refuses to wipe a multi-template library if one id would empty the array (live `LabelTemplateMgr.remove` guard).
 4. Hub chrome stays linen. Flavor packs tint the label, not the workspace.
-5. Family preview uses live formulas and live artboard sizes (see table above).
+5. Family preview uses live formulas in **pixel** artboard space (see table). Taper uses the padded SVG viewBox, not a stretched print bbox.
 6. Library cards are compact thumbs (lazy character art; other families lite). Full preview lives in Atelier.
 7. Images tab is not a fourth workspace tool. Device or `__r2__:`; do not store the same PNG twice.
 8. A–Z letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block).

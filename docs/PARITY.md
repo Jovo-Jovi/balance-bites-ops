@@ -87,14 +87,16 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Atelier, Print house. N
 - [x] Atelier Layers can select Print cut (same stroke fields as Print house)
 - [x] Atelier background uploads (`hxBg*` / `hxCProd`) on any family — Atelier **Images** tab
 - [x] Composite extra photos as image zones (live `addProductPhotos`); pick from R2 or the device
+- [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
 - [x] Flavor pack **Loaded** chip for the colors already on the open template
 - [x] Icon library in Atelier (repo catalog + live A–Z letter fonts; apply to the open template)
 - [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path)
 - [x] Atelier select + drag of parts, zones, stamps, and uploaded images
 - [x] Atelier rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)
-- [x] Circular / outline families use live front layout (logo, brand, flavor, photo, weight, dates)
-- [x] Rect + top uses live back wrap (`buildLabel` sections) and top lid (`buildTopLabel`)
-- [x] Taper + top uses live `calcTaper` fan + section HTML
+- [x] Circular / outline families use live front layout (logo, brand, flavor, photo, weight, dates) in **pixel** `cW`×`cH` (ellipse clip, not a stretched 0–100 square)
+- [x] Rect + top uses live back wrap (`buildLabel` sections + `getSectionHTML`) and top lid (`buildTopLabel`) in pixel boxes
+- [x] Taper + top uses live `calcTaper` fan: pixel viewBox, rotate around apex, section HTML — **not** remapped to `0 0 100 100` / `preserveAspectRatio="none"`
+- [x] Atelier inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
 - [x] Compact Library thumbs (no full 3 MB SVG per card)
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [ ] Full composite drawing (`bb-composite-label.js`) and PNG cut pack
@@ -185,7 +187,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Design does **not** wrap `balance-bites-sticker.html`. Freeform composite drawing, PNG cut packs, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
-- Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` were imported (Firestore + R2). Other `bb_*` JSON was **not** applied.
+- Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** Desktop `saved data` JSON keys were written to Firestore (zip on Desktop, not git). Use `--only=` for a subset; npm steals `--keys`.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
 - Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
@@ -196,5 +198,5 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 ## Suggested next slice
 
 1. Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
-2. Import `saved data` only after a zip backup, when you say so.
+2. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.
 3. Optional Design follow-up: composite drawing + PNG cut pack, if still needed after this preview/round-trip.

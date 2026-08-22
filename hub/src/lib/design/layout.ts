@@ -146,7 +146,7 @@ export function artboardOf(template: LabelTemplate, state: LabelState = template
   }
   if (face === "taper") {
     const g = calcTaper(state);
-    return { wCm: g.bbW_cm, hCm: g.bbH_cm };
+    return { wCm: g.vbW / PPC, hCm: g.vbH / PPC };
   }
   const d = backPx(state);
   return { wCm: d.wCm, hCm: d.hCm };
@@ -443,11 +443,84 @@ export function backBoxes(state: LabelState): FamilyBox[] {
   }));
 }
 
+export function taperBoxes(state: LabelState): FamilyBox[] {
+  const g = calcTaper(state);
+  const { W } = backPx(state);
+  const labels: Record<string, string> = {
+    "1": "Ingredients",
+    "2": "Nutrition",
+    "3": "Logo / brand",
+    "4": "Tips",
+    "5": "Dates",
+    "6": "Custom",
+  };
+  const ids: Record<string, string> = {
+    "1": FAM.ing,
+    "2": FAM.nut,
+    "3": FAM.blogo,
+    "4": FAM.tip,
+    "5": FAM.bdates,
+  };
+  const ox: Record<string, string> = {
+    "1": "sIngPosX",
+    "2": "sNutPosX",
+    "3": "sLogoPosX",
+    "4": "sTipPosX",
+    "5": "sDatePosX",
+  };
+  const oy: Record<string, string> = {
+    "1": "sIngPosY",
+    "2": "sNutPosY",
+    "3": "sLogoPosY",
+    "4": "sTipPosY",
+    "5": "sDatePosY",
+  };
+  const secs = backSections(state, W);
+  const active = secs.reduce((sum, sec) => sum + sec.w, 0) || 1;
+  let cur = -g.arcDeg / 2;
+  return secs.map((sec) => {
+    const span = g.arcDeg * (sec.w / active);
+    const mid = cur + span / 2;
+    cur += span;
+    const r = (mid * Math.PI) / 180;
+    const midR = (g.R1 + g.R2) / 2;
+    const px = g.cx + midR * Math.sin(r);
+    const py = g.cy - midR * Math.cos(r);
+    const restX = g.vbW ? ((px - g.minX) / g.vbW) * 100 : 50;
+    const restY = g.vbH ? ((py - g.minY) / g.vbH) * 100 : 50;
+    const aPts: number[][] = [];
+    for (const ang of [mid - span / 2, mid + span / 2, mid]) {
+      const ar = (ang * Math.PI) / 180;
+      aPts.push([g.cx + g.R1 * Math.sin(ar), g.cy - g.R1 * Math.cos(ar)]);
+      aPts.push([g.cx + g.R2 * Math.sin(ar), g.cy - g.R2 * Math.cos(ar)]);
+    }
+    const xs = aPts.map((p) => p[0]);
+    const ys = aPts.map((p) => p[1]);
+    const fW = Math.max(...xs) - Math.min(...xs);
+    const fH = Math.max(...ys) - Math.min(...ys);
+    return {
+      id: ids[sec.k] || `__fam:sec${sec.k}`,
+      label: labels[sec.k] || `Section ${sec.k}`,
+      x: restX + pct(n(state, ox[sec.k] || "", 0), g.vbW),
+      y: restY + pct(n(state, oy[sec.k] || "", 0), g.vbH),
+      w: g.vbW ? (fW / g.vbW) * 100 : 18,
+      h: g.vbH ? (fH / g.vbH) * 100 : 24,
+      rot: n(state, `sSec${sec.k}Rot`, 0),
+      lock: false,
+      restX,
+      restY,
+      ox: ox[sec.k],
+      oy: oy[sec.k],
+    };
+  });
+}
+
 export function familyBoxes(template: LabelTemplate): FamilyBox[] {
   const face = previewFace(template);
   if (face === "circle") return circleBoxes(template.state);
   if (face === "top") return topBoxes(template.state);
-  if (face === "back" || face === "taper") return backBoxes(template.state);
+  if (face === "taper") return taperBoxes(template.state);
+  if (face === "back") return backBoxes(template.state);
   return [];
 }
 
@@ -458,22 +531,21 @@ export function familyBoxById(template: LabelTemplate, id: string) {
 export function moveFamilyItem(template: LabelTemplate, id: string, x: number, y: number): LabelState {
   const box = familyBoxById(template, id);
   if (!box?.ox || !box.oy) return template.state;
-  const face = previewFace(template);
-  const px =
-    face === "top" ? topPx(template.state) : face === "circle" ? circlePx(template.state) : backPx(template.state);
+  const board = artboardOf(template);
+  const W = board.wCm * PPC;
+  const H = board.hCm * PPC;
   return {
     ...template.state,
-    [box.ox]: String(Math.round(((x - box.restX) / 100) * px.W)),
-    [box.oy]: String(Math.round(((y - box.restY) / 100) * px.H)),
+    [box.ox]: String(Math.round(((x - box.restX) / 100) * W)),
+    [box.oy]: String(Math.round(((y - box.restY) / 100) * H)),
   };
 }
 
 export function resizeFamilyItem(template: LabelTemplate, id: string, w: number, h: number): LabelState {
   const box = familyBoxById(template, id);
   if (!box) return template.state;
-  const face = previewFace(template);
-  const px =
-    face === "top" ? topPx(template.state) : face === "circle" ? circlePx(template.state) : backPx(template.state);
+  const board = artboardOf(template);
+  const px = { W: board.wCm * PPC, H: board.hCm * PPC };
   const next: LabelState = { ...template.state };
   if (box.size) next[box.size] = String(Math.max(8, Math.round((Math.max(w, h) / 100) * px.W)));
   if (box.wKey) next[box.wKey] = String(Math.max(8, Math.round((w / 100) * px.W)));

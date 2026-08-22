@@ -5,7 +5,7 @@ Dated notes for later chats. Live behavior still lives in `costs/` HTML. This fi
 Production: https://balance-bites-ops.vercel.app  
 Repo: https://github.com/Jovo-Jovi/balance-bites-ops  
 Firebase: project `balance-bites-ops`, Firestore `(default)` `europe-west3`, Spark (no Storage).  
-Binaries: Cloudflare R2 (`label_assets/` imported 2026-08-21; invoice JSON still local until asked).
+Binaries: Cloudflare R2 (`label_assets/` imported 2026-08-21). Desktop `saved data` JSON was imported to Firestore 2026-08-22 (zip kept on Desktop, not git).
 
 Related maps:
 
@@ -97,7 +97,7 @@ Library · Atelier · Print house
 
 Dropped as their own workspace tabs (same result, less duplication): New wizard, Product, Theme, Libraries, Product link. New + product pick live in Library / Atelier. Shared color presets stay on Invoices → Look. `bb_label_open` is consumed in the provider (120s) then cleared.
 
-Atelier inner tabs (not a fourth hub tool): **Copy** · **Images** · **Icons** · **Layers**.
+Atelier inspector (not a fourth hub tool): face-aware **Copy** · **Nutrition** · **Layout** · **Type** · **Size** · **Color** · **Images** · **Icons** · **Layers**. Canvas is first; inspector is the side column.
 
 ### Writer / dump / assets
 
@@ -113,9 +113,9 @@ Non-composite families now use the **live face**, not a 4-line silhouette:
 
 | Family | What Atelier draws |
 |---|---|
-| Circular / outline (`circular`, `rounded_sq`, …) | Front sticker: `buildCircleLabel` (logo, brand, flavor, photo, weight, dates). Clip from `cShape`. Size `cW`×`cH` (default 6 cm) |
-| Rect + top | Back wrap `buildLabel` (ingredients / nutrition / logo / dates) or top lid `buildTopLabel`. Size `sW`×`sH` or `tSz` |
-| Taper + top | Cup fan `calcTaper` or top lid. Bbox from cup Ø / wrap % |
+| Circular / outline (`circular`, `rounded_sq`, …) | Front sticker in pixel `cW`×`cH`: `buildCircleLabel`. Clip from `cShape`. |
+| Rect + top | Back wrap `buildLabel` + `getSectionHTML`, or top lid `buildTopLabel`. Size `sW`×`sH` or `tSz` |
+| Taper + top | Cup fan `buildTaperedLabel` (pixel viewBox, rotate around apex) or top lid. Artboard = padded SVG `vbW`×`vbH`, not the print bbox |
 
 Rect / taper switch **Back wrap** / **Taper wrap** / **Top lid**. Circular families stay on the front face even if saved `labelMode` was `back`.
 
@@ -129,7 +129,9 @@ Tap to select. Drag to move. Round handle + Layers slider to rotate (−180°…
 
 ### Cloud seed (do not repeat unless asked)
 
-2026-08-21: Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32 templates). 73 files on R2 `label_assets/{templateId}/`. Nothing from `saved data` in git. Other `bb_*` keys were not overwritten.
+2026-08-21: Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32 templates). 73 files on R2 `label_assets/{templateId}/`. Nothing from `saved data` in git.
+
+2026-08-22: Desktop `saved data` JSON keys were written to Firestore after a private zip (`C:\Users\Marco\Desktop\bb-saved-data-2026-08-22.zip`). npm stole `--keys`, so the run was the full JSON set (invoices plus catalog/stock/design keys from that folder), not invoices-only. The script now requires `--only=` or `--all`. R2 `label_assets/` were not re-uploaded.
 
 ### Commits on `feat/design` (oldest → newest, before this docs push)
 
@@ -182,9 +184,20 @@ Template paints immediately, then R2 hydrates in place. Images slots can pick De
 
 ---
 
+## 2026-08-22 — Invoice JSON import + Storage picker previews
+
+Private zip of Desktop `saved data` on the Desktop (not git). Firestore `tenants/balance-bites/keys/*` refreshed from that folder. Images → **Choose from storage** is a linen tile grid with signed R2 thumbs (PNG/JPEG plus `.txt` data URLs). Hydrate of `__r2__:` image files uses the signed URL instead of `res.text()`.
+
+---
+
+## 2026-08-22 — Family pixel preview + face inspector
+
+Taper (and the other families) were remapped into `viewBox="0 0 100 100"` with `preserveAspectRatio="none"`, then stretched to the print bbox — the fan squashed and section text sat wrong. Family SVGs now keep live pixel viewBoxes (`xMidYMid meet`). Taper artboard is the padded SVG (`vbW`×`vbH`), same as live `wrapTapered`. Wrap/taper section bodies follow live `getSectionHTML` (hub field names). Circle / outlines / top lid use live px boxes. Atelier is canvas-first with a face-aware inspector (Copy / Nutrition / Layout / Type / Size / Color). `tpCupH` and `tpOffsetBot` are on Size. Flavor packs still tint the sticker only.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design follow-up: full composite drawing / PNG cut pack / writing preset folders into tenant templates
 - Finance tabs and ledger formulas
-- One-shot JSON import of the rest of live `saved data` (invoices, stock, …)
 - Merge `feat/design` → `main` when asked
