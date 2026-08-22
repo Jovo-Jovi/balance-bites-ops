@@ -5,6 +5,7 @@ import {
   artboardOf,
   backPx,
   backSections,
+  calcTaper,
   flag,
   n,
   previewFace,
@@ -71,6 +72,82 @@ function outlineGeomPx(kind: string, W: number, H: number, radiusPx = 0) {
   if (kind === "octagon") return `<polygon points="${regularPoly(8, cx, cy, rx * 0.96, ry * 0.96, 22.5)}" />`;
   if (kind === "star") return `<polygon points="${starPoly(cx, cy, rx, ry, W * 0.22, H * 0.22)}" />`;
   return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" />`;
+}
+
+function roundedRectPath(x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  if (rr <= 0) return `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+  return `M ${x + rr} ${y} H ${x + w - rr} A ${rr} ${rr} 0 0 1 ${x + w} ${y + rr} V ${y + h - rr} A ${rr} ${rr} 0 0 1 ${x + w - rr} ${y + h} H ${x + rr} A ${rr} ${rr} 0 0 1 ${x} ${y + h - rr} V ${y + rr} A ${rr} ${rr} 0 0 1 ${x + rr} ${y} Z`;
+}
+
+function polyPath(pts: string) {
+  const pairs = pts.trim().split(/\s+/).filter(Boolean);
+  if (!pairs.length) return "";
+  return `${pairs.map((p, i) => `${i ? "L" : "M"}${p.replace(",", " ")}`).join(" ")} Z`;
+}
+
+function ellipsePath(cx: number, cy: number, rx: number, ry: number) {
+  return `M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
+}
+
+function outlinePathD(kind: string, W: number, H: number, radiusPx = 0) {
+  const cx = W / 2;
+  const cy = H / 2;
+  const rx = W / 2;
+  const ry = H / 2;
+  const rr = Math.max(radiusPx, kind === "rounded_sq" ? 18 : 0);
+  if (kind === "square") return roundedRectPath(0, 0, W, H, radiusPx);
+  if (kind === "rounded_sq") return roundedRectPath(0, 0, W, H, rr);
+  if (kind === "diamond") return polyPath(regularPoly(4, cx, cy, rx, ry, 45));
+  if (kind === "hexagon") return polyPath(regularPoly(6, cx, cy, rx, ry));
+  if (kind === "pentagon") return polyPath(regularPoly(5, cx, cy, rx, ry));
+  if (kind === "octagon") return polyPath(regularPoly(8, cx, cy, rx * 0.96, ry * 0.96, 22.5));
+  if (kind === "star") return polyPath(starPoly(cx, cy, rx, ry, W * 0.22, H * 0.22));
+  return ellipsePath(cx, cy, rx, ry);
+}
+
+export type FamilyDieView = {
+  minX: number;
+  minY: number;
+  vbW: number;
+  vbH: number;
+  d: string;
+};
+
+/** Die path in the same user space as `familyPreviewSvg` (pixel viewBox, not 0–100). */
+export function familyDieView(template: LabelTemplate, state: LabelState): FamilyDieView {
+  const face = previewFace(template);
+  if (face === "taper") {
+    const g = calcTaper(state);
+    const half = g.arcDeg / 2;
+    return {
+      minX: g.minX,
+      minY: g.minY,
+      vbW: g.vbW,
+      vbH: g.vbH,
+      d: sectorPath(g.cx, g.cy, g.R1, g.R2, -half, half),
+    };
+  }
+  if (face === "circle") {
+    const { W, H } = circlePx(state);
+    const spec = getDesignSpec(template.designType);
+    const shape = circleShape(state, spec.outline);
+    return {
+      minX: 0,
+      minY: 0,
+      vbW: W,
+      vbH: H,
+      d: outlinePathD(shape, W, H, n(state, "sCRadius", 0)),
+    };
+  }
+  if (face === "top") {
+    const { W, H } = topPx(state);
+    const shapeRaw = s(state, "tShape", "round").toLowerCase();
+    const shape = shapeRaw === "round" ? "circle" : shapeRaw;
+    return { minX: 0, minY: 0, vbW: W, vbH: H, d: outlinePathD(shape, W, H) };
+  }
+  const { W, H } = backPx(state);
+  return { minX: 0, minY: 0, vbW: W, vbH: H, d: `M 0 0 H ${W} V ${H} H 0 Z` };
 }
 
 const PRINT_STYLE = `<style type="text/css"><![CDATA[

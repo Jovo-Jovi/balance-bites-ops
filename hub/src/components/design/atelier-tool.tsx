@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
+import { useToast } from "@/components/toast";
 import { CUT_LAYER } from "@/lib/design/layers";
 import { familyTextField, n, previewFace } from "@/lib/design/layout";
+import { downloadLabelPng } from "@/lib/design/png-pack";
+import { printExcludeNote } from "@/lib/design/prepress";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
 import { productOptions, specOf, useDesignApp } from "./design-context";
@@ -13,6 +16,8 @@ import { StudioCutBar } from "./studio-cut-bar";
 
 export function StudioTool() {
   const app = useDesignApp();
+  const toast = useToast();
+  const [pngBusy, setPngBusy] = useState(false);
   const t = app.current;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -50,6 +55,25 @@ export function StudioTool() {
         </ActionBtn>
         <ActionBtn tone="ghost" onClick={app.openPrint}>
           Print house
+        </ActionBtn>
+        <ActionBtn
+          tone="ghost"
+          disabled={pngBusy}
+          onClick={() => {
+            const note = printExcludeNote(t, t.state);
+            if (note) toast.push(note, "warn");
+            setPngBusy(true);
+            void downloadLabelPng(t, t.state, "cut")
+              .then((info) => {
+                toast.push(`Cut PNG · ${info.wCm} × ${info.hCm} cm · ${info.dpi} DPI · ${info.wPx}×${info.hPx}px`, "ok");
+              })
+              .catch((err) => {
+                toast.push(err instanceof Error ? err.message : "PNG export failed.", "bad");
+              })
+              .finally(() => setPngBusy(false));
+          }}
+        >
+          {pngBusy ? "Cut PNG…" : "Cut PNG"}
         </ActionBtn>
       </div>
 

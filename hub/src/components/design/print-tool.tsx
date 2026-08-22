@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
+import { downloadLabelPng, type PngKind } from "@/lib/design/png-pack";
 import { artboardCm, CUT_STROKE_COLOR, CUT_STROKE_MM, cutStrokeOf } from "@/lib/design/preview";
 import { BLEED_MM, DPI, downloadSvg, exportFileBase, printExcludeNote, printPreview, pxFromMm } from "@/lib/design/prepress";
 import { specOf, useDesignApp } from "./design-context";
@@ -17,6 +19,7 @@ function toHex(value: string) {
 export function PrintTool() {
   const app = useDesignApp();
   const toast = useToast();
+  const [pngBusy, setPngBusy] = useState<PngKind | null>(null);
   const t = app.current;
   if (!t) {
     return (
@@ -25,18 +28,34 @@ export function PrintTool() {
       </Empty>
     );
   }
-  const spec = specOf(t);
-  const size = artboardCm(t);
-  const exclude = printExcludeNote(t, t.state);
+
+  const tmpl = t;
+  const spec = specOf(tmpl);
+  const size = artboardCm(tmpl);
+  const exclude = printExcludeNote(tmpl, tmpl.state);
   const bleedPx = pxFromMm(BLEED_MM);
-  const cut = cutStrokeOf(t.state);
-  const fileBase = exportFileBase(t);
+  const cut = cutStrokeOf(tmpl.state);
+  const fileBase = exportFileBase(tmpl);
+
+  async function runPng(kind: PngKind) {
+    if (exclude) toast.push(exclude, "warn");
+    setPngBusy(kind);
+    try {
+      const info = await downloadLabelPng(tmpl, tmpl.state, kind);
+      const kindLabel = kind === "cut" ? "Cut" : kind === "bleed" ? "Bleed" : "Exact";
+      toast.push(`${kindLabel} PNG · ${info.wCm} × ${info.hCm} cm · ${info.dpi} DPI · ${info.wPx}×${info.hPx}px`, "ok");
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "PNG export failed.", "bad");
+    } finally {
+      setPngBusy(null);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
       <div className="min-w-0 flex-1">
         <p className="mb-2 text-xs text-[var(--bb-muted)]">
-          Print and SVG use the artboard {size.wCm} × {size.hCm} cm. Saved name: {fileBase}
+          Print, SVG, and PNG use the artboard {size.wCm} × {size.hCm} cm at {DPI} DPI. Saved name: {fileBase}
         </p>
         <LabelPreview template={t} showCut className="max-w-full" />
       </div>
@@ -103,6 +122,8 @@ export function PrintTool() {
         </div>
         <p className="text-xs text-[var(--bb-muted)]">
           Drawn as a border on the die-cut. Magenta is the usual cut-contour colour. Size is in millimetres on the artboard.
+          Cut PNG punches transparent outside the die. Exact PNG keeps the full artboard. Bleed PNG adds {BLEED_MM} mm
+          using nearest-neighbour extend. This download is the open label only — not a zip of every character.
         </p>
         {exclude ? (
           <p className="rounded-[var(--bb-radius)] border border-[var(--bb-warn)] px-3 py-2 text-sm text-[var(--bb-warn)]">
@@ -119,6 +140,27 @@ export function PrintTool() {
           </ActionBtn>
           <ActionBtn tone="ghost" onClick={() => downloadSvg(t, t.state)}>
             Download SVG
+          </ActionBtn>
+          <ActionBtn
+            tone="ghost"
+            disabled={Boolean(pngBusy)}
+            onClick={() => void runPng("cut")}
+          >
+            {pngBusy === "cut" ? "Cut PNG…" : "Cut PNG"}
+          </ActionBtn>
+          <ActionBtn
+            tone="ghost"
+            disabled={Boolean(pngBusy)}
+            onClick={() => void runPng("exact")}
+          >
+            {pngBusy === "exact" ? "Exact PNG…" : "Exact PNG"}
+          </ActionBtn>
+          <ActionBtn
+            tone="ghost"
+            disabled={Boolean(pngBusy)}
+            onClick={() => void runPng("bleed")}
+          >
+            {pngBusy === "bleed" ? "Bleed PNG…" : "Bleed PNG"}
           </ActionBtn>
           <ActionBtn tone="ghost" onClick={app.exportCurrent}>
             Export JSON

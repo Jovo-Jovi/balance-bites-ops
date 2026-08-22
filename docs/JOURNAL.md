@@ -125,7 +125,7 @@ Tap to select. Drag to move. Round handle + Layers slider to rotate (−180°…
 
 ### Print house
 
-1.5 mm bleed, 300 DPI. Editable cut stroke `sCutStrokeMm` / `cCutStroke` (default 0.25 mm magenta) on preview, print, and SVG download. Same fields on Layers → Print cut. PNG cut pack is still a gap. Popcorn-blue / popcorn-red stay in Library; they are excluded from the commercial print pack.
+1.5 mm bleed, 300 DPI. Editable cut stroke `sCutStrokeMm` / `cCutStroke` (default 0.25 mm magenta) on preview, print, and SVG download. Same fields on Layers → Print cut. Cut / Exact / Bleed PNG for the open label (Wave B). Popcorn-blue / popcorn-red stay in Library; they are excluded from the commercial print pack (warn, still download).
 
 ### Cloud seed (do not repeat unless asked)
 
@@ -210,14 +210,22 @@ Proposed follow-up, waiting for confirm: [DESIGN-STUDIO.md](DESIGN-STUDIO.md). A
 
 ## 2026-08-22 — Studio Wave A (composite die-cut)
 
-Confirmed waves A→D; chrome label **Studio** (`?tab=atelier`). Wave A only: live `BBComposite` add-shape, shift multi-select, merge, group/ungroup, trim (group clip), preview/approve cut, cut = selected, undo. Raster union/intersect ported in `boolean-cut.ts` — not Paper.js. Wrap/taper starters kept. PNG pack, libraries rail, and generic sections wait for test.
+Confirmed waves A→D; chrome label **Studio** (`?tab=atelier`). Wave A only: live `BBComposite` add-shape, shift multi-select, merge, group/ungroup, trim (group clip), preview/approve cut, cut = selected, undo. Raster union/intersect ported in `boolean-cut.ts` — not Paper.js. Wrap/taper starters kept.
 
 Layers Up / Down now restack composite shapes, logo, and text in one z-order (live `getInteractList`). The preview used to paint every shape first and every logo after, so sending a logo behind a die did nothing on the sticker.
 
 ---
 
+## 2026-08-22 — Studio Wave B (PNG cut pack)
+
+Print house: **Cut PNG**, **Exact PNG**, **Bleed PNG** for the open label (not a zip). Studio has **Cut PNG**. Same print SVG at 300 DPI; die clip is `unionPath` (composite), wrap rectangle, taper fan, or circle outline; PNG pHYs from live Isolated Output; bleed is live `extendBleedNN` (1.5 mm, 0.5 mm sample inset). Family wrap/taper/circle HTML in `foreignObject` is painted after SVG raster (Chrome drops FO when SVG is used as an image). Bytes download in the browser — not R2. Print-pack exclude warns, does not refuse.
+
+Do not start Wave C (libraries rail) until this is tested.
+
+---
+
 ## Still not done (do not tick as shipped)
 
-- Design Waves B–D: PNG cut pack / libraries rail / user-named sections; writing preset folders into tenant templates
+- Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates
 - Finance tabs and ledger formulas
 - Merge `feat/design` → `main` when asked

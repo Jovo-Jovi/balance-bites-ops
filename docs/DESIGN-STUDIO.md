@@ -1,6 +1,6 @@
 # Design Studio — plan
 
-**Status:** confirmed 22 Aug 2026. **Wave A in test** on `feat/design` (stop for user test before B). Waves B–D not started.
+**Status:** confirmed 22 Aug 2026. **Wave B in test** on `feat/design` (stop for user test before C). Waves C–D not started.
 
 This is a Design-slice follow-up on `feat/design`, not a fourth hub app and not Finance. Current map: [DESIGN.md](DESIGN.md). Live source: `costs/bb-composite-label.js`, `costs/bb-prepress.js`, `costs/balance-bites-sticker.html`.
 
@@ -213,12 +213,12 @@ Likely new hub files (Wave A–B): `hub/src/lib/design/boolean-cut.ts` (port uni
 ## Confirm checklist
 
 - [x] **Wave A** — shapes + join / trim / cut / merge (live composite parity) — **in test**
-- [ ] **Wave B** — Cut PNG + exact PNG (+ bleed if you want it)
+- [x] **Wave B** — Cut PNG + exact PNG + bleed PNG (one open label, not a zip)
 - [ ] **Wave C** — libraries rail inside Studio (Canva-shaped, label-scoped)
 - [ ] **Wave D** — user-named sections + blank-from-scratch
 - [x] Rename Atelier label to **Studio** (keep `?tab=atelier`)
-- [x] PNG pack = **one label** first (not a zip of all templates) — agreed; build in Wave B
+- [x] PNG pack = **one label** first (not a zip of all templates) — agreed; **Wave B in test**
 - [x] Keep wrap/taper **starters** (Ingredients / Nutrition) as library blocks, not deleted
 - [x] Do **not** add Canva/Polotno/AI
 
-Wave A shipped behavior: Composite family toolbar (PART_TYPES, shift multi-select, Merge, Group, Ungroup, Trim/clip pick, Cut = selected, Preview cut / Approve / Cancel, Undo). Chrome label is Studio. Do not start Wave B until this is tested.
+Wave B shipped behavior: Print house Cut PNG / Exact PNG / Bleed PNG; Studio Cut PNG. Raster of the print SVG at 300 DPI, die clip (`unionPath` / wrap rect / taper fan / circle outline), pHYs, live `extendBleedNN`. Warn on print-pack exclude; do not refuse. Do not start Wave C until this is tested.

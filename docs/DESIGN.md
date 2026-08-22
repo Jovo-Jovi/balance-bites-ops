@@ -7,7 +7,7 @@ This is **not** a paste of the sticker HTML and **not** an iframe. Tools are fil
 
 When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, studio, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
 
-**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Wave A (composite die-cut tools + Studio chrome) is in test on `feat/design`. Waves B–D wait until Wave A is confirmed.
+**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Wave A (composite die-cut) and Wave B (PNG cut pack) are in test on `feat/design`. Waves C–D wait until Wave B is confirmed.
 
 Branch while this slice is open: `feat/design`. Live templates were seeded 2026-08-21 (Desktop `bb_label_templates.json` → Firestore; 73 files on R2). Do **not** re-seed or run `import:apply` unless asked.
 
@@ -17,7 +17,7 @@ Branch while this slice is open: `feat/design`. Live templates were seeded 2026-
 |---|---|---|---|
 | `library` | Library | `library-tool.tsx` | Default. List, search, new, import JSON, duplicate, delete |
 | `atelier` | Studio | `atelier-tool.tsx` (`StudioTool`) | Canvas first; Composite die-cut bar; face-aware inspector. Keep `?tab=atelier` |
-| `print` | Print house | `print-tool.tsx` | Bleed / DPI / editable cut-stroke / SVG / JSON |
+| `print` | Print house | `print-tool.tsx` | Bleed / DPI / editable cut-stroke / SVG / Cut PNG / Exact PNG / Bleed PNG / JSON |
 
 Old ids still resolve: `templates` → library, `prepress` → print, `libraries` / `link` → atelier.
 
@@ -92,6 +92,7 @@ hub/src/lib/design/
   studio-ops.ts     merge / group / trim / cut ops on LabelState
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
+  png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN)
 hub/src/app/api/storage/list/route.ts   list R2 prefix for Images → Storage
 hub/src/lib/storage.ts                  listLabelAssets
 hub/src/lib/storage-paths.ts            parseLabelAssetKey
@@ -140,7 +141,8 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 
 - 1.5 mm bleed, 300 DPI.
 - Cut stroke: `sCutStrokeMm` (default 0.25 mm) and `cCutStroke` (default magenta). Same fields as Layers → Print cut.
-- SVG preview / download / print window. PNG cut-path pack from live `bb-prepress.js` is still a gap.
+- SVG preview / download / print window.
+- **PNG pack (Wave B, one open label):** Cut PNG (transparent outside the die, `{Name}_{w}x{h}cm_cut.png`), Exact PNG (full artboard), Bleed PNG (`extendBleedNN`, 1.5 mm). 300 DPI + pHYs. Studio has Cut PNG. Licensed popcorn-blue / popcorn-red warn, they still download. Not a zip of every character.
 - Print preview and Download SVG use the **physical artboard** (`width`/`height` in cm, `@page` size matching, `print-color-adjust: exact`, Montserrat / DM Sans / Tajawal loaded in the print window). Default file name is `{Name}_{w}x{h}cm` (SVG, PDF title, JSON).
 - Family fills (die + logo discs) are SVG geometry so Chrome Save-as-PDF does not drop CSS backgrounds. Wrap/taper HTML still uses `print-color-adjust` on section roots.
 
@@ -156,11 +158,11 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 | Theme / `bb_color_presets` editor | Invoices → Look (one list) |
 | Icon library, Jelly Kids, `assets/presets/` dump | Studio icon picker (repo catalog). No fourth tab. Flavor packs stay code-only |
 | Folder-connect, `bbLabel-*` disk scan | Import a JSON file the user picks |
-| Full BBComposite drawing + PNG cut pack | Wave A: add shape / merge / group / trim / preview+approve cut. PNG pack is Wave B |
+| Full BBComposite drawing + PNG cut pack | Wave A die-cut tools. Wave B: one-label Cut / Exact / Bleed PNG |
 
 ## Explicit gaps
 
-- PNG cut-path print pack from `bb-prepress.js` / Isolated Output — Wave B in [DESIGN-STUDIO.md](DESIGN-STUDIO.md)
+- Zip of every commercial character (Print pack exclude still applies) — not this wave
 - Studio libraries rail (Canva-shaped, label-scoped) — Wave C
 - User-named sections (blank sticker from scratch, not only Ingredients / Nutrition) — Wave D
 - Applying repo `assets/presets/` folders **into** tenant templates (preview already resolves `artref:` from `public/design-presets/`)

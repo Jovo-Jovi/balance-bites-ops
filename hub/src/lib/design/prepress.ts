@@ -5,6 +5,7 @@ import type { LabelState, LabelTemplate } from "./types";
 export { CUT_STROKE_COLOR, CUT_STROKE_MM, cutStrokeOf };
 
 export const BLEED_MM = 1.5;
+export const BLEED_SAMPLE_INSET_MM = 0.5;
 export const DPI = 300;
 
 export const PRINT_PACK_EXCLUDE: Record<string, string> = {
@@ -14,7 +15,7 @@ export const PRINT_PACK_EXCLUDE: Record<string, string> = {
   art_popcorn_red: "Licensed likeness — not for commercial print pack",
 };
 
-const PRINT_FONTS =
+export const PRINT_FONTS =
   "https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&display=swap";
 
 export function pxFromMm(mm: number) {

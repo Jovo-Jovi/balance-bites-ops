@@ -102,7 +102,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Compact Library thumbs (no full 3 MB SVG per card)
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
-- [ ] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip
+- [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG
 - [ ] Studio libraries rail (Wave C)
 - [ ] User-named sections + blank-from-scratch (Wave D)
 - [ ] Applying `assets/presets/` folders into tenant templates (repo, not tenant dump)
@@ -189,7 +189,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 ## Explicit gaps (this slice)
 
 - **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). Finance is still a **tool shell**.
-- Design does **not** wrap `balance-bites-sticker.html`. Wave A composite die-cut is in test; PNG cut packs, libraries rail, generic sections, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
+- Design does **not** wrap `balance-bites-sticker.html`. Wave B PNG cut pack is in test; libraries rail, generic sections, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
 - Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** Desktop `saved data` JSON keys were written to Firestore (zip on Desktop, not git). Use `--only=` for a subset; npm steals `--keys`.
@@ -202,6 +202,6 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. **Wave B after Wave A is tested:** PNG cut pack in [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Then C (libraries rail) and D (generic sections). Do not start the next wave until the current one is confirmed.
+1. **Wave C after Wave B is tested:** libraries rail in [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Then D (generic sections). Do not start the next wave until the current one is confirmed.
 2. Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
 3. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.
