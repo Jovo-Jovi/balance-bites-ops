@@ -172,7 +172,7 @@ export function FaceInspector({ face }: { face: PreviewFace }) {
           );
         })}
       </div>
-      <div className="bb-glass max-h-[min(70vh,44rem)] overflow-y-auto p-4">
+      <div className="bb-sheet max-h-[min(70vh,44rem)] overflow-y-auto p-4">
         {panel === "copy" ? <CopyPanel /> : null}
         {panel === "nutrition" ? <NutritionPanel /> : null}
         {panel === "layout" ? <LayoutPanel /> : null}

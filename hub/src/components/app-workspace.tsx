@@ -131,7 +131,7 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
             <InvoiceApp tab={tool.id} />
           </section>
         ) : appId === "design" ? (
-          <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">
+          <section className="bb-sheet min-w-0 flex-1 p-4 sm:p-6">
             <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
               {tool.en}
             </p>

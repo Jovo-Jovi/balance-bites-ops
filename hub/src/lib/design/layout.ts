@@ -207,6 +207,21 @@ export const FAM = {
   cus: "__fam:cus",
 } as const;
 
+/** Decorative wrap/taper layer borders — per item, not per column. */
+export function wrapLayerBorderKeys(id: string): { w: string; c: string } | null {
+  const map: Record<string, { w: string; c: string }> = {
+    [FAM.ing]: { w: "sIngBorderW", c: "sIngBorderC" },
+    [FAM.nut]: { w: "sNutBorderW", c: "sNutBorderC" },
+    [FAM.bname]: { w: "sNameBorderW", c: "sNameBorderC" },
+    [FAM.tip]: { w: "sTipBorderW", c: "sTipBorderC" },
+    [FAM.bdates]: { w: "sDateBorderW", c: "sDateBorderC" },
+    [FAM.qr]: { w: "sQrBorderW", c: "sQrBorderC" },
+    [FAM.bwt]: { w: "sWtBorderW", c: "sWtBorderC" },
+    [FAM.cus]: { w: "sCusBorderW", c: "sCusBorderC" },
+  };
+  return map[id] || null;
+}
+
 function pct(px: number, total: number) {
   return total ? (px / total) * 100 : 0;
 }

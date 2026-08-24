@@ -77,7 +77,7 @@ export function LabelPreview({
 
   return (
     <div
-      className={`${showCut || interactive ? "overflow-visible" : "overflow-hidden"} ${interactive ? "p-3" : showCut ? "p-2" : ""} rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] ${className}`}
+      className={`overflow-hidden ${interactive ? "p-3" : showCut ? "p-2" : ""} rounded-[var(--bb-radius)] border border-[var(--bb-line)] bg-[var(--bb-panel)] ${className}`}
     >
       <div
         ref={boardRef}

@@ -523,21 +523,59 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   return wrapPreviewSvg("", template, state, opts);
 }
 
+function familyThumbSvg(template: LabelTemplate, state: LabelState) {
+  const spec = getDesignSpec(template.designType);
+  const fill = str(state, "cLabel", "#2e7d32");
+  const face = previewFace(template);
+  const kind =
+    face === "taper" ? "taper" : face === "back" ? "rect" : familyClipKind(template.designType, spec.outline);
+  let inner = outlineShape(kind, fill);
+  if (face === "top") inner += topLid(fill);
+  if (face === "back" || face === "taper") {
+    inner += `<g fill="#fff" opacity=".22">
+      <rect x="5" y="20" width="16" height="72"/>
+      <rect x="23" y="20" width="20" height="72"/>
+      <rect x="45" y="20" width="16" height="72"/>
+      <rect x="63" y="20" width="14" height="72"/>
+      <rect x="79" y="20" width="16" height="72"/>
+    </g>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" overflow="hidden" role="img">${inner}</svg>`;
+}
+
 const LITE_THUMB_MAX = 64;
 const liteThumbs = new Map<string, string>();
 
-/** Layout + type, no R2 photos. Cached. Library cards generate this only when visible. */
-export function libraryCardSvg(template: LabelTemplate) {
-  const key = `v3|${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
+function svgDataUrl(svg: string) {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Cheap Library art: composite lite (presets, no R2 / FO); family is a silhouette. Cached as a data URL for `<img>`. */
+export function libraryCardSrc(template: LabelTemplate) {
+  const key = `v4|${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
   const hit = liteThumbs.get(key);
   if (hit) return hit;
-  const svg = labelPreviewSvg(template, template.state, { lite: true });
+  const spec = getDesignSpec(template.designType);
+  const svg =
+    spec.composite && template.state._composite
+      ? labelPreviewSvg(template, template.state, { lite: true })
+      : familyThumbSvg(template, template.state);
+  const src = svgDataUrl(svg);
   if (liteThumbs.size >= LITE_THUMB_MAX) {
     const oldest = liteThumbs.keys().next().value;
     if (oldest) liteThumbs.delete(oldest);
   }
-  liteThumbs.set(key, svg);
-  return svg;
+  liteThumbs.set(key, src);
+  return src;
+}
+
+/** @deprecated use libraryCardSrc — kept for any leftover inline SVG callers */
+export function libraryCardSvg(template: LabelTemplate) {
+  const spec = getDesignSpec(template.designType);
+  if (spec.composite && template.state._composite) {
+    return labelPreviewSvg(template, template.state, { lite: true });
+  }
+  return familyThumbSvg(template, template.state);
 }
 
 export function artboardCm(template: LabelTemplate) {

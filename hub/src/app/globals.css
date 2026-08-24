@@ -370,6 +370,13 @@ body {
     0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
 }
 
+/** Solid desk panel — use on long Design lists so scroll is not blurring glass. */
+.bb-sheet {
+  background: var(--bb-panel);
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius);
+}
+
 .bb-pay-chip {
   display: inline-flex;
   align-items: center;

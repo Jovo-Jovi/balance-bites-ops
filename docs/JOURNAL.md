@@ -252,6 +252,10 @@ Silhouette Library cards were fast but empty. Cards now paint a **lite** family 
 
 Library lite thumbs now include repo `/design-presets/` art (popcorn and the other character SVGs) and keep the card aspect, so icons are not stretched. Black rims on those silhouettes are Print cut, not a second black part stroke; Layers has a decorative border on each layer. Wrap / taper Up / Down reorder `eSecOrd` columns. Wrap print logo uses the same HTML disc as the lid (nested SVG in FO was vanishing). Top lid paint was not changed.
 
+Wrap print side columns were clipped by FO/`overflow:hidden` plus an inward column shadow. Borders now grow **outside** each layer (Dates / QR / Weight separately). Wrap HTML is not clipped to the die, so the outer columns can finish painting.
+
+Design scrolling was heavy because Library injected live wrap SVGs (foreignObject) into every glass card, and the Design shell used backdrop-filter. Cards are now `<img>` thumbs on a solid sheet.
+
 ---
 
 ## Still not done (do not tick as shipped)

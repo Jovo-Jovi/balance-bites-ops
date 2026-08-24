@@ -1,5 +1,5 @@
 import { usableImage } from "./art";
-import { flag, n, s } from "./layout";
+import { FAM, flag, n, s, wrapLayerBorderKeys } from "./layout";
 import type { LabelState } from "./types";
 
 function esc(v: string) {
@@ -7,6 +7,14 @@ function esc(v: string) {
 }
 function html(v: string) {
   return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function outBorder(state: LabelState, id: string) {
+  const keys = wrapLayerBorderKeys(id);
+  if (!keys) return "";
+  const bw = n(state, keys.w, 0);
+  if (bw <= 0) return "";
+  const bc = s(state, keys.c, "#ffffff");
+  return `box-shadow:0 0 0 ${bw}px ${esc(bc)};`;
 }
 function font(state: LabelState, key: string, fallback: string) {
   return s(state, key, fallback).replace(/^['"]+|['"]+$/g, "") || fallback;
@@ -38,7 +46,11 @@ export function logoDiscFace(
   outlineColor?: string,
 ) {
   const outline =
-    !ring && outlineColor && thick > 0 ? `border:${thick}px solid ${esc(outlineColor)}` : ring ? "" : "border:none";
+    !ring && outlineColor && thick > 0
+      ? `border:none;box-shadow:0 0 0 ${thick}px ${esc(outlineColor)}`
+      : ring
+        ? ""
+        : "border:none";
   const face = ring
     ? `background:transparent;border:${thick}px solid ${esc(disc)};color:${esc(disc)}`
     : `background:${esc(disc)};${outline};color:${esc(ink)}`;
@@ -102,12 +114,8 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   const mut = mutOf(state);
   const pad = Math.round(h * 0.07);
   const padS = Math.round(h * 0.04);
-  const wrap = (inner: string) => {
-    const bw = n(state, `sSec${k}BorderW`, 0);
-    const bc = s(state, `sSec${k}BorderC`, "#ffffff");
-    const box = bw > 0 ? `box-shadow:inset 0 0 0 ${bw}px ${esc(bc)};` : "";
-    return `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${box}${PRINT_INK}">${inner}</div>`;
-  };
+  const wrap = (inner: string) =>
+    `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${PRINT_INK}">${inner}</div>`;
 
   const pin = (
     cxPct: number,
@@ -146,7 +154,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
            ${s(state, "eAllergenAr") ? `<div style="direction:rtl;text-align:right;font-family:${esc(FAR)};font-style:italic;font-size:${fs * 0.9}px;color:${mut};margin-top:2px;opacity:.8">${html(s(state, "eAllergenAr"))}</div>` : ""}`
         : "";
     return wrap(
-      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;transform:scale(${scale}) translate(${x}px,${y}px);color:${ink}">${en}${ar}${flag(state, "chkIngBadges", true) ? badges(state, lite) : ""}</div>`,
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;transform:scale(${scale}) translate(${x}px,${y}px);color:${ink};overflow:visible;${outBorder(state, FAM.ing)}">${en}${ar}${flag(state, "chkIngBadges", true) ? badges(state, lite) : ""}</div>`,
     );
   }
 
@@ -173,7 +181,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     if (flag(state, "cNProt", true)) rows.push({ l: `<b>Protein</b> ${n(state, "nProt", 0)}g`, r: "" });
     return wrap(
       `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);${PRINT_INK};display:flex;align-items:center;justify-content:center">
-        <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:4px 5px;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;transform:scale(${scale}) translate(${x}px,${y}px)">
+        <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:4px 5px;width:100%;height:100%;display:flex;flex-direction:column;overflow:visible;transform:scale(${scale}) translate(${x}px,${y}px);${outBorder(state, FAM.nut)}">
           <div style="font-family:${esc(FH)};font-weight:800;font-size:${sTitle}px;color:${ink};border-bottom:2.5px solid ${ink};line-height:1.1">Nutrition Facts</div>
           <div style="font-size:${sBody * 0.9}px;color:${mut};padding:2px 0">${html(s(state, "nSrv"))}</div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid ${ink};padding:2px 0">
@@ -234,8 +242,8 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     const badgeH = Math.max(36, h * 0.22);
     return wrap(
       `<div style="position:relative;width:100%;height:100%;overflow:visible;direction:ltr;unicode-bidi:isolate">
-        ${pin(50, 28, sz, sz, lx, ly, lrot, "overflow:hidden;", logoDiscFace(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20), outline || undefined))}
-        ${pin(50, 58, nameW, nameH, nx, ny, nrot, `font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;`, `${nameHtml}${arHtml}`)}
+        ${pin(50, 28, sz, sz, lx, ly, lrot, "overflow:visible;", logoDiscFace(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20), outline || undefined))}
+        ${pin(50, 58, nameW, nameH, nx, ny, nrot, `overflow:visible;font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;${outBorder(state, FAM.bname)}`, `${nameHtml}${arHtml}`)}
         ${
           flag(state, "chkLogoBadges", true)
             ? pin(50, 82, badgeW, badgeH, nx, ny, nrot, "display:flex;align-items:center;justify-content:center;", badges(state, lite, 0.9))
@@ -269,7 +277,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
         img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover" alt=""/>` : html(src)
       }</div>`;
     return wrap(
-      `<div style="width:100%;height:100%;padding:${padS}px;display:flex;flex-direction:column;justify-content:center;transform:translate(${n(state, "sTipPosX", 0)}px,${n(state, "sTipPosY", 0)}px)">${en}${ar}
+      `<div style="width:100%;height:100%;padding:${padS}px;display:flex;flex-direction:column;justify-content:center;overflow:visible;transform:translate(${n(state, "sTipPosX", 0)}px,${n(state, "sTipPosY", 0)}px);${outBorder(state, FAM.tip)}">${en}${ar}
         <div style="margin-top:10px;display:flex;align-items:center;gap:6px">${i1 ? iconBox(s(state, "eTipIcon1"), t1) : ""}${i1 && i2 ? `<span style="color:${mut}">+</span>` : ""}${i2 ? iconBox(s(state, "eTipIcon2"), t2) : ""}</div>
       </div>`,
     );
@@ -278,7 +286,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   if (k === "6") {
     const fs = n(state, "sTipFS", 6.5);
     return wrap(
-      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;text-align:center">
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;text-align:center;overflow:visible;${outBorder(state, FAM.cus)}">
         <div style="font-family:${esc(FH)};font-weight:700;font-size:${fs * 1.4}px;margin-bottom:4px;color:${ink};text-transform:uppercase">${html(s(state, "eCusTitle"))}</div>
         <div style="font-family:${esc(FB)};font-size:${fs * 1.1}px;color:${mut}">${html(s(state, "eCusBody"))}</div>
         ${s(state, "eCusBodyAr") ? `<div style="direction:rtl;margin-top:4px;font-family:${esc(FAR)};font-size:${fs * 1.1}px;color:${mut}">${html(s(state, "eCusBodyAr"))}</div>` : ""}
@@ -313,9 +321,9 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   const dateScale = ds !== 1 ? `transform:scale(${ds});transform-origin:center;` : "";
   return wrap(
     `<div style="position:relative;width:100%;height:100%;overflow:visible;direction:ltr;unicode-bidi:isolate">
-      ${pin(50, 28, dateW, dateH, n(state, "sDatePosX", 0), n(state, "sDatePosY", 0), 0, `${dateScale}z-index:1;`, `<div>${en}${ar}</div>`)}
-      ${pin(50, 70, qrSz, qrSz, n(state, "sQrPosX", 0), n(state, "sQrPosY", 0), 0, "z-index:2;overflow:hidden;border-radius:2px;background:#fff;", qrInner)}
-      ${pin(50, 90, dateW, wtH, n(state, "sWtPosX", 0), n(state, "sWtPosY", 0), 0, `z-index:2;font-family:${esc(FH)};font-weight:700;font-size:${n(state, "sWtFS", 8)}px;color:${ink};text-align:center;display:flex;align-items:center;justify-content:center;`, html(s(state, "eWeight")))}
+      ${pin(50, 28, dateW, dateH, n(state, "sDatePosX", 0), n(state, "sDatePosY", 0), 0, `${dateScale}z-index:1;overflow:visible;${outBorder(state, FAM.bdates)}`, `<div>${en}${ar}</div>`)}
+      ${pin(50, 70, qrSz, qrSz, n(state, "sQrPosX", 0), n(state, "sQrPosY", 0), 0, `z-index:2;overflow:visible;border-radius:2px;background:#fff;${outBorder(state, FAM.qr)}`, qrInner)}
+      ${pin(50, 90, dateW, wtH, n(state, "sWtPosX", 0), n(state, "sWtPosY", 0), 0, `z-index:2;overflow:visible;font-family:${esc(FH)};font-weight:700;font-size:${n(state, "sWtFS", 8)}px;color:${ink};text-align:center;display:flex;align-items:center;justify-content:center;${outBorder(state, FAM.bwt)}`, html(s(state, "eWeight")))}
     </div>`,
   );
 }

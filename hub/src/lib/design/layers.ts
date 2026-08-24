@@ -1,6 +1,6 @@
 import { BG_MORE, BG_SLOTS, usableImage } from "./art";
 import { getIcon } from "./icons";
-import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s } from "./layout";
+import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys } from "./layout";
 import { bgPanKeys, isCutBlack, productPhotoBox } from "./preview";
 import { isAssetRef } from "./templates";
 import type { CompositePart, LabelState, LabelTemplate } from "./types";
@@ -362,12 +362,12 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
       showColor: false,
     };
   }
-  const wrapSec = familySectionKey(id);
+  const keys = wrapLayerBorderKeys(id);
   const face = previewFace(template);
-  if (wrapSec && (face === "back" || face === "taper")) {
+  if (keys && (face === "back" || face === "taper")) {
     return {
-      width: num(state, `sSec${wrapSec}BorderW`, 0),
-      color: s(state, `sSec${wrapSec}BorderC`, "#ffffff"),
+      width: num(state, keys.w, 0),
+      color: s(state, keys.c, "#ffffff"),
       max: 8,
       showColor: true,
     };
@@ -421,10 +421,10 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
     if (patch.borderWidth != null) next = { ...next, tLogoCircleThick: String(patch.borderWidth) };
     return next;
   }
-  const wrapSec = familySectionKey(id);
-  if (wrapSec && !(next._composite && id === QR_LAYER)) {
-    if (patch.borderWidth != null) next = { ...next, [`sSec${wrapSec}BorderW`]: String(patch.borderWidth) };
-    if (patch.borderColor) next = { ...next, [`sSec${wrapSec}BorderC`]: patch.borderColor };
+  const keys = wrapLayerBorderKeys(id);
+  if (keys && !(next._composite && id === QR_LAYER)) {
+    if (patch.borderWidth != null) next = { ...next, [keys.w]: String(patch.borderWidth) };
+    if (patch.borderColor) next = { ...next, [keys.c]: patch.borderColor };
     return next;
   }
   if (next._stamps?.some((st) => st.id === id)) {

@@ -5,7 +5,7 @@ import { ActionBtn, Empty, Field, Modal, TextInput } from "@/components/invoices
 import { useToast } from "@/components/toast";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
 import { artboardOf } from "@/lib/design/layout";
-import { libraryCardSvg } from "@/lib/design/preview";
+import { libraryCardSrc } from "@/lib/design/preview";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
 import type { DesignType, LabelTemplate } from "@/lib/design/types";
@@ -32,7 +32,7 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const svg = on ? libraryCardSvg(template) : "";
+  const src = on ? libraryCardSrc(template) : "";
   const maxH = wide ? 96 : 140;
   return (
     <div
@@ -47,7 +47,7 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
       }}
     >
       {on ? (
-        <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+        <img src={src} alt="" className="h-full w-full object-contain" decoding="async" draggable={false} />
       ) : (
         <span className="block h-full w-full bg-[var(--bb-panel)]" />
       )}
@@ -139,7 +139,7 @@ export function LibraryTool() {
             return (
               <li
                 key={t.id}
-                className="bb-glass flex flex-col gap-2 p-2"
+                className="bb-sheet flex flex-col gap-2 p-2"
                 style={{ contentVisibility: "auto", containIntrinsicSize: "0 220px" }}
               >
                 <button type="button" className="text-start" onClick={() => void app.openTemplate(t.id)}>

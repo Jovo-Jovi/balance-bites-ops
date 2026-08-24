@@ -506,14 +506,12 @@ function drawBack(
   const columns = secs
     .map((sec) => {
       const rot = n(state, `sSec${sec.k}Rot`, 0);
-      return `<div style="position:absolute;left:${sec.l}px;top:0;width:${sec.w}px;height:${H}px;overflow:hidden;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;transform:rotate(${rot}deg);transform-origin:center center">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</div>`;
+      return `<div style="position:absolute;left:${sec.l}px;top:0;width:${sec.w}px;height:${H}px;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;transform:rotate(${rot}deg);transform-origin:center center">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</div>`;
     })
     .join("");
-  parts.push(
-    `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:hidden;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`,
-  );
+  const fo = `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:visible;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`;
   const geom = `<rect x="0" y="0" width="${W}" height="${H}" />`;
-  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}${stampLayer(state, 0, 0, W, H)}</g>`;
+  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}</g>${fo}<g clip-path="url(#${uid}die)">${stampLayer(state, 0, 0, W, H)}</g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
 

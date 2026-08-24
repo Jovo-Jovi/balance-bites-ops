@@ -77,7 +77,7 @@ export function StudioTool() {
         </ActionBtn>
       </div>
 
-      <div className="bb-glass grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="bb-sheet grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Name">
           <TextInput value={t.name} onChange={(e) => app.setName(e.target.value)} />
         </Field>
