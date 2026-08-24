@@ -47,7 +47,7 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
       }}
     >
       {on ? (
-        <img src={src} alt="" className="h-full w-full object-contain" decoding="async" draggable={false} />
+        <img src={src} alt="" className="h-full w-full object-contain p-1" decoding="async" draggable={false} />
       ) : (
         <span className="block h-full w-full bg-[var(--bb-panel)]" />
       )}

@@ -256,6 +256,8 @@ Wrap print side columns were clipped by FO/`overflow:hidden` plus an inward colu
 
 Design scrolling was heavy because Library injected live wrap SVGs (foreignObject) into every glass card, and the Design shell used backdrop-filter. Cards are now `<img>` thumbs on a solid sheet.
 
+Library character cards (popcorn-yellow included) use the repo preset image — a data-URL SVG cannot load nested `/design-presets/` art, so yellow-on-white silhouettes vanished. Wrap/circle thumbs follow the artboard shape. Rect Nutrition no longer double-scales and clips; it shrinks to the column. Layers has a size slider on each component.
+
 ---
 
 ## Still not done (do not tick as shipped)

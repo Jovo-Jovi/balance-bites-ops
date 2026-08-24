@@ -160,11 +160,9 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
 
   if (k === "2") {
     const userScale = n(state, "sNutScale", 1);
-    const auto = Math.min(1.2, Math.min(h / 170, w / 160));
-    const scale = auto * userScale;
-    const sTitle = n(state, "sNutTitle", 12) * scale;
-    const sBody = n(state, "sNutBody", 6) * scale;
-    const sCal = n(state, "sCalFS", 30) * scale;
+    const sTitle0 = n(state, "sNutTitle", 12);
+    const sBody0 = n(state, "sNutBody", 6);
+    const sCal0 = n(state, "sCalFS", 30);
     const x = n(state, "sNutPosX", 0);
     const y = n(state, "sNutPosY", 0);
     const rows: { l: string; r: string }[] = [];
@@ -179,23 +177,31 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     if (flag(state, "cNSug", true))
       rows.push({ l: `<span style="padding-left:8px">Total Sugars ${n(state, "nSug", 0)}g</span>`, r: "" });
     if (flag(state, "cNProt", true)) rows.push({ l: `<b>Protein</b> ${n(state, "nProt", 0)}g`, r: "" });
+    const innerH = Math.max(8, h - pad * 2);
+    const innerW = Math.max(8, w - padS * 2);
+    const contentH = sTitle0 * 1.2 + sBody0 * 2.7 + sCal0 * 1.05 + rows.length * (sBody0 * 1.4 + 2) + 18;
+    const fit = Math.min(1, innerH / Math.max(48, contentH), innerW / 118);
+    const scale = Math.max(0.38, Math.min(1.15, fit * userScale));
+    const sTitle = sTitle0 * scale;
+    const sBody = sBody0 * scale;
+    const sCal = sCal0 * scale;
     return wrap(
-      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);${PRINT_INK};display:flex;align-items:center;justify-content:center">
-        <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:4px 5px;width:100%;height:100%;display:flex;flex-direction:column;overflow:visible;transform:scale(${scale}) translate(${x}px,${y}px);${outBorder(state, FAM.nut)}">
-          <div style="font-family:${esc(FH)};font-weight:800;font-size:${sTitle}px;color:${ink};border-bottom:2.5px solid ${ink};line-height:1.1">Nutrition Facts</div>
-          <div style="font-size:${sBody * 0.9}px;color:${mut};padding:2px 0">${html(s(state, "nSrv"))}</div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid ${ink};padding:2px 0">
-            <span style="font-family:${esc(FH)};font-weight:800;font-size:${sBody * 1.2}px;color:${ink}">Calories</span>
-            <span style="font-family:${esc(FH)};font-weight:900;font-size:${sCal}px;color:${ink}">${n(state, "nCal", 130)}</span>
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);${PRINT_INK};display:flex;align-items:stretch;justify-content:center;box-sizing:border-box">
+        <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:3px 4px;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;transform:translate(${x}px,${y}px);${outBorder(state, FAM.nut)}">
+          <div style="font-family:${esc(FH)};font-weight:800;font-size:${sTitle}px;color:${ink};border-bottom:2px solid ${ink};line-height:1.05;flex:0 0 auto">Nutrition Facts</div>
+          <div style="font-size:${sBody * 0.9}px;color:${mut};padding:1px 0;line-height:1.1;flex:0 0 auto">${html(s(state, "nSrv"))}</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid ${ink};padding:1px 0;flex:0 0 auto">
+            <span style="font-family:${esc(FH)};font-weight:800;font-size:${sBody * 1.15}px;color:${ink}">Calories</span>
+            <span style="font-family:${esc(FH)};font-weight:900;font-size:${sCal}px;color:${ink};line-height:1">${n(state, "nCal", 130)}</span>
           </div>
-          <div style="font-size:${sBody * 0.85}px;color:${mut};text-align:right;padding:1px 0">% Daily Value*</div>
-          <div style="flex:1;min-height:0;overflow:hidden">${rows
+          <div style="font-size:${sBody * 0.8}px;color:${mut};text-align:right;padding:0;line-height:1.1;flex:0 0 auto">% Daily Value*</div>
+          <div style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly">${rows
             .map(
               (r) =>
-                `<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1);padding:1px 0;font-family:${esc(FB)};font-size:${sBody}px;color:${ink}"><div>${r.l}</div><div style="font-weight:700">${r.r}</div></div>`,
+                `<div style="display:flex;justify-content:space-between;gap:4px;border-bottom:1px solid rgba(255,255,255,.12);padding:0;font-family:${esc(FB)};font-size:${sBody}px;line-height:1.15;color:${ink}"><div>${r.l}</div><div style="font-weight:700">${r.r}</div></div>`,
             )
             .join("")}</div>
-          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1px 8px;font-family:${esc(FB)};color:${mut};margin-top:auto;padding-top:2px;font-size:${sBody * 0.75}px;border-top:1.5px solid rgba(255,255,255,.3)">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0 6px;font-family:${esc(FB)};color:${mut};padding-top:1px;font-size:${sBody * 0.72}px;line-height:1.15;border-top:1.5px solid rgba(255,255,255,.3);flex:0 0 auto">
             <span>Vit D ${n(state, "nVitD", 0)}mcg</span><span>Ca ${n(state, "nCalc", 20)}mg</span><span>Fe ${n(state, "nIron", 1.5)}mg</span><span>K ${n(state, "nPot", 80)}mg</span>
           </div>
         </div>

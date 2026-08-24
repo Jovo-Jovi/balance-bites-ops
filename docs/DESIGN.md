@@ -124,7 +124,7 @@ Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a tem
 | `data:` / blob | Device upload; strip to `__asset__:` on save when storage is on |
 | `artref:` / `assets/presets/…` | Repo file under `hub/public/design-presets/`. Not a tenant dump |
 
-`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards never hydrate R2 — they paint a cached **image** (composite lite SVG as a data URL, family as a die silhouette). No live foreignObject in the Library grid. Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
+`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards never hydrate R2. Character composites use the repo preset image (so popcorn-yellow is the art, not a white blob). Other families use an artboard-shaped silhouette. No live foreignObject in the Library grid. Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
 
 Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from the commercial print pack (`PRINT_PACK_EXCLUDE`) because of licensed likeness.
 
@@ -134,7 +134,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Drag the gold border to **move** (a short click does not nudge). Round handle (and Layers slider −180°…180°) to **rotate**. Corner to **resize**.
 - Taper / wrap **QR** and **weight** are separate from dates (`sQrPosX/Y`, `sQrSz`, `sWtPosX/Y`). Taper boxes follow the fan so inner items move in the sector.
 - Composite: `rot` on parts, zones, stamps. Family faces: live offset keys (`sCLogoX` / `sCBrandX` / …) plus `sC*Rot` / `sT*Rot` / `sSec*Rot`.
-- **Print cut** (`__cut__`) is listed and can show the overlay; it is not draggable. The black rim on character art (popcorn) is this die, not a decorative part stroke. Each selected layer has its own **outward** border (wrap Dates / QR / Weight are separate; not the whole column).
+- **Print cut** (`__cut__`) is listed and can show the overlay; it is not draggable. The black rim on character art (popcorn) is this die, not a decorative part stroke. Each layer has a **size** control plus an **outward** border (wrap Dates / QR / Weight are separate; not the whole column).
 - Wrap / taper Layers **Up / Down** reorder `eSecOrd` columns. Composite Up / Down still restack z-order.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. The previous sticker’s photos must not stay on screen.
 

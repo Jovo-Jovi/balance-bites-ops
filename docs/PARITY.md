@@ -99,8 +99,9 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Taper + top uses live `calcTaper` fan: pixel viewBox, rotate around apex, section HTML — **not** remapped to `0 0 100 100` / `preserveAspectRatio="none"`
 - [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
 - [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
-- [x] Compact Library thumbs (cached image; composite lite + popcorn presets; family silhouette; no live FO). Design scroll uses a solid sheet, not glass blur
-- [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
+- [x] Compact Library thumbs (character presets as the real image; family artboard silhouette; no live FO). Design scroll uses a solid sheet, not glass blur
+- [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
+- [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
 - [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG

@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionBtn, Field } from "@/components/invoices/ui";
-import { familySectionKey, layerBorder, listCanvasItems, listLayers } from "@/lib/design/layers";
+import { familySectionKey, layerBorder, layerSize, listCanvasItems, listLayers } from "@/lib/design/layers";
 import { iconSvg } from "@/lib/design/icons";
 import { CUT_STROKE_COLOR, CUT_STROKE_MM } from "@/lib/design/preview";
 import { useDesignApp } from "./design-context";
@@ -23,7 +23,7 @@ export function LayersPanel() {
     <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
         Print cut is the die-cut stroke (the black rim on characters like popcorn). Each layer has its own
-        decorative border. On wrap, Up / Down reorder the columns.
+        size and decorative border. On wrap, Up / Down reorder the columns.
       </p>
       <ul className="flex flex-col gap-2">
         {layers.map((layer) => {
@@ -34,6 +34,7 @@ export function LayersPanel() {
           const stackAt = stackIds.indexOf(sec || layer.id);
           const inStack = stackAt >= 0;
           const border = selected && !cut ? layerBorder(t, layer.id) : null;
+          const size = cut ? null : layerSize(t, layer.id);
           return (
             <li
               key={layer.id}
@@ -97,6 +98,19 @@ export function LayersPanel() {
                   ) : null}
                 </div>
               </div>
+              {size ? (
+                <Field label={`Size ${sizeLabel(size)}`}>
+                  <input
+                    type="range"
+                    min={size.min}
+                    max={size.max}
+                    step={size.step}
+                    value={size.value}
+                    onChange={(e) => app.patchLayer(layer.id, { size: Number(e.target.value) })}
+                    className="w-full accent-[var(--bb-gold)]"
+                  />
+                </Field>
+              ) : null}
               {selected && selectedItem && !cut ? (
                 <Field label={`Rotate ${Math.round((selectedItem.rot || 0) - (selectedItem.fan || 0))}°`}>
                   <input
@@ -170,6 +184,12 @@ export function LayersPanel() {
       </ul>
     </div>
   );
+}
+
+function sizeLabel(size: { value: number; step: number; suffix: string }) {
+  if (size.suffix === "×") return `${Math.round(size.value * 100)}%`;
+  const shown = size.step < 1 ? Number(size.value.toFixed(1)) : Math.round(size.value);
+  return `${shown} ${size.suffix}`;
 }
 
 function toHex(value: string) {

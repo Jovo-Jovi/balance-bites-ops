@@ -1,4 +1,4 @@
-import { previewImage, usableImage } from "./art";
+import { characterPresetSrc, previewImage, usableImage } from "./art";
 import { partFillPath } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
@@ -151,29 +151,10 @@ function partShape(part: CompositePart, lite = false) {
   return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
 }
 
-function outlineShape(kind: string, fill: string) {
-  const c = esc(fill);
-  if (kind === "square") return `<rect x="8" y="8" width="84" height="84" fill="${c}" />`;
-  if (kind === "rounded_sq") return `<rect x="8" y="8" width="84" height="84" rx="14" fill="${c}" />`;
-  if (kind === "diamond") return `<polygon points="${polygon(4, 50, 50, 42, 42, -45)}" fill="${c}" />`;
-  if (kind === "hexagon") return `<polygon points="${polygon(6, 50, 50, 44, 44)}" fill="${c}" />`;
-  if (kind === "pentagon") return `<polygon points="${polygon(5, 50, 50, 44, 44)}" fill="${c}" />`;
-  if (kind === "octagon") return `<polygon points="${polygon(8, 50, 50, 44, 44)}" fill="${c}" />`;
-  if (kind === "star") return `<polygon points="${starPoints(50, 50, 44, 44)}" fill="${c}" />`;
-  if (kind === "rect") return `<rect x="4" y="18" width="92" height="78" rx="3" fill="${c}" />`;
-  if (kind === "taper") return `<polygon points="14,16 86,16 100,96 0,96" fill="${c}" />`;
-  return `<circle cx="50" cy="50" r="48" fill="${c}" />`;
-}
-
 function familyClipKind(designType: string, outline: string | null) {
   if (designType === "taper_top") return "taper";
   if (designType === "rect_top") return "rect";
   return outline || (designType === "circular" ? "circle" : "rounded_sq");
-}
-
-function topLid(fill: string) {
-  const c = esc(fill);
-  return `<circle cx="50" cy="10" r="9" fill="${c}" /><circle cx="50" cy="10" r="4" fill="none" stroke="#fff" stroke-width="0.8" opacity="0.45" />`;
 }
 
 function compositeClip(comp: CompositeBlob) {
@@ -527,20 +508,50 @@ function familyThumbSvg(template: LabelTemplate, state: LabelState) {
   const spec = getDesignSpec(template.designType);
   const fill = str(state, "cLabel", "#2e7d32");
   const face = previewFace(template);
+  const { wCm, hCm } = artboardOf(template, state);
+  const W = Math.max(12, wCm * 20);
+  const H = Math.max(12, hCm * 20);
   const kind =
     face === "taper" ? "taper" : face === "back" ? "rect" : familyClipKind(template.designType, spec.outline);
-  let inner = outlineShape(kind, fill);
-  if (face === "top") inner += topLid(fill);
-  if (face === "back" || face === "taper") {
-    inner += `<g fill="#fff" opacity=".22">
-      <rect x="5" y="20" width="16" height="72"/>
-      <rect x="23" y="20" width="20" height="72"/>
-      <rect x="45" y="20" width="16" height="72"/>
-      <rect x="63" y="20" width="14" height="72"/>
-      <rect x="79" y="20" width="16" height="72"/>
+  const ink = esc(fill);
+  let inner = "";
+  if (kind === "rect") {
+    const rr = Math.min(W, H) * 0.12;
+    inner = `<rect x="0.6" y="0.6" width="${W - 1.2}" height="${H - 1.2}" rx="${rr}" fill="${ink}"/>`;
+    const bands = [0.14, 0.2, 0.18, 0.16, 0.32];
+    let x = 0;
+    inner += `<g fill="#fff" opacity=".2">`;
+    for (const b of bands) {
+      inner += `<rect x="${x * W}" y="${H * 0.1}" width="${b * W}" height="${H * 0.8}" rx="${rr * 0.15}"/>`;
+      x += b;
+    }
+    inner += `</g>`;
+  } else if (kind === "taper") {
+    inner = `<polygon points="${W * 0.14},0 ${W * 0.86},0 ${W},${H} 0,${H}" fill="${ink}"/>`;
+    inner += `<g fill="#fff" opacity=".18">
+      <polygon points="${W * 0.18},${H * 0.08} ${W * 0.32},${H * 0.08} ${W * 0.28},${H * 0.92} ${W * 0.08},${H * 0.92}"/>
+      <polygon points="${W * 0.36},${H * 0.08} ${W * 0.54},${H * 0.08} ${W * 0.58},${H * 0.92} ${W * 0.32},${H * 0.92}"/>
+      <polygon points="${W * 0.58},${H * 0.08} ${W * 0.78},${H * 0.08} ${W * 0.9},${H * 0.92} ${W * 0.62},${H * 0.92}"/>
     </g>`;
+  } else {
+    const cx = W / 2;
+    const cy = H / 2;
+    const rx = W * 0.46;
+    const ry = H * 0.46;
+    if (kind === "square") inner = `<rect x="${W * 0.08}" y="${H * 0.08}" width="${W * 0.84}" height="${H * 0.84}" fill="${ink}"/>`;
+    else if (kind === "rounded_sq") {
+      inner = `<rect x="${W * 0.08}" y="${H * 0.08}" width="${W * 0.84}" height="${H * 0.84}" rx="${Math.min(rx, ry) * 0.28}" fill="${ink}"/>`;
+    } else if (kind === "diamond") inner = `<polygon points="${polygon(4, cx, cy, rx, ry, -45)}" fill="${ink}"/>`;
+    else if (kind === "hexagon") inner = `<polygon points="${polygon(6, cx, cy, rx, ry)}" fill="${ink}"/>`;
+    else if (kind === "pentagon") inner = `<polygon points="${polygon(5, cx, cy, rx, ry)}" fill="${ink}"/>`;
+    else if (kind === "octagon") inner = `<polygon points="${polygon(8, cx, cy, rx, ry)}" fill="${ink}"/>`;
+    else if (kind === "star") inner = `<polygon points="${starPoints(cx, cy, rx, ry)}" fill="${ink}"/>`;
+    else inner = `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${ink}"/>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" overflow="hidden" role="img">${inner}</svg>`;
+  if (face === "top") {
+    inner += `<circle cx="${W / 2}" cy="${H * 0.1}" r="${Math.min(W, H) * 0.09}" fill="${ink}" stroke="#fff" stroke-width="${Math.min(W, H) * 0.012}" opacity="0.95"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" overflow="hidden" role="img">${inner}</svg>`;
 }
 
 const LITE_THUMB_MAX = 64;
@@ -550,9 +561,11 @@ function svgDataUrl(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-/** Cheap Library art: composite lite (presets, no R2 / FO); family is a silhouette. Cached as a data URL for `<img>`. */
+/** Cheap Library art: character presets as a real image; family as an artboard silhouette. Cached. */
 export function libraryCardSrc(template: LabelTemplate) {
-  const key = `v4|${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
+  const preset = characterPresetSrc(template);
+  if (preset) return preset;
+  const key = `v5|${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
   const hit = liteThumbs.get(key);
   if (hit) return hit;
   const spec = getDesignSpec(template.designType);

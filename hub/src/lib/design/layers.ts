@@ -270,7 +270,110 @@ export type LayerPatch = {
   text?: string;
   borderWidth?: number;
   borderColor?: string;
+  size?: number;
 };
+
+export type LayerSize = {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix: string;
+};
+
+type SizeSpec = {
+  key: string;
+  min: number;
+  max: number;
+  step: number;
+  suffix: string;
+  fallback: number;
+};
+
+const SIZE_BY_ID: Record<string, SizeSpec> = {
+  [FAM.ing]: { key: "sIngScale", min: 0.5, max: 2, step: 0.05, suffix: "×", fallback: 1 },
+  [FAM.nut]: { key: "sNutScale", min: 0.5, max: 2, step: 0.05, suffix: "×", fallback: 1 },
+  [FAM.blogo]: { key: "sLogoSz", min: 20, max: 90, step: 1, suffix: "px", fallback: 48 },
+  [FAM.bname]: { key: "sNameFS", min: 6, max: 36, step: 0.5, suffix: "px", fallback: 14 },
+  [FAM.tip]: { key: "sTipFS", min: 4, max: 16, step: 0.5, suffix: "px", fallback: 6.5 },
+  [FAM.bdates]: { key: "sDateScale", min: 0.5, max: 2, step: 0.05, suffix: "×", fallback: 1 },
+  [FAM.qr]: { key: "sQrSz", min: 16, max: 90, step: 1, suffix: "px", fallback: 44 },
+  [FAM.bwt]: { key: "sWtFS", min: 4, max: 18, step: 0.5, suffix: "px", fallback: 8 },
+  [FAM.cus]: { key: "sTipFS", min: 4, max: 16, step: 0.5, suffix: "px", fallback: 6.5 },
+  [FAM.logo]: { key: "sCLogoSz", min: 15, max: 80, step: 1, suffix: "px", fallback: 45 },
+  [FAM.brand]: { key: "sCBrandFS", min: 8, max: 40, step: 0.5, suffix: "px", fallback: 20 },
+  [FAM.flavor]: { key: "sCFlavorFS", min: 6, max: 36, step: 0.5, suffix: "px", fallback: 14 },
+  [FAM.photo]: { key: "sCProdSz", min: 20, max: 150, step: 1, suffix: "px", fallback: 80 },
+  [FAM.weight]: { key: "sCWtFS", min: 4, max: 16, step: 0.5, suffix: "px", fallback: 8 },
+  [FAM.dates]: { key: "sCDateFS", min: 4, max: 14, step: 0.5, suffix: "px", fallback: 6 },
+  [FAM.tlogo]: { key: "sTCircleSz", min: 15, max: 70, step: 1, suffix: "px", fallback: 32 },
+  [FAM.ttitle]: { key: "sTTitleFS", min: 10, max: 40, step: 0.5, suffix: "px", fallback: 20 },
+  [FAM.tsub]: { key: "sTSubFS", min: 4, max: 16, step: 0.5, suffix: "px", fallback: 7 },
+};
+
+function roundSize(value: number, step: number) {
+  const n = step < 1 ? Math.round(value / step) * step : Math.round(value);
+  return Number(n.toFixed(step < 1 ? 2 : 0));
+}
+
+export function layerSize(template: LabelTemplate, id: string): LayerSize | null {
+  if (id === CUT_LAYER) return null;
+  const spec = SIZE_BY_ID[id];
+  if (spec) {
+    return {
+      value: num(template.state, spec.key, spec.fallback),
+      min: spec.min,
+      max: spec.max,
+      step: spec.step,
+      suffix: spec.suffix,
+    };
+  }
+  if (id === PHOTO_LAYER) {
+    return { value: num(template.state, "sCProdSz", 80), min: 20, max: 150, step: 1, suffix: "px" };
+  }
+  if (id.startsWith("__bg:")) {
+    const field = id.slice(5);
+    const slot = [...BG_SLOTS, ...BG_MORE].find((s) => s.key === field);
+    if (!slot?.zoom) return null;
+    return { value: num(template.state, slot.zoom, 100), min: 20, max: 400, step: 5, suffix: "%" };
+  }
+  const item = listCanvasItems(template).find((it) => it.id === id);
+  if (!item) return null;
+  return { value: Math.round(Math.max(item.w, item.h)), min: 4, max: 120, step: 1, suffix: "%" };
+}
+
+function scaleBox<T extends { w: number; h: number }>(item: T, size: number): T {
+  const m = Math.max(item.w, item.h, 0.01);
+  const f = clamp(size, 4, 120) / m;
+  return { ...item, w: item.w * f, h: item.h * f };
+}
+
+function applyLayerSize(state: LabelState, id: string, size: number): LabelState {
+  const spec = SIZE_BY_ID[id];
+  if (spec) {
+    return { ...state, [spec.key]: String(roundSize(clamp(size, spec.min, spec.max), spec.step)) };
+  }
+  if (id === PHOTO_LAYER) {
+    return { ...state, sCProdSz: String(Math.round(clamp(size, 20, 150))) };
+  }
+  if (id.startsWith("__bg:")) {
+    const field = id.slice(5);
+    const slot = [...BG_SLOTS, ...BG_MORE].find((s) => s.key === field);
+    if (!slot?.zoom) return state;
+    return { ...state, [slot.zoom]: String(Math.round(clamp(size, 20, 400))) };
+  }
+  return {
+    ...state,
+    _stamps: (state._stamps || []).map((st) => (st.id === id ? scaleBox(st, size) : st)),
+    _composite: state._composite
+      ? {
+          ...state._composite,
+          parts: (state._composite.parts || []).map((p) => (p.id === id ? scaleBox(p, size) : p)),
+          zones: (state._composite.zones || []).map((z) => (z.id === id ? scaleBox(z, size) : z)),
+        }
+      : state._composite,
+  };
+}
 
 const FAMILY_SECTION: Record<string, string> = {
   [FAM.ing]: "1",
@@ -404,7 +507,7 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
 }
 
 export function patchLayer(state: LabelState, id: string, patch: LayerPatch): LabelState {
-  let next: LabelState = { ...state };
+  let next: LabelState = patch.size != null ? applyLayerSize(state, id, patch.size) : { ...state };
   if (id === FAM.blogo) {
     if (patch.color) next = { ...next, cLogoCircle: patch.color };
     if (patch.borderWidth != null) next = { ...next, sLogoCircleThick: String(patch.borderWidth) };
