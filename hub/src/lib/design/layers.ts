@@ -241,7 +241,17 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
     items.push({ id: PHOTO_LAYER, kind: "photo", ...box, z: 0.5, lock: false });
   }
   if (usableImage(state.hxQr) || isAssetRef(state.hxQr)) {
-    items.push({ id: QR_LAYER, kind: "qr", x: 86, y: 86, w: 16, h: 16, z: 100, lock: false });
+    const qw = Math.max(8, num(state, "sQRSize", 16));
+    items.push({
+      id: QR_LAYER,
+      kind: "qr",
+      x: num(state, "sQRX", 86),
+      y: num(state, "sQRY", 86),
+      w: qw,
+      h: qw,
+      z: 100,
+      lock: false,
+    });
   }
   for (const slot of [...BG_SLOTS, ...BG_MORE]) {
     if (slot.key === "hxQr") continue;
@@ -311,6 +321,13 @@ const SIZE_BY_ID: Record<string, SizeSpec> = {
   [FAM.tsub]: { key: "sTSubFS", min: 4, max: 16, step: 0.5, suffix: "px", fallback: 7 },
 };
 
+function sizeSpecFor(template: LabelTemplate, id: string): SizeSpec | undefined {
+  const spec = SIZE_BY_ID[id];
+  if (!spec) return undefined;
+  if (previewFace(template) === "composite" && id === QR_LAYER) return undefined;
+  return spec;
+}
+
 function roundSize(value: number, step: number) {
   const n = step < 1 ? Math.round(value / step) * step : Math.round(value);
   return Number(n.toFixed(step < 1 ? 2 : 0));
@@ -318,7 +335,7 @@ function roundSize(value: number, step: number) {
 
 export function layerSize(template: LabelTemplate, id: string): LayerSize | null {
   if (id === CUT_LAYER) return null;
-  const spec = SIZE_BY_ID[id];
+  const spec = sizeSpecFor(template, id);
   if (spec) {
     return {
       value: num(template.state, spec.key, spec.fallback),
@@ -330,6 +347,9 @@ export function layerSize(template: LabelTemplate, id: string): LayerSize | null
   }
   if (id === PHOTO_LAYER) {
     return { value: num(template.state, "sCProdSz", 80), min: 20, max: 150, step: 1, suffix: "px" };
+  }
+  if (id === QR_LAYER) {
+    return { value: num(template.state, "sQRSize", 16), min: 8, max: 50, step: 1, suffix: "%" };
   }
   if (id.startsWith("__bg:")) {
     const field = id.slice(5);
@@ -350,11 +370,14 @@ function scaleBox<T extends { w: number; h: number }>(item: T, size: number): T 
 
 function applyLayerSize(state: LabelState, id: string, size: number): LabelState {
   const spec = SIZE_BY_ID[id];
-  if (spec) {
+  if (spec && !(state._composite && id === QR_LAYER)) {
     return { ...state, [spec.key]: String(roundSize(clamp(size, spec.min, spec.max), spec.step)) };
   }
   if (id === PHOTO_LAYER) {
     return { ...state, sCProdSz: String(Math.round(clamp(size, 20, 150))) };
+  }
+  if (id === QR_LAYER) {
+    return { ...state, sQRSize: String(Math.round(clamp(size, 8, 50))) };
   }
   if (id.startsWith("__bg:")) {
     const field = id.slice(5);
@@ -701,6 +724,9 @@ export function resizeItem(template: LabelTemplate, id: string, w: number, h: nu
   if (id === PHOTO_LAYER) {
     return { ...state, sCProdSz: String(Math.round(nw / 0.45)) };
   }
+  if (id === QR_LAYER) {
+    return { ...state, sQRSize: String(Math.round(Math.max(nw, nh))) };
+  }
   if (id.startsWith("__bg:")) {
     const field = id.slice(5);
     const slot = [...BG_SLOTS, ...BG_MORE].find((s) => s.key === field);
@@ -713,8 +739,12 @@ export function resizeItem(template: LabelTemplate, id: string, w: number, h: nu
     _composite: state._composite
       ? {
           ...state._composite,
-          parts: (state._composite.parts || []).map((p) => (p.id === id ? { ...p, w: nw, h: nh } : p)),
-          zones: (state._composite.zones || []).map((z) => (z.id === id ? { ...z, w: nw, h: nh } : z)),
+          parts: (state._composite.parts || []).map((p) =>
+            p.id === id ? (p.lockAspect ? scaleBox(p, Math.max(nw, nh)) : { ...p, w: nw, h: nh }) : p,
+          ),
+          zones: (state._composite.zones || []).map((z) =>
+            z.id === id ? (z.lockAspect ? scaleBox(z, Math.max(nw, nh)) : { ...z, w: nw, h: nh }) : z,
+          ),
         }
       : state._composite,
   };

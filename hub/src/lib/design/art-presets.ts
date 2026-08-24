@@ -15,6 +15,30 @@ const PRESET_FILES: Record<string, string> = {
   marshmallows: "bb-marshmallows.svg",
 };
 
+/** Library-only die fill when the saved part color is white-on-white. Not used in Studio/print. */
+const PRESET_THUMB_FILL: Record<string, string> = {
+  "jelly-fruit": "#e91e8c",
+  chicopon: "#5ec8e8",
+  "corn-cheese": "#f4c430",
+  "corn-ketchup": "#c62828",
+  "chinese-crackers": "#d4a017",
+  pretzels: "#c4a574",
+  "popcorn-blue": "#1a6cff",
+  "popcorn-red": "#e31b12",
+  "popcorn-yellow": "#FECE00",
+  "popcorn-orange": "#f08a00",
+  "popcorn-green": "#3d8c40",
+  marshmallows: "#f3c6d8",
+};
+
+export function presetThumbFill(artKey?: string) {
+  const k = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  return PRESET_THUMB_FILL[k] || "";
+}
+
 function publicSrc(file: string) {
   return `/design-presets/${file}`;
 }

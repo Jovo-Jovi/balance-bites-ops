@@ -154,7 +154,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
            ${s(state, "eAllergenAr") ? `<div style="direction:rtl;text-align:right;font-family:${esc(FAR)};font-style:italic;font-size:${fs * 0.9}px;color:${mut};margin-top:2px;opacity:.8">${html(s(state, "eAllergenAr"))}</div>` : ""}`
         : "";
     return wrap(
-      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;transform:scale(${scale}) translate(${x}px,${y}px);color:${ink};overflow:visible;${outBorder(state, FAM.ing)}">${en}${ar}${flag(state, "chkIngBadges", true) ? badges(state, lite) : ""}</div>`,
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;transform:scale(${scale}) translate(${x}px,${y}px);transform-origin:center;color:${ink};overflow:visible;${outBorder(state, FAM.ing)}">${en}${ar}${flag(state, "chkIngBadges", true) ? badges(state, lite) : ""}</div>`,
     );
   }
 

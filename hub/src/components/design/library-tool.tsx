@@ -14,8 +14,10 @@ import { productOptions, useDesignApp } from "./design-context";
 const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelTemplate }) {
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
-  const { wCm, hCm } = artboardOf(template, template.state);
-  const safeH = Math.max(0.1, hCm);
+  const board = artboardOf(template, template.state);
+  const wCm = Math.max(0.8, board.wCm || 6);
+  const hCm = Math.max(0.8, board.hCm || 6);
+  const safeH = hCm;
   const wide = wCm / safeH > 2;
   useEffect(() => {
     const el = ref.current;

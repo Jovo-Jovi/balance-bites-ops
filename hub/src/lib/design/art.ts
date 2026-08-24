@@ -2,16 +2,7 @@ import { genId } from "@/lib/invoices/helpers";
 import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
 import { isAssetRef } from "./templates";
-import type { CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
-
-export function characterPresetSrc(template: LabelTemplate) {
-  const parts = template.state._composite?.parts || [];
-  for (const part of parts) {
-    const src = usableImage(part.src || part.srcUrl, part.artKey);
-    if (src.startsWith("/design-presets/")) return src;
-  }
-  return "";
-}
+import type { CompositeZone, LabelStamp, LabelState } from "./types";
 
 export const MAX_BG_BYTES = 6 * 1024 * 1024;
 
@@ -76,14 +67,9 @@ export function usableImage(value: unknown, artKey?: string) {
   return "";
 }
 
-/** Repo presets only — safe for Library lite thumbs (no R2 / data URLs). */
-export function cheapImage(value: unknown, artKey?: string) {
-  const src = usableImage(value, artKey);
-  return src.startsWith("/design-presets/") ? src : "";
-}
-
 export function previewImage(value: unknown, artKey: string | undefined, lite: boolean) {
-  return lite ? cheapImage(value, artKey) : usableImage(value, artKey);
+  if (lite) return "";
+  return usableImage(value, artKey);
 }
 
 export function syncPaperToSilhouette(state: LabelState): LabelState {

@@ -1,4 +1,5 @@
-import { characterPresetSrc, previewImage, usableImage } from "./art";
+import { previewImage, usableImage } from "./art";
+import { presetThumbFill } from "./art-presets";
 import { partFillPath } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
@@ -57,26 +58,39 @@ function starPoints(cx: number, cy: number, rx: number, ry: number) {
   return pts.join(" ");
 }
 
-export function isCutBlack(color: string) {
+function colorRgb(color: string): { r: number; g: number; b: number } | null {
   const h = color.trim().toLowerCase();
-  if (h === "black") return true;
+  if (h === "black") return { r: 0, g: 0, b: 0 };
+  if (h === "white") return { r: 255, g: 255, b: 255 };
   const short = h.match(/^#([0-9a-f]{3})$/i);
   const long = h.match(/^#([0-9a-f]{6})$/i);
-  let r = 255;
-  let g = 255;
-  let b = 255;
   if (short) {
-    r = parseInt(short[1][0] + short[1][0], 16);
-    g = parseInt(short[1][1] + short[1][1], 16);
-    b = parseInt(short[1][2] + short[1][2], 16);
-  } else if (long) {
-    r = parseInt(long[1].slice(0, 2), 16);
-    g = parseInt(long[1].slice(2, 4), 16);
-    b = parseInt(long[1].slice(4, 6), 16);
-  } else {
-    return false;
+    return {
+      r: parseInt(short[1][0] + short[1][0], 16),
+      g: parseInt(short[1][1] + short[1][1], 16),
+      b: parseInt(short[1][2] + short[1][2], 16),
+    };
   }
-  return r < 40 && g < 40 && b < 40;
+  if (long) {
+    return {
+      r: parseInt(long[1].slice(0, 2), 16),
+      g: parseInt(long[1].slice(2, 4), 16),
+      b: parseInt(long[1].slice(4, 6), 16),
+    };
+  }
+  return null;
+}
+
+function colorLum(color: string) {
+  const rgb = colorRgb(color);
+  if (!rgb) return 128;
+  return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+}
+
+export function isCutBlack(color: string) {
+  const rgb = colorRgb(color);
+  if (!rgb) return color.trim().toLowerCase() === "black";
+  return rgb.r < 40 && rgb.g < 40 && rgb.b < 40;
 }
 
 export function partBorderWidth(part: CompositePart) {
@@ -126,7 +140,7 @@ function partShape(part: CompositePart, lite = false) {
   if (wantImage) {
     return partLocalGroup(
       part,
-      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" />`,
+      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="none" />`,
     );
   }
   if (part.pathLocal) {
@@ -443,7 +457,9 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
   const outW = wCm + (2 * padMm) / 10;
   const outH = hCm + (2 * padMm) / 10;
   const size = opts?.physical ? `width="${outW}cm" height="${outH}cm"` : `width="100%" height="100%"`;
-  const par = opts?.physical ? "none" : "xMidYMid meet";
+  // Composite 0–100 is percent of the artboard rectangle (live). Stretch onto cW×cH so
+  // portrait dies (popcorn 5×6.5) keep Size/overlay aligned. Family faces do not use this helper.
+  const par = "none";
   const css = opts?.physical
     ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
     : "";
@@ -504,20 +520,78 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   return wrapPreviewSvg("", template, state, opts);
 }
 
+function thumbStroke(fill: string, minSide: number) {
+  const sw = Math.max(0.8, minSide * 0.02);
+  const stroke = colorLum(fill) > 160 ? "#1a1a1a" : "#c9a84c";
+  return ` stroke="${stroke}" stroke-width="${sw}"`;
+}
+
+function thumbPartFill(part: CompositePart, bg: string) {
+  const preset = presetThumbFill(part.artKey);
+  const fill = String(part.color || bg || "#888888");
+  if (preset && (colorLum(fill) > 220 || Math.abs(colorLum(fill) - colorLum(bg)) < 28)) return preset;
+  if (colorLum(fill) > 220) return preset || "#c9a84c";
+  return fill;
+}
+
+function thumbPartShape(part: CompositePart, bg: string) {
+  const fill = thumbPartFill(part, bg);
+  const ink = `fill="${esc(fill)}" stroke="#1a1a1a" stroke-width="1.2"`;
+  if (part.pathLocal) return partLocalGroup(part, `<path d="${esc(part.pathLocal)}" ${ink} />`);
+  const x = part.x;
+  const y = part.y;
+  const rx = part.w / 2;
+  const ry = part.h / 2;
+  const t = part.type;
+  if (t === "circle" || t === "oval") return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+  if (t === "square" || t === "rectangle" || t === "rounded_sq" || t === "rounded_rect") {
+    const rr = t.startsWith("rounded") ? Math.min(rx, ry) * 0.22 : 0;
+    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" rx="${rr}" ${ink} />`);
+  }
+  if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`);
+  if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`);
+  if (t === "pentagon") return partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" ${ink} />`);
+  if (t === "octagon") return partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" ${ink} />`);
+  if (t === "star") return partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" ${ink} />`);
+  const d = partFillPath(part);
+  if (d) return `<path d="${esc(d)}" ${ink} />`;
+  return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+}
+
+function compositeThumbSvg(template: LabelTemplate, state: LabelState) {
+  const comp = state._composite;
+  if (!comp) return familyThumbSvg(template, state);
+  const bg = str(state, "cLabel", String(comp.bg || "#2e7d32"));
+  const parts = [...(comp.parts || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
+  const shapes = parts.map((p) => thumbPartShape(p, bg)).join("");
+  const fallback =
+    !parts.length && String(comp.unionPath || "").trim()
+      ? `<path d="${esc(comp.unionPath || "")}" fill="${esc(presetThumbFill(parts[0]?.artKey) || "#c9a84c")}" />`
+      : "";
+  const clipId = `lt-${clipIdOf(template)}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" overflow="hidden" role="img">
+    <defs><clipPath id="${clipId}">${compositeClip(comp)}</clipPath></defs>
+    <g clip-path="url(#${clipId})">${shapes}${fallback}</g>
+  </svg>`;
+}
+
 function familyThumbSvg(template: LabelTemplate, state: LabelState) {
   const spec = getDesignSpec(template.designType);
   const fill = str(state, "cLabel", "#2e7d32");
   const face = previewFace(template);
-  const { wCm, hCm } = artboardOf(template, state);
+  const board = artboardOf(template, state);
+  const wCm = Math.max(0.8, board.wCm || 6);
+  const hCm = Math.max(0.8, board.hCm || 6);
   const W = Math.max(12, wCm * 20);
   const H = Math.max(12, hCm * 20);
   const kind =
     face === "taper" ? "taper" : face === "back" ? "rect" : familyClipKind(template.designType, spec.outline);
   const ink = esc(fill);
+  const edge = thumbStroke(fill, Math.min(W, H));
   let inner = "";
   if (kind === "rect") {
     const rr = Math.min(W, H) * 0.12;
-    inner = `<rect x="0.6" y="0.6" width="${W - 1.2}" height="${H - 1.2}" rx="${rr}" fill="${ink}"/>`;
+    inner = `<rect x="0.6" y="0.6" width="${W - 1.2}" height="${H - 1.2}" rx="${rr}" fill="${ink}"${edge}/>`;
     const bands = [0.14, 0.2, 0.18, 0.16, 0.32];
     let x = 0;
     inner += `<g fill="#fff" opacity=".2">`;
@@ -527,7 +601,7 @@ function familyThumbSvg(template: LabelTemplate, state: LabelState) {
     }
     inner += `</g>`;
   } else if (kind === "taper") {
-    inner = `<polygon points="${W * 0.14},0 ${W * 0.86},0 ${W},${H} 0,${H}" fill="${ink}"/>`;
+    inner = `<polygon points="${W * 0.14},0 ${W * 0.86},0 ${W},${H} 0,${H}" fill="${ink}"${edge}/>`;
     inner += `<g fill="#fff" opacity=".18">
       <polygon points="${W * 0.18},${H * 0.08} ${W * 0.32},${H * 0.08} ${W * 0.28},${H * 0.92} ${W * 0.08},${H * 0.92}"/>
       <polygon points="${W * 0.36},${H * 0.08} ${W * 0.54},${H * 0.08} ${W * 0.58},${H * 0.92} ${W * 0.32},${H * 0.92}"/>
@@ -538,15 +612,15 @@ function familyThumbSvg(template: LabelTemplate, state: LabelState) {
     const cy = H / 2;
     const rx = W * 0.46;
     const ry = H * 0.46;
-    if (kind === "square") inner = `<rect x="${W * 0.08}" y="${H * 0.08}" width="${W * 0.84}" height="${H * 0.84}" fill="${ink}"/>`;
+    if (kind === "square") inner = `<rect x="${W * 0.08}" y="${H * 0.08}" width="${W * 0.84}" height="${H * 0.84}" fill="${ink}"${edge}/>`;
     else if (kind === "rounded_sq") {
-      inner = `<rect x="${W * 0.08}" y="${H * 0.08}" width="${W * 0.84}" height="${H * 0.84}" rx="${Math.min(rx, ry) * 0.28}" fill="${ink}"/>`;
-    } else if (kind === "diamond") inner = `<polygon points="${polygon(4, cx, cy, rx, ry, -45)}" fill="${ink}"/>`;
-    else if (kind === "hexagon") inner = `<polygon points="${polygon(6, cx, cy, rx, ry)}" fill="${ink}"/>`;
-    else if (kind === "pentagon") inner = `<polygon points="${polygon(5, cx, cy, rx, ry)}" fill="${ink}"/>`;
-    else if (kind === "octagon") inner = `<polygon points="${polygon(8, cx, cy, rx, ry)}" fill="${ink}"/>`;
-    else if (kind === "star") inner = `<polygon points="${starPoints(cx, cy, rx, ry)}" fill="${ink}"/>`;
-    else inner = `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${ink}"/>`;
+      inner = `<rect x="${W * 0.08}" y="${H * 0.08}" width="${W * 0.84}" height="${H * 0.84}" rx="${Math.min(rx, ry) * 0.28}" fill="${ink}"${edge}/>`;
+    } else if (kind === "diamond") inner = `<polygon points="${polygon(4, cx, cy, rx, ry, -45)}" fill="${ink}"${edge}/>`;
+    else if (kind === "hexagon") inner = `<polygon points="${polygon(6, cx, cy, rx, ry)}" fill="${ink}"${edge}/>`;
+    else if (kind === "pentagon") inner = `<polygon points="${polygon(5, cx, cy, rx, ry)}" fill="${ink}"${edge}/>`;
+    else if (kind === "octagon") inner = `<polygon points="${polygon(8, cx, cy, rx, ry)}" fill="${ink}"${edge}/>`;
+    else if (kind === "star") inner = `<polygon points="${starPoints(cx, cy, rx, ry)}" fill="${ink}"${edge}/>`;
+    else inner = `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${ink}"${edge}/>`;
   }
   if (face === "top") {
     inner += `<circle cx="${W / 2}" cy="${H * 0.1}" r="${Math.min(W, H) * 0.09}" fill="${ink}" stroke="#fff" stroke-width="${Math.min(W, H) * 0.012}" opacity="0.95"/>`;
@@ -561,19 +635,18 @@ function svgDataUrl(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-/** Cheap Library art: character presets as a real image; family as an artboard silhouette. Cached. */
+function libraryThumbSvg(template: LabelTemplate) {
+  const spec = getDesignSpec(template.designType);
+  if (spec.composite && template.state._composite) return compositeThumbSvg(template, template.state);
+  return familyThumbSvg(template, template.state);
+}
+
+/** Cheap Library silhouette. Never loads /design-presets SVGs. Cached. */
 export function libraryCardSrc(template: LabelTemplate) {
-  const preset = characterPresetSrc(template);
-  if (preset) return preset;
-  const key = `v5|${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
+  const key = `v6|${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
   const hit = liteThumbs.get(key);
   if (hit) return hit;
-  const spec = getDesignSpec(template.designType);
-  const svg =
-    spec.composite && template.state._composite
-      ? labelPreviewSvg(template, template.state, { lite: true })
-      : familyThumbSvg(template, template.state);
-  const src = svgDataUrl(svg);
+  const src = svgDataUrl(libraryThumbSvg(template));
   if (liteThumbs.size >= LITE_THUMB_MAX) {
     const oldest = liteThumbs.keys().next().value;
     if (oldest) liteThumbs.delete(oldest);
@@ -584,11 +657,7 @@ export function libraryCardSrc(template: LabelTemplate) {
 
 /** @deprecated use libraryCardSrc — kept for any leftover inline SVG callers */
 export function libraryCardSvg(template: LabelTemplate) {
-  const spec = getDesignSpec(template.designType);
-  if (spec.composite && template.state._composite) {
-    return labelPreviewSvg(template, template.state, { lite: true });
-  }
-  return familyThumbSvg(template, template.state);
+  return libraryThumbSvg(template);
 }
 
 export function artboardCm(template: LabelTemplate) {

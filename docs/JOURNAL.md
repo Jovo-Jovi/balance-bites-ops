@@ -260,6 +260,12 @@ Library character cards (popcorn-yellow included) use the repo preset image — 
 
 ---
 
+## 2026-08-24 — Library scroll, remaining families, Size in place
+
+Loading full popcorn / china / jelly preset SVGs as Library `<img>` src made the grid too heavy, so wrap / taper / circle cards below the first row never painted. Cards are cheap `pathLocal` / artboard silhouettes again (yellow popcorn uses `#FECE00` when the saved fill is white). Composite Studio stretches 0–100 onto the artboard rectangle like live, so Layers Size on popcorn (and other non-square dies) grows about the center instead of sliding. Character art in the part box uses `preserveAspectRatio="none"` (live `object-fit:fill`). Rect wrap Nutrition was left as the fitted column (print preview already correct).
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates
