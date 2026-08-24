@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
 import { characterPresetSrc } from "@/lib/design/art";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
-import { labelPreviewSvg } from "@/lib/design/preview";
+import { libraryCardSvg } from "@/lib/design/preview";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
 import type { DesignType, LabelTemplate } from "@/lib/design/types";
@@ -24,7 +24,7 @@ function LazyArt({ src }: { src: string }) {
           io.disconnect();
         }
       },
-      { rootMargin: "120px" },
+      { rootMargin: "160px" },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -40,16 +40,33 @@ function LazyArt({ src }: { src: string }) {
   );
 }
 
-function LibraryThumb({ template }: { template: LabelTemplate }) {
+const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelTemplate }) {
   const art = characterPresetSrc(template);
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setOn(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "160px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   if (art) return <LazyArt src={art} />;
-  const svg = labelPreviewSvg(template, template.state, { lite: true });
+  const svg = on ? libraryCardSvg(template) : "";
   return (
-    <div className="mx-auto h-16 w-16 overflow-hidden">
-      <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+    <div ref={ref} className="mx-auto h-16 w-16 overflow-hidden">
+      {on ? <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} /> : <span className="block h-full w-full rounded-[var(--bb-radius)] bg-[var(--bb-panel)]" />}
     </div>
   );
-}
+});
 
 export function LibraryTool() {
   const app = useDesignApp();
@@ -133,7 +150,11 @@ export function LibraryTool() {
             const product = productForTemplate(t, app.products);
             const spec = DESIGN_SPECS.find((s) => s.id === t.designType);
             return (
-              <li key={t.id} className="bb-glass flex flex-col gap-2 p-2">
+              <li
+                key={t.id}
+                className="bb-glass flex flex-col gap-2 p-2"
+                style={{ contentVisibility: "auto", containIntrinsicSize: "0 160px" }}
+              >
                 <button type="button" className="text-start" onClick={() => void app.openTemplate(t.id)}>
                   <LibraryThumb template={t} />
                   <div className="mt-2">

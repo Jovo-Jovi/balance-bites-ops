@@ -471,6 +471,8 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   return wrapPreviewSvg("", template, state, opts);
 }
 
+export { libraryCardSvg } from "./family-preview";
+
 export function artboardCm(template: LabelTemplate) {
   return artboardOf(template, template.state);
 }

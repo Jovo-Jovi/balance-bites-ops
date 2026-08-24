@@ -558,7 +558,7 @@ export function IconsPanel() {
   return (
     <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        Hub linen tiles — the flavor color stays on the sticker. Pick a size and gold (or any color), then tap an icon.
+        Hub linen tiles — the flavor color stays on the sticker. Pick a size and gold (or any color), then tap an icon. Works on wrap, taper, circle, lid, and composite.
       </p>
       <TextInput
         value={q}

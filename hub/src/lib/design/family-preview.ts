@@ -15,6 +15,7 @@ import {
   circlePx,
 } from "./layout";
 import { fillOf, inkOf, logoDiscHtml, mutOf, sectionBox, sectionHtml } from "./section-html";
+import { iconInner } from "./icons";
 import type { LabelState, LabelTemplate } from "./types";
 
 function esc(v: string) {
@@ -193,6 +194,35 @@ function pinBox(
   return `<div style="position:absolute;left:${x}px;top:${y}px;right:auto;width:${w}px;height:${h}px;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${xf}${extra}">${inner}</div>`;
 }
 
+function htmlShapeStyle(kind: string, radiusPx = 0) {
+  if (kind === "square") return `border-radius:${radiusPx}px;overflow:hidden`;
+  if (kind === "rounded_sq") return `border-radius:${Math.max(radiusPx, 18)}px;overflow:hidden`;
+  if (kind === "diamond") return `clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);overflow:hidden`;
+  if (kind === "hexagon") return `clip-path:polygon(50% 0%,93.3% 25%,93.3% 75%,50% 100%,6.7% 75%,6.7% 25%);overflow:hidden`;
+  if (kind === "pentagon") return `clip-path:polygon(50% 0%,100% 38.2%,80.9% 100%,19.1% 100%,0% 38.2%);overflow:hidden`;
+  if (kind === "octagon") return `clip-path:polygon(29.3% 2%,70.7% 2%,98% 29.3%,98% 70.7%,70.7% 98%,29.3% 98%,2% 70.7%,2% 29.3%);overflow:hidden`;
+  if (kind === "star")
+    return `clip-path:polygon(50% 0%,61.8% 35.4%,98.2% 35.4%,68.2% 57.3%,79.4% 90.9%,50% 69.1%,20.6% 90.9%,31.8% 57.3%,1.8% 35.4%,38.2% 35.4%);overflow:hidden`;
+  return `border-radius:50%;overflow:hidden`;
+}
+
+function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, vbH: number) {
+  const stamps = state._stamps || [];
+  if (!stamps.length || !(vbW > 0) || !(vbH > 0)) return "";
+  return stamps
+    .map((st) => {
+      const inner = iconInner(st.iconId, st.color || "#c9a84c", st.strokeWidth ?? 2, st.letterStyle);
+      if (!inner) return "";
+      const cx = minX + (st.x / 100) * vbW;
+      const cy = minY + (st.y / 100) * vbH;
+      const w = Math.max(4, (st.w / 100) * vbW);
+      const h = Math.max(4, (st.h / 100) * vbH);
+      const body = `<svg x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" viewBox="0 0 24 24" overflow="visible">${inner}</svg>`;
+      return st.rot ? `<g transform="rotate(${st.rot} ${cx} ${cy})">${body}</g>` : body;
+    })
+    .join("");
+}
+
 function framed(
   state: LabelState,
   showCut: boolean,
@@ -270,7 +300,7 @@ function drawCircle(
   const dateW = n(state, "sCDateW", 100);
   const dateH = n(state, "sCDateH", 70);
 
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;background:transparent;color:${esc(ink)};font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;background:transparent;color:${esc(ink)};font-family:${esc(fh)},sans-serif;${htmlShapeStyle(shape, radius)};-webkit-print-color-adjust:exact;print-color-adjust:exact">
     ${pinBox(W, H, 50, 10, logoSz, logoSz, n(state, "sCLogoX", 0), n(state, "sCLogoY", 0), n(state, "sCLogoRot", 0), "z-index:5;", logoDiscHtml(logoSz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt", "BB"), fh, logoFS))}
     ${
       s(state, "eCBrand1") || s(state, "eCBrand2")
@@ -359,7 +389,8 @@ function drawCircle(
   const painted = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
-      <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible">${body}</foreignObject>
+      <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden">${body}</foreignObject>
+      ${stampLayer(state, 0, 0, W, H)}
     </g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
@@ -387,64 +418,26 @@ function drawTop(
   const titleH = n(state, "sTTitleH", 52);
   const subW = n(state, "sTSubW", 160);
   const subH = n(state, "sTSubH", 36);
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};overflow:visible;position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-    ${
-      s(state, "tLogoTxt")
-        ? pinBox(
-            W,
-            H,
-            50,
-            32,
-            sz,
-            sz,
-            n(state, "sTLogoX", 0),
-            n(state, "sTLogoY", 0),
-            n(state, "sTLogoRot", 0),
-            "z-index:5;",
-            logoDiscHtml(sz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt"), fh, n(state, "sTLogoFS", 15)),
-          )
-        : ""
-    }
-    ${
-      s(state, "tTitle1") || s(state, "tTitle2")
-        ? pinBox(
-            W,
-            H,
-            50,
-            58,
-            titleW,
-            titleH,
-            n(state, "sTTitleX", 0),
-            n(state, "sTTitleY", 0),
-            n(state, "sTTitleRot", 0),
-            `z-index:4;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;`,
-            `${s(state, "tTitle1") ? `<div>${html(s(state, "tTitle1"))}</div>` : ""}${s(state, "tTitle2") ? `<div>${html(s(state, "tTitle2"))}</div>` : ""}`,
-          )
-        : ""
-    }
-    ${
-      s(state, "tSub1") || s(state, "tSub2")
-        ? pinBox(
-            W,
-            H,
-            50,
-            78,
-            subW,
-            subH,
-            n(state, "sTSubX", 0),
-            n(state, "sTSubY", 0),
-            n(state, "sTSubRot", 0),
-            `z-index:3;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};display:flex;flex-direction:column;align-items:center;justify-content:center;`,
-            `${s(state, "tSub1") ? `<div>${html(s(state, "tSub1"))}</div>` : ""}${s(state, "tSub2") ? `<div>${html(s(state, "tSub2"))}</div>` : ""}`,
-          )
-        : ""
-    }
-  </div>`;
+  const xf = (tx: number, ty: number, rot: number) =>
+    `transform:translate(${tx}px,${ty}px)${rot ? ` rotate(${rot}deg)` : ""};transform-origin:center;flex-shrink:0;`;
+  const logoBlock = s(state, "tLogoTxt")
+    ? `<div style="width:${sz}px;height:${sz}px;margin-bottom:8px;${xf(n(state, "sTLogoX", 0), n(state, "sTLogoY", 0), n(state, "sTLogoRot", 0))}">${logoDiscHtml(sz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt"), fh, n(state, "sTLogoFS", 15))}</div>`
+    : "";
+  const titleBlock =
+    s(state, "tTitle1") || s(state, "tTitle2")
+      ? `<div style="width:${titleW}px;height:${titleH}px;margin-bottom:6px;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;${xf(n(state, "sTTitleX", 0), n(state, "sTTitleY", 0), n(state, "sTTitleRot", 0))}">${s(state, "tTitle1") ? `<div>${html(s(state, "tTitle1"))}</div>` : ""}${s(state, "tTitle2") ? `<div>${html(s(state, "tTitle2"))}</div>` : ""}</div>`
+      : "";
+  const subBlock =
+    s(state, "tSub1") || s(state, "tSub2")
+      ? `<div style="width:${subW}px;height:${subH}px;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;${xf(n(state, "sTSubX", 0), n(state, "sTSubY", 0), n(state, "sTSubRot", 0))}">${s(state, "tSub1") ? `<div>${html(s(state, "tSub1"))}</div>` : ""}${s(state, "tSub2") ? `<div>${html(s(state, "tSub2"))}</div>` : ""}</div>`
+      : "";
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;font-family:${esc(fh)},sans-serif;${htmlShapeStyle(shape)};-webkit-print-color-adjust:exact;print-color-adjust:exact">${logoBlock}${titleBlock}${subBlock}</div>`;
   const geom = outlineGeomPx(shape, W, H);
   const painted = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
-      <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible">${body}</foreignObject>
+      <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden">${body}</foreignObject>
+      ${stampLayer(state, 0, 0, W, H)}
     </g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
@@ -460,10 +453,11 @@ function drawBack(
   const fill = fillOf(state);
   const uid = `bk-${safeId(template.id)}`;
   const secs = backSections(state, W);
-  const parts = [`<rect width="${W}" height="${H}" fill="${esc(fill)}" />`];
+  const clips: string[] = [];
+  const parts: string[] = [`<rect width="${W}" height="${H}" fill="${esc(fill)}" />`];
   for (const sec of secs) {
     const clip = `${uid}c${sec.k}`;
-    parts.push(`<clipPath id="${clip}"><rect x="${sec.l}" y="0" width="${sec.w}" height="${H}" /></clipPath>`);
+    clips.push(`<clipPath id="${clip}"><rect x="${sec.l}" y="0" width="${sec.w}" height="${H}" /></clipPath>`);
     const href = lite ? "" : usableImage(state[`hxBg${sec.k}`]);
     if (href) {
       const o = n(state, `sOpa${sec.k}`, 0.5);
@@ -471,7 +465,7 @@ function drawBack(
       const cx = sec.l + sec.w / 2;
       const cy = H / 2;
       parts.push(
-        `<g clip-path="url(#${clip})" transform="translate(${cx} ${cy}) scale(${z}) translate(${-cx} ${-cy})"><image href="${esc(href)}" x="${sec.l}" y="0" width="${sec.w}" height="${H}" opacity="${o}" preserveAspectRatio="xMidYMid meet" /></g>`,
+        `<g clip-path="url(#${clip})"><g transform="translate(${cx} ${cy}) scale(${z}) translate(${-cx} ${-cy})"><image href="${esc(href)}" x="${sec.l}" y="0" width="${sec.w}" height="${H}" opacity="${o}" preserveAspectRatio="xMidYMid meet" /></g></g>`,
       );
     }
     if (sec.l > 0) {
@@ -481,14 +475,15 @@ function drawBack(
   const columns = secs
     .map((sec) => {
       const rot = n(state, `sSec${sec.k}Rot`, 0);
-      return `<div style="position:absolute;left:${sec.l}px;top:0;width:${sec.w}px;height:${H}px;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;transform:rotate(${rot}deg);transform-origin:center center">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</div>`;
+      return `<div style="position:absolute;left:${sec.l}px;top:0;width:${sec.w}px;height:${H}px;overflow:hidden;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;transform:rotate(${rot}deg);transform-origin:center center">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</div>`;
     })
     .join("");
   parts.push(
-    `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:visible;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`,
+    `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:hidden;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`,
   );
   const geom = `<rect x="0" y="0" width="${W}" height="${H}" />`;
-  return framed(state, showCut, 0, 0, W, H, geom, parts.join(""), svgOpts);
+  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}${stampLayer(state, 0, 0, W, H)}</g>`;
+  return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
 
 function drawTaper(
@@ -513,12 +508,10 @@ function drawTaper(
   }));
 
   const fan = sectorPath(g.cx, g.cy, g.R1, g.R2, -half, half);
+  const clips = secData.map(
+    (d) => `<clipPath id="${d.clipId}"><path d="${sectorPath(g.cx, g.cy, g.R1, g.R2, d.saG, d.eaG)}" /></clipPath>`,
+  );
   const parts = [`<path d="${fan}" fill="${esc(fill)}" />`];
-  for (const d of secData) {
-    parts.push(
-      `<clipPath id="${d.clipId}"><path d="${sectorPath(g.cx, g.cy, g.R1, g.R2, d.saG, d.eaG)}" /></clipPath>`,
-    );
-  }
   if (!lite) {
     for (const d of secData) {
       const href = usableImage(state[`hxBg${d.k}`]);
@@ -530,7 +523,7 @@ function drawTaper(
       const iy = g.cy - ((g.R1 + g.R2) / 2) * Math.cos(r) - imgSz / 2;
       const o = n(state, `sOpa${d.k}`, 0.5);
       parts.push(
-        `<image href="${esc(href)}" x="${ix}" y="${iy}" width="${imgSz}" height="${imgSz}" opacity="${o}" clip-path="url(#${d.clipId})" preserveAspectRatio="xMidYMid slice" />`,
+        `<g clip-path="url(#${d.clipId})"><image href="${esc(href)}" x="${ix}" y="${iy}" width="${imgSz}" height="${imgSz}" opacity="${o}" preserveAspectRatio="xMidYMid slice" /></g>`,
       );
     }
   }
@@ -547,15 +540,17 @@ function drawTaper(
     const innerH = d.fH * 0.82;
     parts.push(`<g clip-path="url(#${d.clipId})">
       <g transform="rotate(${d.mid + n(state, `sSec${d.k}Rot`, 0)},${g.cx},${g.cy})">
-        <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-            <div style="width:${innerW}px;height:${innerH}px;overflow:visible">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
+        <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}" overflow="hidden">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+            <div style="width:${innerW}px;height:${innerH}px;overflow:hidden">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
           </div>
         </foreignObject>
       </g>
     </g>`);
   }
-  return framed(state, showCut, g.minX, g.minY, g.vbW, g.vbH, `<path d="${fan}" />`, parts.join(""), svgOpts);
+  const dieId = `${uid}die`;
+  const painted = `<defs><clipPath id="${dieId}"><path d="${fan}" /></clipPath>${clips.join("")}</defs><g clip-path="url(#${dieId})">${parts.join("")}${stampLayer(state, g.minX, g.minY, g.vbW, g.vbH)}</g>`;
+  return framed(state, showCut, g.minX, g.minY, g.vbW, g.vbH, `<path d="${fan}" />`, painted, svgOpts);
 }
 
 /** Complete SVG document. Native pixel viewBox — do not remap to 0–100. */
@@ -580,4 +575,24 @@ export function familyPreviewSvg(
   if (face === "taper") return drawTaper(template, state, lite, showCut, svgOpts);
   if (face === "back") return drawBack(template, state, lite, showCut, svgOpts);
   return svgDoc("0 0 100 100", "", svgOpts);
+}
+
+/** Compact Library card — fill + die only. No foreignObject, fonts, or photos. */
+export function libraryCardSvg(template: LabelTemplate) {
+  const state = template.state;
+  const fill = fillOf(state);
+  const face = previewFace(template);
+  if (face === "composite" && state._composite) {
+    const union = String(state._composite.unionPath || "").trim();
+    const bg = esc(String(state._composite.bg || fill));
+    const body = union
+      ? `<rect width="100" height="100" fill="${bg}" /><path d="${esc(union)}" fill="${esc(fill)}" />`
+      : `<rect width="100" height="100" rx="8" fill="${esc(fill)}" />`;
+    return `<svg xmlns="http://www.w3.org/1999/svg" viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${body}</svg>`;
+  }
+  const die = familyDieView(template, state);
+  if (!die.d || !(die.vbW > 0) || !(die.vbH > 0)) {
+    return `<svg xmlns="http://www.w3.org/1999/svg" viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><rect width="100" height="100" rx="8" fill="${esc(fill)}" /></svg>`;
+  }
+  return `<svg xmlns="http://www.w3.org/1999/svg" viewBox="${die.minX} ${die.minY} ${die.vbW} ${die.vbH}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" aria-hidden="true"><path d="${esc(die.d)}" fill="${esc(fill)}" /></svg>`;
 }

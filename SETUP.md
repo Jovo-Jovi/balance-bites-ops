@@ -88,7 +88,7 @@ Cloudflare may ask you to add a payment method to *enable* R2 even if you stay i
 
 1. Log in at [dash.cloudflare.com](https://dash.cloudflare.com/) → **R2 Object Storage**.
 2. Purchase / enable R2 if the dashboard asks (free-tier usage still applies).
-3. **Create bucket** named `balance-bites-ops`. If the S3 endpoint is `https://<account>.r2.cloudflarestorage.com` (no `.eu.`), set `R2_JURISDICTION=default`. Use `eu` only when the endpoint host is `.eu.r2.cloudflarestorage.com`.
+3. **Create bucket** named `balance-bites-ops`. If the S3 endpoint is `https://<account>.r2.cloudflarestorage.com` (no `.eu.`), set `R2_JURISDICTION=default`. Use `eu` only when the endpoint host is `.eu.r2.cloudflarestorage.com`. Hub serverless is **Frankfurt (`fra1`)** to sit next to Firestore `europe-west3`. Default R2 is not EU; Library cards do not fetch R2. To colocate art with the hub, create an EU-jurisdiction bucket and set `R2_JURISDICTION=eu` (data move in Cloudflare, then re-import assets).
 4. **Manage R2 API Tokens** → Create token with **Object Read & Write** on that bucket only.
 5. Copy **Account ID**, **Access Key ID**, and **Secret Access Key** into `hub/.env.local` (`R2_*` keys in `.env.example`). Set `NEXT_PUBLIC_BB_USE_STORAGE=true`.
 6. Same values in Vercel → Project → Settings → Environment Variables (Preview + Production). Never prefix R2 secrets with `NEXT_PUBLIC_`.

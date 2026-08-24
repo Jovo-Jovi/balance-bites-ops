@@ -36,7 +36,7 @@ Inspector tabs depend on the **open face**. A control that does not change this 
 | Size | `sW`×`sH` **or** cup Ø / `tpCupH` / `tpLblH` / wrap % / `tpOffsetBot`; screen zoom `sScale` | `cW`×`cH`; `sScale` | `tSz`; `sScale` | `cW`×`cH`; `sScale` |
 | Color | Packs + label / ink / logo circle | Packs + flavor ink | Packs + ink | Packs + part colors via Layers |
 | Images | `hxBg*` / `hxCProd` / `hxQr` | Product photo + paper | — | Same + composite photos |
-| Icons | — | — | — | Repo catalog + A–Z stamps |
+| Icons | Repo catalog + A–Z stamps (`_stamps`) | same | same | Repo catalog + A–Z zones |
 | Layers | Print cut + section boxes (logo disc ≠ brand names) | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
 
 No fourth Design workspace tool.
@@ -177,7 +177,7 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 3. Delete refuses to wipe a multi-template library if one id would empty the array (live `LabelTemplateMgr.remove` guard).
 4. Hub chrome stays linen. Flavor packs tint the label, not the workspace.
 5. Family preview uses live formulas in **pixel** artboard space (see table). Taper uses the padded SVG viewBox, not a stretched print bbox.
-6. Library cards are compact thumbs (lazy character art; other families lite). Full preview lives in Studio.
+6. Library cards are compact thumbs (lazy silhouette + die fill; character art lazy). Full preview lives in Studio.
 7. Images tab is not a fourth workspace tool. Device or `__r2__:`; do not store the same PNG twice.
 8. A–Z letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block).
 9. Flavor pack **Loaded** is the colors already on this template. Listed packs only highlight after you apply one.

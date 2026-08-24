@@ -90,7 +90,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Composite extra photos as image zones (live `addProductPhotos`); pick from R2 or the device
 - [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
 - [x] Flavor pack **Loaded** chip for the colors already on the open template
-- [x] Icon library in Studio (repo catalog + live A–Z letter fonts; apply to the open template)
+- [x] Icon library in Studio (repo catalog + live A–Z letter fonts; wrap / taper / circle / lid / composite)
 - [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path)
 - [x] Studio select + drag of parts, zones, stamps, and uploaded images
 - [x] Studio rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)

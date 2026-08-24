@@ -41,6 +41,7 @@ function tabsFor(face: PreviewFace): { id: TabId; label: string }[] {
       { id: "size", label: "Size" },
       { id: "color", label: "Color" },
       { id: "images", label: "Images" },
+      { id: "icons", label: "Icons" },
       { id: "layers", label: "Layers" },
     ];
   }
@@ -50,6 +51,7 @@ function tabsFor(face: PreviewFace): { id: TabId; label: string }[] {
       { id: "type", label: "Type" },
       { id: "size", label: "Size" },
       { id: "color", label: "Color" },
+      { id: "icons", label: "Icons" },
       { id: "layers", label: "Layers" },
     ];
   }
@@ -61,6 +63,7 @@ function tabsFor(face: PreviewFace): { id: TabId; label: string }[] {
     { id: "size", label: "Size" },
     { id: "color", label: "Color" },
     { id: "images", label: "Images" },
+    { id: "icons", label: "Icons" },
     { id: "layers", label: "Layers" },
   ];
 }

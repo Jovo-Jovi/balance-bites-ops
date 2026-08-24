@@ -236,6 +236,12 @@ Wrap / top-lid print used `left:50%` + `translate(-50%)` inside SVG `foreignObje
 
 ---
 
+## 2026-08-24 — Library thumbs, clip zoom, lid flex, icons on every family
+
+Library cards were rendering full family SVGs (foreignObject + fonts) for every tile, which made load and scroll feel heavy. Cards now paint a cheap die silhouette and only when on screen. Hub functions prefer Frankfurt (`fra1`) next to Firestore `europe-west3`. R2 stays `R2_JURISDICTION=default` (not EU) — moving the bucket is a Cloudflare change, not a code flip. Wrap/taper zoom no longer scales the clip with the photo. Top lid print matches live flex-center (same for rect and taper lids). Icons tab is on every face; non-composite stamps paint in the family SVG.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

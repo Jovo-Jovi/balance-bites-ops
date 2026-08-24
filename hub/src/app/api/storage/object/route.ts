@@ -11,6 +11,7 @@ import {
 import { labelAssetFolder } from "@/lib/storage-paths";
 
 export const runtime = "nodejs";
+export const preferredRegion = "fra1";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {

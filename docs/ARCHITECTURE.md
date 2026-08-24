@@ -98,8 +98,8 @@ Do not run both databases in v1.
 |---|---|---|
 | Local HTML | `file://` | Desktop `saved data` |
 | Hub local | `localhost:3000` | same Firebase tenant as production |
-| Preview | `*.vercel.app` | Firebase project `balance-bites-ops` |
-| Production | https://balance-bites-ops.vercel.app | same Firebase project (staff Auth) |
+| Preview | `*.vercel.app` (functions `fra1`) | Firebase project `balance-bites-ops` (Firestore `europe-west3`) |
+| Production | https://balance-bites-ops.vercel.app (functions `fra1`) | same Firebase project (staff Auth) |
 
 Never point production HTML at the Desktop folder.
 

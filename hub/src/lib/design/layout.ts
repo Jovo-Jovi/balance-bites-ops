@@ -321,57 +321,89 @@ export function circleBoxes(state: LabelState): FamilyBox[] {
   return boxes;
 }
 
-export function topBoxes(state: LabelState): FamilyBox[] {
+/** Live `buildTopLabel` flex column (centered stack), not 32/58/78 overlays. */
+export function topStackLayout(state: LabelState) {
   const { W, H } = topPx(state);
+  const hasLogo = Boolean(s(state, "tLogoTxt"));
+  const hasTitle = Boolean(s(state, "tTitle1") || s(state, "tTitle2"));
+  const hasSub = Boolean(s(state, "tSub1") || s(state, "tSub2"));
+  const sz = n(state, "sTCircleSz", 32);
+  const titleW = n(state, "sTTitleW", 180);
+  const titleH = n(state, "sTTitleH", 52);
+  const subW = n(state, "sTSubW", 160);
+  const subH = n(state, "sTSubH", 36);
+  let total = 0;
+  if (hasLogo) total += sz + 8;
+  if (hasTitle) total += titleH + 6;
+  if (hasSub) total += subH;
+  let y = (H - total) / 2;
+  let logo: { cx: number; cy: number; w: number; h: number } | null = null;
+  let title: { cx: number; cy: number; w: number; h: number } | null = null;
+  let sub: { cx: number; cy: number; w: number; h: number } | null = null;
+  if (hasLogo) {
+    logo = { cx: W / 2, cy: y + sz / 2, w: sz, h: sz };
+    y += sz + 8;
+  }
+  if (hasTitle) {
+    title = { cx: W / 2, cy: y + titleH / 2, w: titleW, h: titleH };
+    y += titleH + 6;
+  }
+  if (hasSub) {
+    sub = { cx: W / 2, cy: y + subH / 2, w: subW, h: subH };
+  }
+  return { W, H, logo, title, sub };
+}
+
+export function topBoxes(state: LabelState): FamilyBox[] {
+  const { W, H, logo, title, sub } = topStackLayout(state);
   const boxes: FamilyBox[] = [];
-  if (s(state, "tLogoTxt")) {
-    const sz = n(state, "sTCircleSz", 32);
+  if (logo) {
     boxes.push({
       id: FAM.tlogo,
       label: "Top logo",
-      x: 50 + pct(n(state, "sTLogoX", 0), W),
-      y: 32 + pct(n(state, "sTLogoY", 0), H),
-      w: pct(sz, W),
-      h: pct(sz, H),
+      x: pct(logo.cx + n(state, "sTLogoX", 0), W),
+      y: pct(logo.cy + n(state, "sTLogoY", 0), H),
+      w: pct(logo.w, W),
+      h: pct(logo.h, H),
       rot: n(state, "sTLogoRot", 0),
       lock: false,
-      restX: 50,
-      restY: 32,
+      restX: pct(logo.cx, W),
+      restY: pct(logo.cy, H),
       ox: "sTLogoX",
       oy: "sTLogoY",
       size: "sTCircleSz",
     });
   }
-  if (s(state, "tTitle1") || s(state, "tTitle2")) {
+  if (title) {
     boxes.push({
       id: FAM.ttitle,
       label: "Title",
-      x: 50 + pct(n(state, "sTTitleX", 0), W),
-      y: 58 + pct(n(state, "sTTitleY", 0), H),
-      w: pct(n(state, "sTTitleW", 180), W),
-      h: pct(n(state, "sTTitleH", 52), H),
+      x: pct(title.cx + n(state, "sTTitleX", 0), W),
+      y: pct(title.cy + n(state, "sTTitleY", 0), H),
+      w: pct(title.w, W),
+      h: pct(title.h, H),
       rot: n(state, "sTTitleRot", 0),
       lock: false,
-      restX: 50,
-      restY: 58,
+      restX: pct(title.cx, W),
+      restY: pct(title.cy, H),
       ox: "sTTitleX",
       oy: "sTTitleY",
       wKey: "sTTitleW",
       hKey: "sTTitleH",
     });
   }
-  if (s(state, "tSub1") || s(state, "tSub2")) {
+  if (sub) {
     boxes.push({
       id: FAM.tsub,
       label: "Subtitle",
-      x: 50 + pct(n(state, "sTSubX", 0), W),
-      y: 78 + pct(n(state, "sTSubY", 0), H),
-      w: pct(n(state, "sTSubW", 160), W),
-      h: pct(n(state, "sTSubH", 36), H),
+      x: pct(sub.cx + n(state, "sTSubX", 0), W),
+      y: pct(sub.cy + n(state, "sTSubY", 0), H),
+      w: pct(sub.w, W),
+      h: pct(sub.h, H),
       rot: n(state, "sTSubRot", 0),
       lock: false,
-      restX: 50,
-      restY: 78,
+      restX: pct(sub.cx, W),
+      restY: pct(sub.cy, H),
       ox: "sTSubX",
       oy: "sTSubY",
       wKey: "sTSubW",
