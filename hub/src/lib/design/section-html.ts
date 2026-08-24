@@ -25,23 +25,6 @@ export function fillOf(state: LabelState) {
 const PRINT_INK =
   "-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;forced-color-adjust:none";
 
-export function logoDiscHtml(
-  sz: number,
-  ring: boolean,
-  thick: number,
-  disc: string,
-  ink: string,
-  text: string,
-  fontName: string,
-  fs: number,
-) {
-  const r = sz / 2;
-  const rr = Math.max(1, r - (ring ? thick / 2 : 0));
-  const fill = ring ? "none" : disc;
-  const stroke = ring ? `stroke="${esc(disc)}" stroke-width="${thick}"` : `stroke="none"`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" direction="ltr" style="flex-shrink:0;display:block;overflow:visible;direction:ltr"><circle cx="${r}" cy="${r}" r="${rr}" fill="${esc(fill)}" ${stroke}/><text x="${r}" y="${r}" text-anchor="middle" dominant-baseline="central" font-family="${esc(fontName)},sans-serif" font-weight="900" font-size="${fs}" fill="${esc(ink)}">${html(text)}</text></svg>`;
-}
-
 /** Live `iz-face` disc — HTML, not nested SVG (FO flex/SVG intrinsic size zooms the lid logo). */
 export function logoDiscFace(
   _sz: number,
@@ -52,10 +35,13 @@ export function logoDiscFace(
   text: string,
   fontName: string,
   fs: number,
+  outlineColor?: string,
 ) {
+  const outline =
+    !ring && outlineColor && thick > 0 ? `border:${thick}px solid ${esc(outlineColor)}` : ring ? "" : "border:none";
   const face = ring
     ? `background:transparent;border:${thick}px solid ${esc(disc)};color:${esc(disc)}`
-    : `background:${esc(disc)};border:none;color:${esc(ink)}`;
+    : `background:${esc(disc)};${outline};color:${esc(ink)}`;
   return `<div style="width:100%;height:100%;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;min-width:0;min-height:0;direction:ltr;unicode-bidi:isolate;${face};${PRINT_INK}"><span style="font-family:${esc(fontName)},sans-serif;font-weight:900;font-size:${fs}px;line-height:1;letter-spacing:0;display:flex;align-items:center;justify-content:center">${html(text)}</span></div>`;
 }
 
@@ -116,8 +102,12 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   const mut = mutOf(state);
   const pad = Math.round(h * 0.07);
   const padS = Math.round(h * 0.04);
-  const wrap = (inner: string) =>
-    `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${PRINT_INK}">${inner}</div>`;
+  const wrap = (inner: string) => {
+    const bw = n(state, `sSec${k}BorderW`, 0);
+    const bc = s(state, `sSec${k}BorderC`, "#ffffff");
+    const box = bw > 0 ? `box-shadow:inset 0 0 0 ${bw}px ${esc(bc)};` : "";
+    return `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${box}${PRINT_INK}">${inner}</div>`;
+  };
 
   const pin = (
     cxPct: number,
@@ -211,6 +201,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     const ring = s(state, "eLogoCircleStyle", "full") === "ring";
     const thick = n(state, "sLogoCircleThick", 1.5);
     const circle = s(state, "cLogoCircle", "#ffffff");
+    const outline = s(state, "cLogoBorder");
     const names = [s(state, "eName1"), s(state, "eName2"), s(state, "eName3")].filter(Boolean);
     const arNames = [s(state, "eName1Ar"), s(state, "eName2Ar")].filter(Boolean);
     const boxOn = flag(state, "chkName2Box", false);
@@ -243,7 +234,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     const badgeH = Math.max(36, h * 0.22);
     return wrap(
       `<div style="position:relative;width:100%;height:100%;overflow:visible;direction:ltr;unicode-bidi:isolate">
-        ${pin(50, 28, sz, sz, lx, ly, lrot, "", logoDiscHtml(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20)))}
+        ${pin(50, 28, sz, sz, lx, ly, lrot, "overflow:hidden;", logoDiscFace(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20), outline || undefined))}
         ${pin(50, 58, nameW, nameH, nx, ny, nrot, `font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;`, `${nameHtml}${arHtml}`)}
         ${
           flag(state, "chkLogoBadges", true)

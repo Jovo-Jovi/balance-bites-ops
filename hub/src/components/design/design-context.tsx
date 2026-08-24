@@ -110,7 +110,7 @@ type DesignContextValue = {
   setFields: (patch: Record<string, string>) => void;
   applyIcon: (iconId: string, sizeId: string, color?: string, letterStyle?: string) => void;
   removeArt: (id: string) => void;
-  patchLayer: (id: string, patch: { color?: string; text?: string }) => void;
+  patchLayer: (id: string, patch: { color?: string; text?: string; borderWidth?: number; borderColor?: string }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
   selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
   moveItem: (id: string, x: number, y: number) => void;
@@ -616,7 +616,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       moveLayer: (id, dir) => {
         if (!current) return;
-        replaceCurrent({ ...current, state: moveLayerInState(current.state, id, dir) });
+        replaceCurrent({ ...current, state: moveLayerInState(current, id, dir) });
       },
       selectLayer: (id, opts) => {
         if (clipPick && id && current?.state._composite?.parts?.some((p) => p.id === id)) {

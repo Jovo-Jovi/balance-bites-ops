@@ -83,6 +83,8 @@ export type CompositeZone = {
   letterStyle?: string;
   layerGroup?: string;
   lockAspect?: boolean;
+  borderColor?: string;
+  borderWidth?: number | string;
 };
 
 export type LabelStamp = {

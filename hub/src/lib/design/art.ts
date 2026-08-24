@@ -76,6 +76,16 @@ export function usableImage(value: unknown, artKey?: string) {
   return "";
 }
 
+/** Repo presets only — safe for Library lite thumbs (no R2 / data URLs). */
+export function cheapImage(value: unknown, artKey?: string) {
+  const src = usableImage(value, artKey);
+  return src.startsWith("/design-presets/") ? src : "";
+}
+
+export function previewImage(value: unknown, artKey: string | undefined, lite: boolean) {
+  return lite ? cheapImage(value, artKey) : usableImage(value, artKey);
+}
+
 export function syncPaperToSilhouette(state: LabelState): LabelState {
   if (!state._fillCutWithPaper || !state._composite?.parts?.length) return state;
   const src = String(state.hxBg1 ?? "");

@@ -1,9 +1,9 @@
 import { BG_MORE, BG_SLOTS, usableImage } from "./art";
 import { getIcon } from "./icons";
-import { familyBoxes, familyBoxById, familyTextField, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s } from "./layout";
-import { bgPanKeys, productPhotoBox } from "./preview";
+import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s } from "./layout";
+import { bgPanKeys, isCutBlack, productPhotoBox } from "./preview";
 import { isAssetRef } from "./templates";
-import type { LabelState, LabelTemplate } from "./types";
+import type { CompositePart, LabelState, LabelTemplate } from "./types";
 
 export const PHOTO_LAYER = "__photo__";
 export const QR_LAYER = "__qr__";
@@ -89,6 +89,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         kind: box.id === PHOTO_LAYER ? "photo" : box.id === QR_LAYER ? "qr" : "zone",
         label: box.label,
         z: 40 - i,
+        color: box.id === FAM.blogo ? s(state, "cLogoCircle", "#ffffff") : undefined,
         lock: box.lock,
         removable: false,
       });
@@ -264,16 +265,180 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
   return items.sort((a, b) => (a.z || 0) - (b.z || 0) || a.id.localeCompare(b.id));
 }
 
-export function patchLayer(
-  state: LabelState,
-  id: string,
-  patch: { color?: string; text?: string },
-): LabelState {
+export type LayerPatch = {
+  color?: string;
+  text?: string;
+  borderWidth?: number;
+  borderColor?: string;
+};
+
+const FAMILY_SECTION: Record<string, string> = {
+  [FAM.ing]: "1",
+  [FAM.nut]: "2",
+  [FAM.blogo]: "3",
+  [FAM.bname]: "3",
+  [FAM.tip]: "4",
+  [FAM.bdates]: "5",
+  [FAM.qr]: "5",
+  [FAM.bwt]: "5",
+  [FAM.cus]: "6",
+};
+
+export function familySectionKey(id: string) {
+  return FAMILY_SECTION[id] || "";
+}
+
+function secOn(state: LabelState, k: string) {
+  return flag(state, `chkS${k}`, k === "6" ? false : true);
+}
+
+function parseSecOrd(state: LabelState) {
+  const raw = s(state, "eSecOrd", "1,2,3,4,5,6")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  const order: string[] = [];
+  for (const k of raw) {
+    if (!seen.has(k)) {
+      seen.add(k);
+      order.push(k);
+    }
+  }
+  for (const k of ["1", "2", "3", "4", "5", "6"]) {
+    if (!seen.has(k)) order.push(k);
+  }
+  return order;
+}
+
+function moveFamilySection(state: LabelState, sec: string, listDir: -1 | 1): LabelState {
+  const order = parseSecOrd(state);
+  const i = order.indexOf(sec);
+  if (i < 0) return state;
+  const step = -listDir;
+  let j = i + step;
+  while (j >= 0 && j < order.length && !secOn(state, order[j])) j += step;
+  if (j < 0 || j >= order.length) return state;
+  const next = order.slice();
+  const a = next[i];
+  const b = next[j];
+  if (a == null || b == null) return state;
+  next[i] = b;
+  next[j] = a;
+  return { ...state, eSecOrd: next.join(",") };
+}
+
+export type LayerBorder = {
+  width: number;
+  color: string;
+  max: number;
+  showColor: boolean;
+};
+
+function storedPartBorder(part: CompositePart) {
+  if (part.borderWidth != null && part.borderWidth !== "") {
+    const n = Number(part.borderWidth);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  return part.type === "silhouette" ? 0 : 1.2;
+}
+
+export function layerBorder(template: LabelTemplate, id: string): LayerBorder | null {
+  const state = template.state;
+  if (id === FAM.blogo) {
+    const ring = s(state, "eLogoCircleStyle", "full") === "ring";
+    return {
+      width: num(state, "sLogoCircleThick", 1.5),
+      color: ring ? s(state, "cLogoCircle", "#ffffff") : s(state, "cLogoBorder", "#1a1a1a"),
+      max: 12,
+      showColor: !ring,
+    };
+  }
+  if (id === FAM.logo || id === FAM.tlogo) {
+    return {
+      width: num(state, "tLogoCircleThick", 1.5),
+      color: s(state, "cTxtMain", "#ffffff"),
+      max: 12,
+      showColor: false,
+    };
+  }
+  const wrapSec = familySectionKey(id);
+  const face = previewFace(template);
+  if (wrapSec && (face === "back" || face === "taper")) {
+    return {
+      width: num(state, `sSec${wrapSec}BorderW`, 0),
+      color: s(state, `sSec${wrapSec}BorderC`, "#ffffff"),
+      max: 8,
+      showColor: true,
+    };
+  }
+  const part = state._composite?.parts?.find((p) => p.id === id);
+  if (part) {
+    const stored = storedPartBorder(part);
+    const hideCut = part.type === "silhouette" && part.showImage && isCutBlack(String(part.borderColor || "#1a1a1a"));
+    return {
+      width: hideCut ? 0 : stored,
+      color: part.borderColor || "#1a1a1a",
+      max: 8,
+      showColor: true,
+    };
+  }
+  const zone = state._composite?.zones?.find((z) => z.id === id);
+  if (zone) {
+    if (zone.kind === "icon") {
+      return { width: zone.strokeWidth ?? 2, color: zone.color || "#c9a84c", max: 8, showColor: false };
+    }
+    const bw = Number(zone.borderWidth ?? zone.strokeWidth);
+    return {
+      width: Number.isFinite(bw) ? bw : 0,
+      color: zone.borderColor || "#1a1a1a",
+      max: 8,
+      showColor: true,
+    };
+  }
+  const stamp = state._stamps?.find((st) => st.id === id);
+  if (stamp) {
+    return { width: stamp.strokeWidth ?? 2, color: stamp.color || "#c9a84c", max: 8, showColor: false };
+  }
+  return null;
+}
+
+export function patchLayer(state: LabelState, id: string, patch: LayerPatch): LabelState {
   let next: LabelState = { ...state };
-  if (next._stamps?.some((s) => s.id === id)) {
+  if (id === FAM.blogo) {
+    if (patch.color) next = { ...next, cLogoCircle: patch.color };
+    if (patch.borderWidth != null) next = { ...next, sLogoCircleThick: String(patch.borderWidth) };
+    if (patch.borderColor) {
+      if (s(next, "eLogoCircleStyle", "full") === "ring") {
+        next = { ...next, cLogoCircle: patch.borderColor };
+      } else {
+        next = { ...next, cLogoBorder: patch.borderColor };
+      }
+    }
+    return next;
+  }
+  if (id === FAM.logo || id === FAM.tlogo) {
+    if (patch.borderWidth != null) next = { ...next, tLogoCircleThick: String(patch.borderWidth) };
+    return next;
+  }
+  const wrapSec = familySectionKey(id);
+  if (wrapSec && !(next._composite && id === QR_LAYER)) {
+    if (patch.borderWidth != null) next = { ...next, [`sSec${wrapSec}BorderW`]: String(patch.borderWidth) };
+    if (patch.borderColor) next = { ...next, [`sSec${wrapSec}BorderC`]: patch.borderColor };
+    return next;
+  }
+  if (next._stamps?.some((st) => st.id === id)) {
     next = {
       ...next,
-      _stamps: next._stamps.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      _stamps: next._stamps.map((st) =>
+        st.id === id
+          ? {
+              ...st,
+              color: patch.color ?? st.color,
+              strokeWidth: patch.borderWidth ?? st.strokeWidth,
+            }
+          : st,
+      ),
     };
   }
   if (next._composite) {
@@ -283,11 +448,29 @@ export function patchLayer(
         ...z,
         color: patch.color ?? z.color,
         text: patch.text ?? z.text,
+        strokeWidth: z.kind === "icon" || z.kind === "logo" ? (patch.borderWidth ?? z.strokeWidth) : z.strokeWidth,
+        borderWidth: z.kind === "icon" ? z.borderWidth : (patch.borderWidth ?? z.borderWidth),
+        borderColor: patch.borderColor ?? z.borderColor,
       };
     });
-    const parts = (next._composite.parts || []).map((p) =>
-      p.id === id && patch.color ? { ...p, color: patch.color } : p,
-    );
+    const parts = (next._composite.parts || []).map((p) => {
+      if (p.id !== id) return p;
+      let borderColor = patch.borderColor ?? p.borderColor;
+      let borderWidth = patch.borderWidth ?? p.borderWidth;
+      if (patch.color) {
+        return { ...p, color: patch.color, borderColor, borderWidth };
+      }
+      if (
+        p.type === "silhouette" &&
+        p.showImage &&
+        patch.borderWidth != null &&
+        patch.borderWidth > 0 &&
+        isCutBlack(String(borderColor || "#1a1a1a"))
+      ) {
+        borderColor = "#c9a84c";
+      }
+      return { ...p, borderColor, borderWidth };
+    });
     next = { ...next, _composite: { ...next._composite, zones, parts } };
     const zone = zones.find((z) => z.id === id);
     if (zone?.field && patch.text != null) {
@@ -297,7 +480,13 @@ export function patchLayer(
   return next;
 }
 
-export function moveLayer(state: LabelState, id: string, dir: -1 | 1): LabelState {
+export function moveLayer(template: LabelTemplate, id: string, dir: -1 | 1): LabelState {
+  const sec = familySectionKey(id);
+  const face = previewFace(template);
+  if (sec && (face === "back" || face === "taper")) {
+    return moveFamilySection(template.state, sec, dir);
+  }
+  const state = template.state;
   const items: { id: string; z: number; kind: LayerKind }[] = [];
   for (const part of state._composite?.parts || []) items.push({ id: part.id, z: part.z || 0, kind: "part" });
   for (const zone of state._composite?.zones || []) items.push({ id: zone.id, z: zone.z || 0, kind: "zone" });
@@ -312,7 +501,7 @@ export function moveLayer(state: LabelState, id: string, dir: -1 | 1): LabelStat
   const zOf = new Map(ordered.map((item, i) => [item.id, i]));
   return {
     ...state,
-    _stamps: (state._stamps || []).map((s) => ({ ...s, z: zOf.get(s.id) ?? (s.z || 0) })),
+    _stamps: (state._stamps || []).map((st) => ({ ...st, z: zOf.get(st.id) ?? (st.z || 0) })),
     _composite: state._composite
       ? {
           ...state._composite,

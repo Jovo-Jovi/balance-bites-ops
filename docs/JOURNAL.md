@@ -248,6 +248,12 @@ Silhouette Library cards were fast but empty. Cards now paint a **lite** family 
 
 ---
 
+## 2026-08-24 — Library popcorn, wrap layers, wrap print logo
+
+Library lite thumbs now include repo `/design-presets/` art (popcorn and the other character SVGs) and keep the card aspect, so icons are not stretched. Black rims on those silhouettes are Print cut, not a second black part stroke; Layers has a decorative border on each layer. Wrap / taper Up / Down reorder `eSecOrd` columns. Wrap print logo uses the same HTML disc as the lid (nested SVG in FO was vanishing). Top lid paint was not changed.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

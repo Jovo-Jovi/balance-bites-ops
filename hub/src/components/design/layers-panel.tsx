@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionBtn, Field } from "@/components/invoices/ui";
-import { listCanvasItems, listLayers } from "@/lib/design/layers";
+import { familySectionKey, layerBorder, listCanvasItems, listLayers } from "@/lib/design/layers";
 import { iconSvg } from "@/lib/design/icons";
 import { CUT_STROKE_COLOR, CUT_STROKE_MM } from "@/lib/design/preview";
 import { useDesignApp } from "./design-context";
@@ -14,19 +14,26 @@ export function LayersPanel() {
   const selectedItem = listCanvasItems(t).find((item) => item.id === app.selectedId);
   const strokeMm = String(t.state.sCutStrokeMm ?? CUT_STROKE_MM);
   const strokeColor = String(t.state.cCutStroke || CUT_STROKE_COLOR);
-  const stackIds = layers.filter((l) => l.kind === "part" || l.kind === "zone" || l.kind === "stamp").map((l) => l.id);
+  const secIds = [...new Set(layers.map((l) => familySectionKey(l.id)).filter(Boolean))];
+  const zIds = layers
+    .filter((l) => !familySectionKey(l.id) && (l.kind === "part" || l.kind === "zone" || l.kind === "stamp"))
+    .map((l) => l.id);
 
   return (
     <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        Print cut is the die-cut stroke. Up / Down restack logo, text, and shapes on the sticker. Tap a row, then drag to move.
+        Print cut is the die-cut stroke (the black rim on characters like popcorn). Each layer has its own
+        decorative border. On wrap, Up / Down reorder the columns.
       </p>
       <ul className="flex flex-col gap-2">
         {layers.map((layer) => {
           const selected = app.selectedIds.includes(layer.id) || app.selectedId === layer.id;
           const cut = layer.kind === "cut";
-          const stackAt = stackIds.indexOf(layer.id);
+          const sec = familySectionKey(layer.id);
+          const stackIds = sec ? secIds : zIds;
+          const stackAt = stackIds.indexOf(sec || layer.id);
           const inStack = stackAt >= 0;
+          const border = selected && !cut ? layerBorder(t, layer.id) : null;
           return (
             <li
               key={layer.id}
@@ -104,6 +111,33 @@ export function LayersPanel() {
                     className="w-full accent-[var(--bb-gold)]"
                   />
                 </Field>
+              ) : null}
+              {border ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Field label={`Border ${border.width}`}>
+                    <input
+                      type="range"
+                      min={0}
+                      max={border.max}
+                      step={0.1}
+                      value={border.width}
+                      onChange={(e) => app.patchLayer(layer.id, { borderWidth: Number(e.target.value) })}
+                      className="w-full accent-[var(--bb-gold)]"
+                    />
+                  </Field>
+                  {border.showColor ? (
+                    <label className="flex items-center gap-2 text-xs text-[var(--bb-muted)]">
+                      Border
+                      <input
+                        type="color"
+                        value={toHex(border.color)}
+                        onChange={(e) => app.patchLayer(layer.id, { borderColor: e.target.value })}
+                        className="h-8 w-8 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+                        aria-label={`${layer.label} border color`}
+                      />
+                    </label>
+                  ) : null}
+                </div>
               ) : null}
               {cut && selected ? (
                 <div className="grid gap-2 sm:grid-cols-2">

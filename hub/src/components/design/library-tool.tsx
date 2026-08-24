@@ -15,7 +15,8 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
   const { wCm, hCm } = artboardOf(template, template.state);
-  const wide = wCm / Math.max(0.1, hCm) > 2;
+  const safeH = Math.max(0.1, hCm);
+  const wide = wCm / safeH > 2;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -32,11 +33,18 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
     return () => io.disconnect();
   }, []);
   const svg = on ? libraryCardSvg(template) : "";
+  const maxH = wide ? 96 : 140;
   return (
     <div
       ref={ref}
-      className="w-full overflow-hidden rounded-[var(--bb-radius)] bg-[var(--bb-panel)]"
-      style={{ aspectRatio: `${wCm} / ${hCm}`, maxHeight: wide ? 96 : 140 }}
+      className="mx-auto overflow-hidden rounded-[var(--bb-radius)] bg-[var(--bb-panel)]"
+      style={{
+        aspectRatio: `${wCm} / ${hCm}`,
+        width: "100%",
+        height: "auto",
+        maxHeight: maxH,
+        maxWidth: `min(100%, calc(${maxH}px * ${wCm} / ${safeH}))`,
+      }}
     >
       {on ? (
         <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />

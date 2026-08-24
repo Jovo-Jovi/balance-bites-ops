@@ -16,7 +16,7 @@ import {
   topStackLayout,
 } from "./layout";
 import { fillOf, inkOf, logoDiscFace, mutOf, sectionBox, sectionHtml } from "./section-html";
-import { iconInner } from "./icons";
+import { getIcon, iconInner } from "./icons";
 import type { LabelState, LabelTemplate } from "./types";
 
 function esc(v: string) {
@@ -216,9 +216,9 @@ function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, 
       if (!inner) return "";
       const cx = minX + (st.x / 100) * vbW;
       const cy = minY + (st.y / 100) * vbH;
-      const w = Math.max(4, (st.w / 100) * vbW);
-      const h = Math.max(4, (st.h / 100) * vbH);
-      const body = `<svg x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" viewBox="0 0 24 24" overflow="visible">${inner}</svg>`;
+      const side = Math.max(4, Math.min((st.w / 100) * vbW, (st.h / 100) * vbH));
+      const vb = getIcon(st.iconId)?.viewBox || "0 0 24 24";
+      const body = `<svg x="${cx - side / 2}" y="${cy - side / 2}" width="${side}" height="${side}" viewBox="${esc(vb)}" preserveAspectRatio="xMidYMid meet" overflow="visible">${inner}</svg>`;
       return st.rot ? `<g transform="rotate(${st.rot} ${cx} ${cy})">${body}</g>` : body;
     })
     .join("");
