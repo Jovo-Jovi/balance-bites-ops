@@ -1,5 +1,5 @@
 import { isStorageEnabled } from "@/lib/firebase-config";
-import { getLabelAssetUrl, uploadLabelAsset } from "@/lib/storage";
+import { getLabelAssetUrl, getLabelAssetUrls, uploadLabelAsset } from "@/lib/storage";
 import { isBinaryImageKey, labelAssetKey } from "@/lib/storage-paths";
 import {
   assetFieldName,
@@ -13,35 +13,51 @@ import type { CompositeBlob, CompositePart, CompositeZone, LabelState } from "./
 
 type WithSrc = { id?: string; src?: string; srcUrl?: string };
 
-async function readRef(templateId: string, value: string) {
+function objectKeyForRef(templateId: string, value: string) {
   const r2 = r2KeyFromRef(value);
-  if (r2) {
-    const url = await getLabelAssetUrl(r2);
-    if (isBinaryImageKey(r2)) return url;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const type = res.headers.get("content-type") || "";
-    if (type.startsWith("image/")) return url;
-    const text = await res.text();
-    if (text.startsWith("data:") || text.trimStart().startsWith("<svg")) return text;
-    return url;
-  }
+  if (r2) return r2;
   const field = assetFieldName(value);
-  if (!field) return null;
-  return readTextAsset(templateId, field);
+  if (!field) return "";
+  return labelAssetKey(templateId, `${field}.txt`);
+}
+
+async function materializeUrl(key: string, url: string) {
+  if (isBinaryImageKey(key)) return url;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const type = res.headers.get("content-type") || "";
+  if (type.startsWith("image/")) return url;
+  const text = await res.text();
+  if (text.startsWith("data:") || text.trimStart().startsWith("<svg")) return text;
+  return url;
+}
+
+async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
+  if (!items.length) return;
+  let i = 0;
+  const n = Math.min(limit, items.length);
+  await Promise.all(
+    Array.from({ length: n }, async () => {
+      for (;;) {
+        const idx = i++;
+        if (idx >= items.length) return;
+        await fn(items[idx]);
+      }
+    }),
+  );
+}
+
+async function readRef(templateId: string, value: string) {
+  const key = objectKeyForRef(templateId, value);
+  if (!key) return null;
+  const url = await getLabelAssetUrl(key);
+  return materializeUrl(key, url);
 }
 
 async function putTextAsset(templateId: string, field: string, value: string) {
   const blob = new Blob([value], { type: "text/plain" });
   await uploadLabelAsset(templateId, `${field}.txt`, blob);
   return toAssetRef(field);
-}
-
-async function readTextAsset(templateId: string, field: string) {
-  const url = await getLabelAssetUrl(labelAssetKey(templateId, `${field}.txt`));
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  return res.text();
 }
 
 function isFatDataUrl(value: unknown) {
@@ -65,19 +81,6 @@ async function stripSrc(templateId: string, item: WithSrc, prefix: string) {
     if (item.srcUrl) item.srcUrl = ref;
   } catch {
     placeholderizeSrc(item, prefix);
-  }
-}
-
-async function hydrateSrc(templateId: string, item: WithSrc) {
-  for (const key of ["src", "srcUrl"] as const) {
-    const v = item[key];
-    if (!isAssetRef(v)) continue;
-    try {
-      const data = await readRef(templateId, String(v));
-      if (data) item[key] = data;
-    } catch {
-      /* keep placeholder — R2 may be off */
-    }
   }
 }
 
@@ -122,22 +125,65 @@ export async function hydrateStateAssets(
 ): Promise<LabelState> {
   const out = cloneState(state);
   if (!isStorageEnabled()) return out;
+  type Job = { value: string; assign: (next: string) => void };
+  const jobs: Job[] = [];
   for (const key of Object.keys(out)) {
     const value = out[key];
     if (!isAssetRef(value)) continue;
-    try {
-      const data = await readRef(templateId, String(value));
-      if (data) out[key] = data;
-    } catch {
-      /* keep placeholder */
-    }
+    jobs.push({
+      value: String(value),
+      assign: (next) => {
+        out[key] = next;
+      },
+    });
   }
   if (out._composite) {
     const next = JSON.parse(JSON.stringify(out._composite)) as CompositeBlob;
-    for (const part of next.parts || []) await hydrateSrc(templateId, part);
-    for (const zone of next.zones || []) await hydrateSrc(templateId, zone);
+    for (const part of next.parts || []) {
+      for (const field of ["src", "srcUrl"] as const) {
+        const v = part[field];
+        if (!isAssetRef(v)) continue;
+        jobs.push({
+          value: String(v),
+          assign: (data) => {
+            part[field] = data;
+          },
+        });
+      }
+    }
+    for (const zone of next.zones || []) {
+      for (const field of ["src", "srcUrl"] as const) {
+        const v = zone[field];
+        if (!isAssetRef(v)) continue;
+        jobs.push({
+          value: String(v),
+          assign: (data) => {
+            zone[field] = data;
+          },
+        });
+      }
+    }
     out._composite = next;
   }
+  const objectKeys = [...new Set(jobs.map((j) => objectKeyForRef(templateId, j.value)).filter(Boolean))];
+  if (!objectKeys.length) return out;
+  let urls: Record<string, string> = {};
+  try {
+    urls = await getLabelAssetUrls(objectKeys);
+  } catch {
+    return out;
+  }
+  await pool(jobs, 8, async (job) => {
+    const key = objectKeyForRef(templateId, job.value);
+    const url = urls[key];
+    if (!url) return;
+    try {
+      const data = await materializeUrl(key, url);
+      if (data) job.assign(data);
+    } catch {
+      /* keep placeholder — R2 may be off */
+    }
+  });
   return out;
 }
 

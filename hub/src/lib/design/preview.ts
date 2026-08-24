@@ -471,7 +471,22 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   return wrapPreviewSvg("", template, state, opts);
 }
 
-export { libraryCardSvg } from "./family-preview";
+const LITE_THUMB_MAX = 64;
+const liteThumbs = new Map<string, string>();
+
+/** Layout + type, no R2 photos. Cached. Library cards generate this only when visible. */
+export function libraryCardSvg(template: LabelTemplate) {
+  const key = `${template.id}|${template.labelMode}|${template.updatedAt}|${template.designType}|${String(template.state.cLabel || "")}`;
+  const hit = liteThumbs.get(key);
+  if (hit) return hit;
+  const svg = labelPreviewSvg(template, template.state, { lite: true });
+  if (liteThumbs.size >= LITE_THUMB_MAX) {
+    const oldest = liteThumbs.keys().next().value;
+    if (oldest) liteThumbs.delete(oldest);
+  }
+  liteThumbs.set(key, svg);
+  return svg;
+}
 
 export function artboardCm(template: LabelTemplate) {
   return artboardOf(template, template.state);

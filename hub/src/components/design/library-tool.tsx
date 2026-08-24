@@ -3,47 +3,19 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
-import { characterPresetSrc } from "@/lib/design/art";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
+import { artboardOf } from "@/lib/design/layout";
 import { libraryCardSvg } from "@/lib/design/preview";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
 import type { DesignType, LabelTemplate } from "@/lib/design/types";
 import { productOptions, useDesignApp } from "./design-context";
 
-function LazyArt({ src }: { src: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setOn(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "160px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <div ref={ref} className="flex h-16 items-center justify-center">
-      {on ? (
-        <img src={src} alt="" loading="lazy" decoding="async" className="max-h-16 max-w-full object-contain" />
-      ) : (
-        <span className="h-10 w-10 rounded-full bg-[var(--bb-panel)]" />
-      )}
-    </div>
-  );
-}
-
 const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelTemplate }) {
-  const art = characterPresetSrc(template);
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
+  const { wCm, hCm } = artboardOf(template, template.state);
+  const wide = wCm / Math.max(0.1, hCm) > 2;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -54,16 +26,23 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
           io.disconnect();
         }
       },
-      { rootMargin: "160px" },
+      { rootMargin: "200px" },
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  if (art) return <LazyArt src={art} />;
   const svg = on ? libraryCardSvg(template) : "";
   return (
-    <div ref={ref} className="mx-auto h-16 w-16 overflow-hidden">
-      {on ? <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} /> : <span className="block h-full w-full rounded-[var(--bb-radius)] bg-[var(--bb-panel)]" />}
+    <div
+      ref={ref}
+      className="w-full overflow-hidden rounded-[var(--bb-radius)] bg-[var(--bb-panel)]"
+      style={{ aspectRatio: `${wCm} / ${hCm}`, maxHeight: wide ? 96 : 140 }}
+    >
+      {on ? (
+        <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+      ) : (
+        <span className="block h-full w-full bg-[var(--bb-panel)]" />
+      )}
     </div>
   );
 });
@@ -153,7 +132,7 @@ export function LibraryTool() {
               <li
                 key={t.id}
                 className="bb-glass flex flex-col gap-2 p-2"
-                style={{ contentVisibility: "auto", containIntrinsicSize: "0 160px" }}
+                style={{ contentVisibility: "auto", containIntrinsicSize: "0 220px" }}
               >
                 <button type="button" className="text-start" onClick={() => void app.openTemplate(t.id)}>
                   <LibraryThumb template={t} />

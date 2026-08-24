@@ -20,7 +20,7 @@ import {
   iconSvg,
 } from "@/lib/design/icons";
 import { isAssetRef } from "@/lib/design/templates";
-import { listLabelAssets, type LabelAssetItem } from "@/lib/storage";
+import { listLabelAssets, getLabelAssetUrl, type LabelAssetItem } from "@/lib/storage";
 import { isBinaryImageKey, parseLabelAssetKey } from "@/lib/storage-paths";
 import { useDesignApp } from "./design-context";
 
@@ -56,15 +56,11 @@ function bytesLabel(n: number) {
 function StorageThumb({ item }: { item: LabelAssetItem }) {
   const box = useRef<HTMLDivElement>(null);
   const binary = isBinaryImageKey(item.key);
-  const [src, setSrc] = useState(binary ? item.url || "" : "");
+  const [src, setSrc] = useState("");
   const [failed, setFailed] = useState(false);
-  const [seen, setSeen] = useState(binary);
+  const [seen, setSeen] = useState(false);
 
   useEffect(() => {
-    if (binary) {
-      setSrc(item.url || "");
-      return;
-    }
     const el = box.current;
     if (!el) return;
     const io = new IntersectionObserver(
@@ -75,14 +71,21 @@ function StorageThumb({ item }: { item: LabelAssetItem }) {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [binary, item.url]);
+  }, []);
 
   useEffect(() => {
-    if (!seen || src || failed || !item.url || binary) return;
+    if (!seen || src || failed) return;
     let stop = false;
-    void fetch(item.url)
-      .then((res) => (res.ok ? res.text() : ""))
-      .then((text) => {
+    void (async () => {
+      try {
+        const url = item.url || (await getLabelAssetUrl(item.key));
+        if (stop) return;
+        if (binary) {
+          setSrc(url);
+          return;
+        }
+        const res = await fetch(url);
+        const text = res.ok ? await res.text() : "";
         if (stop) return;
         const trimmed = text.trimStart();
         if (trimmed.startsWith("data:image") || trimmed.startsWith("<svg") || trimmed.startsWith("data:image/svg")) {
@@ -90,14 +93,14 @@ function StorageThumb({ item }: { item: LabelAssetItem }) {
         } else {
           setFailed(true);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!stop) setFailed(true);
-      });
+      }
+    })();
     return () => {
       stop = true;
     };
-  }, [seen, src, failed, item.url, binary]);
+  }, [seen, src, failed, item.url, item.key, binary]);
 
   return (
     <div

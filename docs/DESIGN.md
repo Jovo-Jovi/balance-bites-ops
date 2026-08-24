@@ -124,7 +124,7 @@ Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a tem
 | `data:` / blob | Device upload; strip to `__asset__:` on save when storage is on |
 | `artref:` / `assets/presets/…` | Repo file under `hub/public/design-presets/`. Not a tenant dump |
 
-`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs.
+`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards never hydrate R2 — they paint a cached lite SVG (layout + type, no photos).
 
 Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from the commercial print pack (`PRINT_PACK_EXCLUDE`) because of licensed likeness.
 

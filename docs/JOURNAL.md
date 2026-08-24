@@ -242,6 +242,12 @@ Library cards were rendering full family SVGs (foreignObject + fonts) for every 
 
 ---
 
+## 2026-08-24 — Library lite thumbs, R2 sign, wrap QR, lid pin
+
+Silhouette Library cards were fast but empty. Cards now paint a **lite** family SVG (type + layout, no R2 photos), only when on screen, cached, with the artboard aspect ratio. `/api/storage/list` returns keys/sizes only; thumbs sign on view. Opening a template batch-signs and hydrates R2 in parallel (not one key at a time). Wrap/taper QR and weight are pinned at the Studio 70%/90% rest points with explicit pixel size (FO `height:100%` was painting the PNG at intrinsic size and drifting). Top lid paint uses the same rest points as the gold boxes, HTML disc (not nested SVG in flex), LTR pin — same problem as the zoomed QR.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

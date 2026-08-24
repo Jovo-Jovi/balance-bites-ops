@@ -321,7 +321,7 @@ export function circleBoxes(state: LabelState): FamilyBox[] {
   return boxes;
 }
 
-/** Live `buildTopLabel` flex column (centered stack), not 32/58/78 overlays. */
+/** Live `buildTopLabel` flex-column rest points (centered stack). Paint pins at these percents. */
 export function topStackLayout(state: LabelState) {
   const { W, H } = topPx(state);
   const hasLogo = Boolean(s(state, "tLogoTxt"));

@@ -42,6 +42,23 @@ export function logoDiscHtml(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" direction="ltr" style="flex-shrink:0;display:block;overflow:visible;direction:ltr"><circle cx="${r}" cy="${r}" r="${rr}" fill="${esc(fill)}" ${stroke}/><text x="${r}" y="${r}" text-anchor="middle" dominant-baseline="central" font-family="${esc(fontName)},sans-serif" font-weight="900" font-size="${fs}" fill="${esc(ink)}">${html(text)}</text></svg>`;
 }
 
+/** Live `iz-face` disc — HTML, not nested SVG (FO flex/SVG intrinsic size zooms the lid logo). */
+export function logoDiscFace(
+  _sz: number,
+  ring: boolean,
+  thick: number,
+  disc: string,
+  ink: string,
+  text: string,
+  fontName: string,
+  fs: number,
+) {
+  const face = ring
+    ? `background:transparent;border:${thick}px solid ${esc(disc)};color:${esc(disc)}`
+    : `background:${esc(disc)};border:none;color:${esc(ink)}`;
+  return `<div style="width:100%;height:100%;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;min-width:0;min-height:0;direction:ltr;unicode-bidi:isolate;${face};${PRINT_INK}"><span style="font-family:${esc(fontName)},sans-serif;font-weight:900;font-size:${fs}px;line-height:1;letter-spacing:0;display:flex;align-items:center;justify-content:center">${html(text)}</span></div>`;
+}
+
 function qrMark(size: number, bg: string, fg: string) {
   const p = [
     [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1],
@@ -52,14 +69,16 @@ function qrMark(size: number, bg: string, fg: string) {
     [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1],
   ];
-  const cell = Math.max(1, Math.floor(size / 17));
+  const pad = 2;
+  const cell = Math.max(1, Math.floor((size - pad * 2) / 17));
+  const grid = cell * 17;
   const bits = p.flatMap((row) =>
     row.map(
         (bit) =>
         `<div style="width:${cell}px;height:${cell}px;background:${bit ? fg : bg};${PRINT_INK}"></div>`,
     ),
   );
-  return `<div style="display:inline-grid;grid-template-columns:repeat(17,${cell}px);background:${bg};padding:${cell}px;${PRINT_INK}">${bits.join("")}</div>`;
+  return `<div style="width:${size}px;height:${size}px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:${bg};padding:${pad}px;${PRINT_INK}"><div style="display:grid;grid-template-columns:repeat(17,${cell}px);width:${grid}px;height:${grid}px">${bits.join("")}</div></div>`;
 }
 
 function badges(state: LabelState, lite: boolean, scale = 1) {
@@ -295,13 +314,17 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
          ${s(state, "eStoreAr") ? `<div style="direction:rtl;text-align:right;font-size:${fs}px;color:${mut};margin-top:4px;opacity:.8">${html(s(state, "eStoreAr"))}</div>` : ""}`
       : "";
   const qrInner = qr
-    ? `<img src="${esc(qr)}" style="height:100%;object-fit:contain;background:#fff;padding:2px;border-radius:2px" alt=""/>`
+    ? `<img src="${esc(qr)}" width="${qrSz}" height="${qrSz}" style="width:${qrSz}px;height:${qrSz}px;object-fit:contain;display:block;background:#fff;box-sizing:border-box;padding:2px;border-radius:2px" alt=""/>`
     : qrMark(qrSz, "#fff", "#111");
+  const dateW = Math.max(24, w * 0.92);
+  const dateH = Math.max(40, h * 0.4);
+  const wtH = Math.max(16, h * 0.16);
+  const dateScale = ds !== 1 ? `transform:scale(${ds});transform-origin:center;` : "";
   return wrap(
-    `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:space-between;transform:scale(${ds}) translate(${n(state, "sDatePosX", 0)}px,${n(state, "sDatePosY", 0)}px)">
-      <div>${en}${ar}</div>
-      <div style="margin-top:auto;overflow:hidden;border-radius:2px;display:inline-block;max-width:100%;height:${Math.min(qrSz + 4, h * 0.35)}px;transform:translate(${n(state, "sQrPosX", 0)}px,${n(state, "sQrPosY", 0)}px)">${qrInner}</div>
-      <div style="font-family:${esc(FH)};font-weight:700;font-size:${n(state, "sWtFS", 8)}px;color:${ink};margin-top:4px;text-align:center;transform:translate(${n(state, "sWtPosX", 0)}px,${n(state, "sWtPosY", 0)}px)">${html(s(state, "eWeight"))}</div>
+    `<div style="position:relative;width:100%;height:100%;overflow:visible;direction:ltr;unicode-bidi:isolate">
+      ${pin(50, 28, dateW, dateH, n(state, "sDatePosX", 0), n(state, "sDatePosY", 0), 0, `${dateScale}z-index:1;`, `<div>${en}${ar}</div>`)}
+      ${pin(50, 70, qrSz, qrSz, n(state, "sQrPosX", 0), n(state, "sQrPosY", 0), 0, "z-index:2;overflow:hidden;border-radius:2px;background:#fff;", qrInner)}
+      ${pin(50, 90, dateW, wtH, n(state, "sWtPosX", 0), n(state, "sWtPosY", 0), 0, `z-index:2;font-family:${esc(FH)};font-weight:700;font-size:${n(state, "sWtFS", 8)}px;color:${ink};text-align:center;display:flex;align-items:center;justify-content:center;`, html(s(state, "eWeight")))}
     </div>`,
   );
 }

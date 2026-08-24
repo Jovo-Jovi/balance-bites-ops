@@ -13,8 +13,9 @@ import {
   taperSectors,
   topPx,
   circlePx,
+  topStackLayout,
 } from "./layout";
-import { fillOf, inkOf, logoDiscHtml, mutOf, sectionBox, sectionHtml } from "./section-html";
+import { fillOf, inkOf, logoDiscFace, mutOf, sectionBox, sectionHtml } from "./section-html";
 import { iconInner } from "./icons";
 import type { LabelState, LabelTemplate } from "./types";
 
@@ -301,7 +302,7 @@ function drawCircle(
   const dateH = n(state, "sCDateH", 70);
 
   const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;background:transparent;color:${esc(ink)};font-family:${esc(fh)},sans-serif;${htmlShapeStyle(shape, radius)};-webkit-print-color-adjust:exact;print-color-adjust:exact">
-    ${pinBox(W, H, 50, 10, logoSz, logoSz, n(state, "sCLogoX", 0), n(state, "sCLogoY", 0), n(state, "sCLogoRot", 0), "z-index:5;", logoDiscHtml(logoSz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt", "BB"), fh, logoFS))}
+    ${pinBox(W, H, 50, 10, logoSz, logoSz, n(state, "sCLogoX", 0), n(state, "sCLogoY", 0), n(state, "sCLogoRot", 0), "z-index:5;overflow:hidden;", logoDiscFace(logoSz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt", "BB"), fh, logoFS))}
     ${
       s(state, "eCBrand1") || s(state, "eCBrand2")
         ? pinBox(
@@ -401,7 +402,6 @@ function drawTop(
   showCut: boolean,
   svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
-  const { W, H } = topPx(state);
   const fill = fillOf(state);
   const ink = inkOf(state);
   const sub = mutOf(state);
@@ -413,25 +413,56 @@ function drawTop(
   const clipId = `bbtop-${safeId(template.id)}`;
   const ring = s(state, "tLogoCircleStyle", "full") === "ring";
   const thick = n(state, "tLogoCircleThick", 1.5);
-  const sz = n(state, "sTCircleSz", 32);
-  const titleW = n(state, "sTTitleW", 180);
-  const titleH = n(state, "sTTitleH", 52);
-  const subW = n(state, "sTSubW", 160);
-  const subH = n(state, "sTSubH", 36);
-  const xf = (tx: number, ty: number, rot: number) =>
-    `transform:translate(${tx}px,${ty}px)${rot ? ` rotate(${rot}deg)` : ""};transform-origin:center;flex-shrink:0;`;
-  const logoBlock = s(state, "tLogoTxt")
-    ? `<div style="width:${sz}px;height:${sz}px;margin-bottom:8px;${xf(n(state, "sTLogoX", 0), n(state, "sTLogoY", 0), n(state, "sTLogoRot", 0))}">${logoDiscHtml(sz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt"), fh, n(state, "sTLogoFS", 15))}</div>`
+  const stack = topStackLayout(state);
+  const { W, H } = stack;
+  const restX = (cx: number) => (W ? (cx / W) * 100 : 50);
+  const restY = (cy: number) => (H ? (cy / H) * 100 : 50);
+  const logoBlock = stack.logo
+    ? pinBox(
+        W,
+        H,
+        restX(stack.logo.cx),
+        restY(stack.logo.cy),
+        stack.logo.w,
+        stack.logo.h,
+        n(state, "sTLogoX", 0),
+        n(state, "sTLogoY", 0),
+        n(state, "sTLogoRot", 0),
+        "z-index:3;overflow:hidden;",
+        logoDiscFace(stack.logo.w, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt"), fh, n(state, "sTLogoFS", 15)),
+      )
     : "";
-  const titleBlock =
-    s(state, "tTitle1") || s(state, "tTitle2")
-      ? `<div style="width:${titleW}px;height:${titleH}px;margin-bottom:6px;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;${xf(n(state, "sTTitleX", 0), n(state, "sTTitleY", 0), n(state, "sTTitleRot", 0))}">${s(state, "tTitle1") ? `<div>${html(s(state, "tTitle1"))}</div>` : ""}${s(state, "tTitle2") ? `<div>${html(s(state, "tTitle2"))}</div>` : ""}</div>`
-      : "";
-  const subBlock =
-    s(state, "tSub1") || s(state, "tSub2")
-      ? `<div style="width:${subW}px;height:${subH}px;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;${xf(n(state, "sTSubX", 0), n(state, "sTSubY", 0), n(state, "sTSubRot", 0))}">${s(state, "tSub1") ? `<div>${html(s(state, "tSub1"))}</div>` : ""}${s(state, "tSub2") ? `<div>${html(s(state, "tSub2"))}</div>` : ""}</div>`
-      : "";
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;font-family:${esc(fh)},sans-serif;${htmlShapeStyle(shape)};-webkit-print-color-adjust:exact;print-color-adjust:exact">${logoBlock}${titleBlock}${subBlock}</div>`;
+  const titleBlock = stack.title
+    ? pinBox(
+        W,
+        H,
+        restX(stack.title.cx),
+        restY(stack.title.cy),
+        stack.title.w,
+        stack.title.h,
+        n(state, "sTTitleX", 0),
+        n(state, "sTTitleY", 0),
+        n(state, "sTTitleRot", 0),
+        `z-index:2;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible;`,
+        `${s(state, "tTitle1") ? `<div>${html(s(state, "tTitle1"))}</div>` : ""}${s(state, "tTitle2") ? `<div>${html(s(state, "tTitle2"))}</div>` : ""}`,
+      )
+    : "";
+  const subBlock = stack.sub
+    ? pinBox(
+        W,
+        H,
+        restX(stack.sub.cx),
+        restY(stack.sub.cy),
+        stack.sub.w,
+        stack.sub.h,
+        n(state, "sTSubX", 0),
+        n(state, "sTSubY", 0),
+        n(state, "sTSubRot", 0),
+        `z-index:2;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible;`,
+        `${s(state, "tSub1") ? `<div>${html(s(state, "tSub1"))}</div>` : ""}${s(state, "tSub2") ? `<div>${html(s(state, "tSub2"))}</div>` : ""}`,
+      )
+    : "";
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;font-family:${esc(fh)},sans-serif;${htmlShapeStyle(shape)};-webkit-print-color-adjust:exact;print-color-adjust:exact">${logoBlock}${titleBlock}${subBlock}</div>`;
   const geom = outlineGeomPx(shape, W, H);
   const painted = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
     <g clip-path="url(#${clipId})">
@@ -577,22 +608,3 @@ export function familyPreviewSvg(
   return svgDoc("0 0 100 100", "", svgOpts);
 }
 
-/** Compact Library card — fill + die only. No foreignObject, fonts, or photos. */
-export function libraryCardSvg(template: LabelTemplate) {
-  const state = template.state;
-  const fill = fillOf(state);
-  const face = previewFace(template);
-  if (face === "composite" && state._composite) {
-    const union = String(state._composite.unionPath || "").trim();
-    const bg = esc(String(state._composite.bg || fill));
-    const body = union
-      ? `<rect width="100" height="100" fill="${bg}" /><path d="${esc(union)}" fill="${esc(fill)}" />`
-      : `<rect width="100" height="100" rx="8" fill="${esc(fill)}" />`;
-    return `<svg xmlns="http://www.w3.org/1999/svg" viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${body}</svg>`;
-  }
-  const die = familyDieView(template, state);
-  if (!die.d || !(die.vbW > 0) || !(die.vbH > 0)) {
-    return `<svg xmlns="http://www.w3.org/1999/svg" viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><rect width="100" height="100" rx="8" fill="${esc(fill)}" /></svg>`;
-  }
-  return `<svg xmlns="http://www.w3.org/1999/svg" viewBox="${die.minX} ${die.minY} ${die.vbW} ${die.vbH}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" aria-hidden="true"><path d="${esc(die.d)}" fill="${esc(fill)}" /></svg>`;
-}
