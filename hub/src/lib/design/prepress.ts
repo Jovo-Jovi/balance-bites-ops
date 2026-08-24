@@ -62,16 +62,19 @@ export function downloadSvg(template: LabelTemplate, state: LabelState) {
 
 export function printPreview(template: LabelTemplate, state: LabelState) {
   const { wCm, hCm } = artboardCm(template);
+  const padCm = cutStrokeOf(state).mm / 10;
+  const pageW = wCm + 2 * padCm;
+  const pageH = hCm + 2 * padCm;
   const svg = exportSvgMarkup(template, state);
   const title = exportFileBase(template);
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(title)}</title>
+  const html = `<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><title>${esc(title)}</title>
 <link rel="stylesheet" href="${PRINT_FONTS}">
 <style>
-  @page { size: ${wCm}cm ${hCm}cm; margin: 0; }
-  html, body { margin: 0; padding: 0; width: ${wCm}cm; height: ${hCm}cm; background: #fff; }
+  @page { size: ${pageW}cm ${pageH}cm; margin: 0; }
+  html, body { margin: 0; padding: 0; width: ${pageW}cm; height: ${pageH}cm; background: #fff; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; forced-color-adjust: none !important; }
-  .sheet { width: ${wCm}cm; height: ${hCm}cm; overflow: hidden; }
-  svg { width: ${wCm}cm; height: ${hCm}cm; display: block; }
+  .sheet { width: ${pageW}cm; height: ${pageH}cm; overflow: visible; }
+  svg { width: ${pageW}cm; height: ${pageH}cm; display: block; overflow: visible; }
 </style></head><body><div class="sheet">${svg}</div>
 <script>window.onload=function(){window.print();};<\/script></body></html>`;
   const w = window.open("", "_blank", "width=820,height=960");

@@ -39,7 +39,7 @@ export function logoDiscHtml(
   const rr = Math.max(1, r - (ring ? thick / 2 : 0));
   const fill = ring ? "none" : disc;
   const stroke = ring ? `stroke="${esc(disc)}" stroke-width="${thick}"` : `stroke="none"`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="flex-shrink:0;display:block;overflow:visible"><circle cx="${r}" cy="${r}" r="${rr}" fill="${esc(fill)}" ${stroke}/><text x="${r}" y="${r}" text-anchor="middle" dominant-baseline="central" font-family="${esc(fontName)},sans-serif" font-weight="900" font-size="${fs}" fill="${esc(ink)}">${html(text)}</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" direction="ltr" style="flex-shrink:0;display:block;overflow:visible;direction:ltr"><circle cx="${r}" cy="${r}" r="${rr}" fill="${esc(fill)}" ${stroke}/><text x="${r}" y="${r}" text-anchor="middle" dominant-baseline="central" font-family="${esc(fontName)},sans-serif" font-weight="900" font-size="${fs}" fill="${esc(ink)}">${html(text)}</text></svg>`;
 }
 
 function qrMark(size: number, bg: string, fg: string) {
@@ -98,7 +98,24 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
   const pad = Math.round(h * 0.07);
   const padS = Math.round(h * 0.04);
   const wrap = (inner: string) =>
-    `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
+    `<div style="width:100%;height:100%;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${PRINT_INK}">${inner}</div>`;
+
+  const pin = (
+    cxPct: number,
+    cyPct: number,
+    boxW: number,
+    boxH: number,
+    tx: number,
+    ty: number,
+    rot: number,
+    extra: string,
+    inner: string,
+  ) => {
+    const x = (cxPct / 100) * w - boxW / 2 + tx;
+    const y = (cyPct / 100) * h - boxH / 2 + ty;
+    const xf = rot ? `transform:rotate(${rot}deg);transform-origin:center;` : "";
+    return `<div style="position:absolute;left:${x}px;top:${y}px;right:auto;width:${boxW}px;height:${boxH}px;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${xf}${extra}">${inner}</div>`;
+  };
 
   if (k === "1") {
     const lang = s(state, "eLangIng", "both");
@@ -201,13 +218,17 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     const ly = n(state, "sLogoPosY", 0);
     const lrot = n(state, "sLogoRot", 0);
     const nrot = n(state, "sNameRot", 0);
+    const nameW = w * 0.88;
+    const nameH = h * 0.36;
+    const badgeW = w * 0.92;
+    const badgeH = Math.max(36, h * 0.22);
     return wrap(
-      `<div style="position:relative;width:100%;height:100%;overflow:visible">
-        <div style="position:absolute;left:50%;top:28%;width:${sz}px;height:${sz}px;transform:translate(-50%,-50%) translate(${lx}px,${ly}px) rotate(${lrot}deg);transform-origin:center">${logoDiscHtml(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20))}</div>
-        <div style="position:absolute;left:50%;top:58%;width:88%;transform:translate(-50%,-50%) translate(${nx}px,${ny}px) rotate(${nrot}deg);transform-origin:center;font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1">${nameHtml}${arHtml}</div>
+      `<div style="position:relative;width:100%;height:100%;overflow:visible;direction:ltr;unicode-bidi:isolate">
+        ${pin(50, 28, sz, sz, lx, ly, lrot, "", logoDiscHtml(sz, ring, thick, circle, s(state, "cLogoTxt", fillOf(state)), s(state, "eBrand", "BB"), FH, n(state, "sLogoFS", 20)))}
+        ${pin(50, 58, nameW, nameH, nx, ny, nrot, `font-family:${esc(FH)};font-weight:900;font-size:${n(state, "sNameFS", 14)}px;color:${ink};text-align:center;text-transform:uppercase;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;`, `${nameHtml}${arHtml}`)}
         ${
           flag(state, "chkLogoBadges", true)
-            ? `<div style="position:absolute;left:50%;top:82%;width:92%;transform:translate(-50%,-50%) translate(${nx}px,${ny}px) rotate(${nrot}deg);transform-origin:center">${badges(state, lite, 0.9)}</div>`
+            ? pin(50, 82, badgeW, badgeH, nx, ny, nrot, "display:flex;align-items:center;justify-content:center;", badges(state, lite, 0.9))
             : ""
         }
       </div>`,
@@ -286,5 +307,5 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
 }
 
 export function sectionBox(w: number, h: number, inner: string) {
-  return `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;overflow:visible;box-sizing:border-box;${PRINT_INK}">${inner}</div>`;
+  return `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${PRINT_INK}">${inner}</div>`;
 }

@@ -109,10 +109,10 @@ export function LabelPreview({
         }
       >
         {!interactive ? (
-          <div className="h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+          <div className="h-full w-full" dir="ltr" style={{ direction: "ltr" }} dangerouslySetInnerHTML={{ __html: svg }} />
         ) : (
           <>
-            <div className="pointer-events-none absolute inset-0" dangerouslySetInnerHTML={{ __html: svg }} />
+            <div className="pointer-events-none absolute inset-0" dir="ltr" style={{ direction: "ltr" }} dangerouslySetInnerHTML={{ __html: svg }} />
             {items.map((item) => {
               const on = selectedId === item.id;
               const multi = selectedIds.includes(item.id);

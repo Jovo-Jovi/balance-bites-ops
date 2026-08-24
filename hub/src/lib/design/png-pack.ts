@@ -273,6 +273,22 @@ async function printFontCss() {
   }
 }
 
+function stripRemoteRefs(svg: string) {
+  return svg
+    .replace(/\s(?:href|xlink:href|src)=["']https?:[^"']+["']/gi, "")
+    .replace(/url\(["']?https?:[^"')]+["']?\)/gi, "none")
+    .replace(/@import\s+url\([^)]+\);?/g, "");
+}
+
+function canvasIsClean(ctx: CanvasRenderingContext2D) {
+  try {
+    ctx.getImageData(0, 0, 1, 1);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function inlineSvgAssets(svg: string) {
   const fonts = await printFontCss();
   let out = svg;
@@ -292,10 +308,10 @@ async function inlineSvgAssets(svg: string) {
       const data = await urlToDataUrl(u);
       out = out.split(u).join(data);
     } catch {
-      throw new Error("An image could not be inlined for PNG (CORS). Save the template and try again.");
+      out = out.split(u).join("");
     }
   }
-  return out;
+  return stripRemoteRefs(out);
 }
 
 function setSvgPixelSize(svg: string, wPx: number, hPx: number) {
@@ -336,22 +352,23 @@ async function rasterizeSvg(svg: string, wPx: number, hPx: number) {
 
 async function paintForeignObjects(canvas: HTMLCanvasElement, svgMarkup: string, wPx: number, hPx: number) {
   if (!/<foreignObject[\s>]/i.test(svgMarkup)) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx || !canvasIsClean(ctx)) return;
   const { toCanvas } = await import("html-to-image");
   const fonts = await printFontCss();
   const markup = svgMarkup.replace(/^<\?xml[^>]*>/, "").replace(/@import\s+url\([^)]+\);?/g, "");
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+  const html = `<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"/>
 <style>${fonts}
-html,body{margin:0;padding:0;width:${wPx}px;height:${hPx}px;overflow:hidden;background:transparent}
+html,body{margin:0;padding:0;width:${wPx}px;height:${hPx}px;overflow:hidden;background:transparent;direction:ltr}
 svg{display:block;width:${wPx}px;height:${hPx}px}
 </style>
 </head><body>${markup}</body></html>`;
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("dir", "ltr");
   iframe.style.cssText = `position:fixed;left:-10000px;top:0;width:${wPx}px;height:${hPx}px;border:0;opacity:1;pointer-events:none;`;
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
   try {
     await new Promise<void>((resolve, reject) => {
       iframe.onload = () => resolve();
@@ -368,31 +385,40 @@ svg{display:block;width:${wPx}px;height:${hPx}px}
       /* ignore */
     }
     await Promise.all(
-      [...doc.images].map((im) =>
-        im.decode().catch(() => {
+      [...doc.images].map((im) => {
+        if (/^https?:/i.test(im.getAttribute("src") || "")) im.removeAttribute("src");
+        return im.decode().catch(() => {
           /* ignore */
-        }),
-      ),
+        });
+      }),
     );
     const svg = doc.querySelector("svg");
     if (!svg) return;
     const iframeRect = iframe.getBoundingClientRect();
     const fos = [...svg.querySelectorAll("foreignObject")];
     for (const fo of fos) {
+      if (!canvasIsClean(ctx)) return;
       const node = fo.firstElementChild as HTMLElement | null;
       if (!node) continue;
       const fw = Math.max(1, fo.width.baseVal.value);
       const fh = Math.max(1, fo.height.baseVal.value);
       const ctm = fo.getScreenCTM();
       if (!ctm) continue;
-      const overlay = await toCanvas(node, {
-        width: fw,
-        height: fh,
-        pixelRatio: Math.max(2, Math.min(4, canvas.width / Math.max(fw, 1))),
-        cacheBust: false,
-        skipFonts: true,
-        fontEmbedCSS: fonts || " ",
-      });
+      let overlay: HTMLCanvasElement;
+      try {
+        overlay = await toCanvas(node, {
+          width: fw,
+          height: fh,
+          pixelRatio: Math.max(2, Math.min(4, canvas.width / Math.max(fw, 1))),
+          cacheBust: false,
+          skipFonts: true,
+          fontEmbedCSS: fonts || " ",
+        });
+      } catch {
+        continue;
+      }
+      const overlayCtx = overlay.getContext("2d");
+      if (!overlayCtx || !canvasIsClean(overlayCtx)) continue;
       ctx.save();
       ctx.setTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e - iframeRect.left, ctm.f - iframeRect.top);
       ctx.imageSmoothingEnabled = true;
@@ -468,9 +494,13 @@ function applyBleed(src: HTMLCanvasElement) {
   if (!ctx) throw new Error("Canvas is not available.");
   ctx.clearRect(0, 0, out.width, out.height);
   ctx.drawImage(src, bleedPx, bleedPx);
-  const imageData = ctx.getImageData(0, 0, out.width, out.height);
-  extendBleedNN(imageData, out.width, out.height, bleedPx, insetPx);
-  ctx.putImageData(imageData, 0, 0);
+  try {
+    const imageData = ctx.getImageData(0, 0, out.width, out.height);
+    extendBleedNN(imageData, out.width, out.height, bleedPx, insetPx);
+    ctx.putImageData(imageData, 0, 0);
+  } catch {
+    return src;
+  }
   return out;
 }
 

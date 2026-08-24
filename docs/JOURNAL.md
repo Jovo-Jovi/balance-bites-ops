@@ -230,6 +230,12 @@ Studio gold boxes and print SVG now use the same placements: top lid at 32/58/78
 
 ---
 
+## 2026-08-22 — Print logo pin, outer cut stroke, PNG taint
+
+Wrap / top-lid print used `left:50%` + `translate(-50%)` inside SVG `foreignObject` on a hub page that is `dir="rtl"`, so the disc sat a half-width to the right of the Studio gold box. Paint now uses pixel `left`/`top` and `direction:ltr` on FO roots. Cut stroke was a centred SVG stroke clipped to the artboard, so raising mm ate the label; it is now a 2× under-stroke with the fill covering the inner half (visible band outside). Cut PNG stays — it is the transparent die file. PNG export strips leftover `https:` hrefs and skips a tainted html-to-image overlay so Bleed `getImageData` does not toast.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

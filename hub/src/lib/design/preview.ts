@@ -392,40 +392,37 @@ function compositeCutMm(comp: CompositeBlob, wMm: number, hMm: number) {
   return `<rect x="0" y="0" width="${wMm}" height="${hMm}" />`;
 }
 
-function cutOverlayMm(template: LabelTemplate, state: LabelState, wMm: number, hMm: number) {
-  const stroke = cutStrokeOf(state);
-  if (stroke.mm <= 0) return "";
+function cutGeomMm(template: LabelTemplate, state: LabelState, wMm: number, hMm: number) {
   const spec = getDesignSpec(template.designType);
   const face = previewFace(template);
-  const geom =
-    spec.composite && state._composite
-      ? compositeCutMm(state._composite, wMm, hMm)
-      : familyCutMm(
-          face === "taper"
-            ? "taper"
-            : face === "back"
-              ? "rect"
-              : circleShape(state, spec.outline),
-          wMm,
-          hMm,
-        );
-  return `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm}" stroke-linejoin="round" stroke-linecap="round">${geom}</g>`;
+  if (spec.composite && state._composite) return compositeCutMm(state._composite, wMm, hMm);
+  return familyCutMm(
+    face === "taper" ? "taper" : face === "back" ? "rect" : circleShape(state, spec.outline),
+    wMm,
+    hMm,
+  );
 }
 
 function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
   const { wCm, hCm } = artboardOf(template, state);
-  const size = opts?.physical ? `width="${wCm}cm" height="${hCm}cm"` : `width="100%" height="100%"`;
+  const stroke = cutStrokeOf(state);
+  const showCut = Boolean(opts?.showCut) && stroke.mm > 0;
+  const padMm = opts?.physical && showCut ? stroke.mm : 0;
+  const outW = wCm + (2 * padMm) / 10;
+  const outH = hCm + (2 * padMm) / 10;
+  const size = opts?.physical ? `width="${outW}cm" height="${outH}cm"` : `width="100%" height="100%"`;
   const css = opts?.physical
     ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
     : "";
-  if (!opts?.showCut) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" ${size} color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
+  if (!showCut) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
   }
   const wMm = wCm * 10;
   const hMm = hCm * 10;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wMm} ${hMm}" preserveAspectRatio="none" ${size} color-interpolation="sRGB" role="img">${css}
+  const under = `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm * 2}" stroke-linejoin="round" stroke-linecap="round">${cutGeomMm(template, state, wMm, hMm)}</g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-padMm} ${-padMm} ${wMm + 2 * padMm} ${hMm + 2 * padMm}" preserveAspectRatio="none" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}
+    ${under}
     <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none">${inner}</svg>
-    ${cutOverlayMm(template, state, wMm, hMm)}
   </svg>`;
 }
 

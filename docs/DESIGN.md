@@ -140,7 +140,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 ## Print house
 
 - 1.5 mm bleed, 300 DPI.
-- Cut stroke: `sCutStrokeMm` (default 0.25 mm) and `cCutStroke` (default magenta). Same fields as Layers → Print cut.
+- Cut stroke: `sCutStrokeMm` (default 0.25 mm) and `cCutStroke` (default magenta). Same fields as Layers → Print cut. The millimetre value is the **outside** band (SVG stroke is drawn at 2× under the fill so increasing mm grows outward, not into the art). Print / SVG expand the page by that band so it is not clipped.
 - SVG preview / download / print window.
 - **PNG pack (Wave B, one open label):** Cut PNG (transparent outside the die, `{Name}_{w}x{h}cm_cut.png`), Exact PNG (full artboard), Bleed PNG (`extendBleedNN`, 1.5 mm). 300 DPI + pHYs. Studio has Cut PNG. Licensed popcorn-blue / popcorn-red warn, they still download. Not a zip of every character.
 - Print preview and Download SVG use the **physical artboard** (`width`/`height` in cm, `@page` size matching, `print-color-adjust: exact`, Montserrat / DM Sans / Tajawal loaded in the print window). Default file name is `{Name}_{w}x{h}cm` (SVG, PDF title, JSON).

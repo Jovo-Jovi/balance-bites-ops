@@ -159,12 +159,12 @@ foreignObject,div,span,img,svg,circle,rect,text{color-adjust:exact!important;-we
 function svgDoc(
   viewBox: string,
   inner: string,
-  opts?: { wCm?: number; hCm?: number; printCss?: boolean },
+  opts?: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const physical = Boolean(opts?.wCm && opts?.hCm);
   const size = physical ? `width="${opts!.wCm}cm" height="${opts!.hCm}cm"` : `width="100%" height="100%"`;
   const par = physical ? "none" : "xMidYMid meet";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" preserveAspectRatio="${par}" ${size} color-interpolation="sRGB" role="img">${opts?.printCss ? PRINT_STYLE : ""}${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${opts?.printCss ? PRINT_STYLE : ""}${inner}</svg>`;
 }
 
 function cutStroke(state: LabelState) {
@@ -174,10 +174,43 @@ function cutStroke(state: LabelState) {
   return { px: clamped * (PPC / 10), color: s(state, "cCutStroke", "#FF00FF") };
 }
 
-function cutGroup(state: LabelState, geom: string) {
+function pinBox(
+  parentW: number,
+  parentH: number,
+  cxPct: number,
+  cyPct: number,
+  w: number,
+  h: number,
+  tx: number,
+  ty: number,
+  rot: number,
+  extra: string,
+  inner: string,
+) {
+  const x = (cxPct / 100) * parentW - w / 2 + tx;
+  const y = (cyPct / 100) * parentH - h / 2 + ty;
+  const xf = rot ? `transform:rotate(${rot}deg);transform-origin:center;` : "";
+  return `<div style="position:absolute;left:${x}px;top:${y}px;right:auto;width:${w}px;height:${h}px;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;${xf}${extra}">${inner}</div>`;
+}
+
+function framed(
+  state: LabelState,
+  showCut: boolean,
+  minX: number,
+  minY: number,
+  vbW: number,
+  vbH: number,
+  geom: string,
+  painted: string,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
+) {
   const stroke = cutStroke(state);
-  if (stroke.px <= 0) return "";
-  return `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.px}" stroke-linejoin="round" stroke-linecap="round">${geom}</g>`;
+  const pad = showCut && stroke.px > 0 ? svgOpts.padPx ?? 0 : 0;
+  const under =
+    showCut && stroke.px > 0
+      ? `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.px * 2}" stroke-linejoin="round" stroke-linecap="round">${geom}</g>`
+      : "";
+  return svgDoc(`${minX - pad} ${minY - pad} ${vbW + 2 * pad} ${vbH + 2 * pad}`, `${under}${painted}`, svgOpts);
 }
 
 function sectorPath(cx: number, cy: number, R1: number, R2: number, startDeg: number, endDeg: number) {
@@ -195,16 +228,13 @@ function sectorPath(cx: number, cy: number, R1: number, R2: number, startDeg: nu
   return `M ${x1o} ${y1o} A ${R1} ${R1} 0 ${la} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${R2} ${R2} 0 ${la} 0 ${x2i} ${y2i} Z`;
 }
 
-function zone(x: string, y: string, w: string, h: string, extra: string, inner: string) {
-  return `<div style="position:absolute;left:${x};top:${y};width:${w};height:${h};box-sizing:border-box;${extra}">${inner}</div>`;
-}
-
-function spin(tx: number, ty: number, rot: number, extra = "") {
-  const r = rot ? ` rotate(${rot}deg)` : "";
-  return `transform:translate(-50%,-50%) translate(${tx}px,${ty}px)${r}${extra};transform-origin:center;`;
-}
-
-function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean, svgOpts: { wCm?: number; hCm?: number; printCss?: boolean }) {
+function drawCircle(
+  template: LabelTemplate,
+  state: LabelState,
+  lite: boolean,
+  showCut: boolean,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
+) {
   const spec = getDesignSpec(template.designType);
   const { W, H } = circlePx(state);
   const shape = circleShape(state, spec.outline);
@@ -231,34 +261,45 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
   const d2 = flag(state, "bCShowDate2", true) ? s(state, "eCDate2") : "";
   const botX = n(state, "sCBotX", 0);
   const botY = n(state, "sCBotY", 0);
+  const brandW = n(state, "sCBrandW", 160);
+  const brandH = n(state, "sCBrandH", 52);
+  const flavorW = n(state, "sCFlavorW", 140);
+  const flavorH = n(state, "sCFlavorH", 60);
+  const wtW = n(state, "sCWtW", 90);
+  const wtH = n(state, "sCWtH", 44);
+  const dateW = n(state, "sCDateW", 100);
+  const dateH = n(state, "sCDateH", 70);
 
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:visible;box-sizing:border-box;background:transparent;color:${esc(ink)};font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-    ${zone(
-      "50%",
-      "10%",
-      `${logoSz}px`,
-      `${logoSz}px`,
-      `${spin(n(state, "sCLogoX", 0), n(state, "sCLogoY", 0), n(state, "sCLogoRot", 0))};z-index:5`,
-      logoDiscHtml(logoSz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt", "BB"), fh, logoFS),
-    )}
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;position:relative;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;background:transparent;color:${esc(ink)};font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+    ${pinBox(W, H, 50, 10, logoSz, logoSz, n(state, "sCLogoX", 0), n(state, "sCLogoY", 0), n(state, "sCLogoRot", 0), "z-index:5;", logoDiscHtml(logoSz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt", "BB"), fh, logoFS))}
     ${
       s(state, "eCBrand1") || s(state, "eCBrand2")
-        ? zone(
-            "50%",
-            "28%",
-            `${n(state, "sCBrandW", 160)}px`,
-            `${n(state, "sCBrandH", 52)}px`,
-            `${spin(n(state, "sCBrandX", 0), n(state, "sCBrandY", 0), n(state, "sCBrandRot", 0))};z-index:4;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sCBrandFS", 20)}px;line-height:1.05;letter-spacing:.5px;color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center`,
+        ? pinBox(
+            W,
+            H,
+            50,
+            28,
+            brandW,
+            brandH,
+            n(state, "sCBrandX", 0),
+            n(state, "sCBrandY", 0),
+            n(state, "sCBrandRot", 0),
+            `z-index:4;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sCBrandFS", 20)}px;line-height:1.05;letter-spacing:.5px;color:${esc(ink)};display:flex;flex-direction:column;align-items:center;justify-content:center;`,
             `${s(state, "eCBrand1") ? `<div>${html(s(state, "eCBrand1"))}</div>` : ""}${s(state, "eCBrand2") ? `<div>${html(s(state, "eCBrand2"))}</div>` : ""}`,
           )
         : ""
     }
-    ${zone(
-      "50%",
-      "52%",
-      `${n(state, "sCFlavorW", 140)}px`,
-      `${n(state, "sCFlavorH", 60)}px`,
-      `${spin(n(state, "sCFlavorX", 0), n(state, "sCFlavorY", 0), n(state, "sCFlavorRot", 0))};z-index:3;text-align:left;padding:2px 5px;display:flex;flex-direction:column;justify-content:center`,
+    ${pinBox(
+      W,
+      H,
+      50,
+      52,
+      flavorW,
+      flavorH,
+      n(state, "sCFlavorX", 0),
+      n(state, "sCFlavorY", 0),
+      n(state, "sCFlavorRot", 0),
+      `z-index:3;text-align:left;padding:2px 5px;display:flex;flex-direction:column;justify-content:center;`,
       `${s(state, "eCProdName") ? `<div style="font-weight:${esc(fWH)};font-size:${n(state, "sCProdNameFS", 12)}px;color:${esc(flavor)};text-transform:uppercase;letter-spacing:1px;margin-bottom:1px;line-height:1.1">${html(s(state, "eCProdName"))}</div>` : ""}${
         s(state, "eCFlavorTxt")
           ? `<div style="font-weight:900;font-size:${n(state, "sCFlavorFS", 14)}px;color:${esc(flavor)};text-transform:uppercase;letter-spacing:.5px;line-height:1.1">${html(s(state, "eCFlavorTxt"))}</div>`
@@ -267,32 +308,47 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
     )}
     ${
       photo
-        ? zone(
-            `${92 - pPct / 2}%`,
-            "52%",
-            `${pSz}px`,
-            `${pSz}px`,
-            `${spin(n(state, "sCProdX", 0), n(state, "sCProdY", 0), n(state, "sCProdRot", 0), ` scale(${pSc})`)};z-index:4`,
-            `<img src="${esc(photo)}" style="width:100%;height:100%;object-fit:contain" alt=""/>`,
+        ? pinBox(
+            W,
+            H,
+            92 - pPct / 2,
+            52,
+            pSz,
+            pSz,
+            n(state, "sCProdX", 0),
+            n(state, "sCProdY", 0),
+            n(state, "sCProdRot", 0),
+            "z-index:4;",
+            `<img src="${esc(photo)}" style="width:100%;height:100%;object-fit:contain;transform:scale(${pSc});transform-origin:center" alt=""/>`,
           )
         : ""
     }
-    <div style="position:absolute;left:50%;top:68%;width:75%;height:1px;background:${esc(flavor)};opacity:.4;${spin(botX, botY, 0)};z-index:2"></div>
-    ${zone(
-      "28%",
-      "84%",
-      `${n(state, "sCWtW", 90)}px`,
-      `${n(state, "sCWtH", 44)}px`,
-      `${spin(n(state, "sCWtX", 0) + botX, n(state, "sCWtY", 0) + botY, n(state, "sCWtRot", 0))};z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center`,
+    ${pinBox(W, H, 50, 68, W * 0.75, 1, botX, botY, 0, `background:${esc(flavor)};opacity:.4;z-index:2;`, "")}
+    ${pinBox(
+      W,
+      H,
+      28,
+      84,
+      wtW,
+      wtH,
+      n(state, "sCWtX", 0) + botX,
+      n(state, "sCWtY", 0) + botY,
+      n(state, "sCWtRot", 0),
+      "z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;",
       `<div style="font-family:${esc(fb)},sans-serif;font-size:${n(state, "sCWtFS", 8) * 0.7}px;color:${esc(flavor)};text-transform:uppercase;letter-spacing:.5px;opacity:.8">NET WEIGHT</div>
        <div style="font-weight:700;font-size:${n(state, "sCWtFS", 8)}px;color:${esc(flavor)}">${html(wtShow)}</div>`,
     )}
-    ${zone(
-      "72%",
-      "84%",
-      `${n(state, "sCDateW", 100)}px`,
-      `${n(state, "sCDateH", 70)}px`,
-      `${spin(n(state, "sCDateX", 0) + botX, n(state, "sCDateY", 0) + botY, n(state, "sCDateRot", 0))};z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;padding:2px`,
+    ${pinBox(
+      W,
+      H,
+      72,
+      84,
+      dateW,
+      dateH,
+      n(state, "sCDateX", 0) + botX,
+      n(state, "sCDateY", 0) + botY,
+      n(state, "sCDateRot", 0),
+      "z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;padding:2px;",
       `${d1 ? `<div style="font-family:${esc(fb)},sans-serif;font-size:${n(state, "sCDateFS", 6)}px;color:${esc(flavor)};opacity:.9;line-height:1">${html(d1)}</div>` : ""}
        ${d2 ? `<div style="font-family:${esc(fb)},sans-serif;font-size:${n(state, "sCDateFS", 6)}px;color:${esc(flavor)};opacity:.9;line-height:1">${html(d2)}</div>` : ""}
        ${qr ? `<div style="width:${qrSz}px;height:${qrSz}px;background:#fff;padding:1px;border-radius:2px;margin-top:2px;transform:translate(${n(state, "sCQRX", 0)}px,${n(state, "sCQRY", 0)}px)"><img src="${esc(qr)}" style="width:100%;height:100%;object-fit:contain" alt=""/></div>` : ""}`,
@@ -300,16 +356,20 @@ function drawCircle(template: LabelTemplate, state: LabelState, lite: boolean, s
   </div>`;
 
   const geom = outlineGeomPx(shape, W, H, radius);
-  const inner = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
+  const painted = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible">${body}</foreignObject>
-    </g>
-    ${showCut ? cutGroup(state, geom) : ""}`;
-  return svgDoc(`0 0 ${W} ${H}`, inner, svgOpts);
+    </g>`;
+  return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
 
-function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean, svgOpts: { wCm?: number; hCm?: number; printCss?: boolean }) {
+function drawTop(
+  template: LabelTemplate,
+  state: LabelState,
+  showCut: boolean,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
+) {
   const { W, H } = topPx(state);
   const fill = fillOf(state);
   const ink = inkOf(state);
@@ -323,55 +383,79 @@ function drawTop(template: LabelTemplate, state: LabelState, showCut: boolean, s
   const ring = s(state, "tLogoCircleStyle", "full") === "ring";
   const thick = n(state, "tLogoCircleThick", 1.5);
   const sz = n(state, "sTCircleSz", 32);
-  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};overflow:visible;position:relative;box-sizing:border-box;font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+  const titleW = n(state, "sTTitleW", 180);
+  const titleH = n(state, "sTTitleH", 52);
+  const subW = n(state, "sTSubW", 160);
+  const subH = n(state, "sTSubH", 36);
+  const body = `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:transparent;color:${esc(ink)};overflow:visible;position:relative;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;font-family:${esc(fh)},sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact">
     ${
       s(state, "tLogoTxt")
-        ? zone(
-            "50%",
-            "32%",
-            `${sz}px`,
-            `${sz}px`,
-            `${spin(n(state, "sTLogoX", 0), n(state, "sTLogoY", 0), n(state, "sTLogoRot", 0))};z-index:5`,
+        ? pinBox(
+            W,
+            H,
+            50,
+            32,
+            sz,
+            sz,
+            n(state, "sTLogoX", 0),
+            n(state, "sTLogoY", 0),
+            n(state, "sTLogoRot", 0),
+            "z-index:5;",
             logoDiscHtml(sz, ring, thick, ink, ring ? ink : fill, s(state, "tLogoTxt"), fh, n(state, "sTLogoFS", 15)),
           )
         : ""
     }
     ${
       s(state, "tTitle1") || s(state, "tTitle2")
-        ? zone(
-            "50%",
-            "58%",
-            `${n(state, "sTTitleW", 180)}px`,
-            `${n(state, "sTTitleH", 52)}px`,
-            `${spin(n(state, "sTTitleX", 0), n(state, "sTTitleY", 0), n(state, "sTTitleRot", 0))};z-index:4;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center`,
+        ? pinBox(
+            W,
+            H,
+            50,
+            58,
+            titleW,
+            titleH,
+            n(state, "sTTitleX", 0),
+            n(state, "sTTitleY", 0),
+            n(state, "sTTitleRot", 0),
+            `z-index:4;text-align:center;font-weight:${esc(fWH)};font-size:${n(state, "sTTitleFS", 20)}px;line-height:1.1;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;`,
             `${s(state, "tTitle1") ? `<div>${html(s(state, "tTitle1"))}</div>` : ""}${s(state, "tTitle2") ? `<div>${html(s(state, "tTitle2"))}</div>` : ""}`,
           )
         : ""
     }
     ${
       s(state, "tSub1") || s(state, "tSub2")
-        ? zone(
-            "50%",
-            "78%",
-            `${n(state, "sTSubW", 160)}px`,
-            `${n(state, "sTSubH", 36)}px`,
-            `${spin(n(state, "sTSubX", 0), n(state, "sTSubY", 0), n(state, "sTSubRot", 0))};z-index:3;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};display:flex;flex-direction:column;align-items:center;justify-content:center`,
+        ? pinBox(
+            W,
+            H,
+            50,
+            78,
+            subW,
+            subH,
+            n(state, "sTSubX", 0),
+            n(state, "sTSubY", 0),
+            n(state, "sTSubRot", 0),
+            `z-index:3;text-align:center;font-weight:${esc(fWB)};font-size:${n(state, "sTSubFS", 7)}px;line-height:1.2;color:${esc(sub)};display:flex;flex-direction:column;align-items:center;justify-content:center;`,
             `${s(state, "tSub1") ? `<div>${html(s(state, "tSub1"))}</div>` : ""}${s(state, "tSub2") ? `<div>${html(s(state, "tSub2"))}</div>` : ""}`,
           )
         : ""
     }
   </div>`;
   const geom = outlineGeomPx(shape, W, H);
-  const inner = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
+  const painted = `<defs><clipPath id="${clipId}">${geom}</clipPath></defs>
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible">${body}</foreignObject>
-    </g>
-    ${showCut ? cutGroup(state, geom) : ""}`;
-  return svgDoc(`0 0 ${W} ${H}`, inner, svgOpts);
+    </g>`;
+  return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
 
-function drawBack(template: LabelTemplate, state: LabelState, lite: boolean, showCut: boolean, svgOpts: { wCm?: number; hCm?: number; printCss?: boolean }) {
+function drawBack(
+  template: LabelTemplate,
+  state: LabelState,
+  lite: boolean,
+  showCut: boolean,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
+) {
   const { W, H } = backPx(state);
   const fill = fillOf(state);
   const uid = `bk-${safeId(template.id)}`;
@@ -397,14 +481,14 @@ function drawBack(template: LabelTemplate, state: LabelState, lite: boolean, sho
   const columns = secs
     .map((sec) => {
       const rot = n(state, `sSec${sec.k}Rot`, 0);
-      return `<div style="position:absolute;left:${sec.l}px;top:0;width:${sec.w}px;height:${H}px;overflow:visible;box-sizing:border-box;transform:rotate(${rot}deg);transform-origin:center center">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</div>`;
+      return `<div style="position:absolute;left:${sec.l}px;top:0;width:${sec.w}px;height:${H}px;overflow:visible;box-sizing:border-box;direction:ltr;unicode-bidi:isolate;transform:rotate(${rot}deg);transform-origin:center center">${sectionBox(sec.w, H, sectionHtml(sec.k, state, sec.w, H, lite))}</div>`;
     })
     .join("");
   parts.push(
-    `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`,
+    `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:visible;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`,
   );
-  if (showCut) parts.push(cutGroup(state, `<rect x="0" y="0" width="${W}" height="${H}" />`));
-  return svgDoc(`0 0 ${W} ${H}`, parts.join(""), svgOpts);
+  const geom = `<rect x="0" y="0" width="${W}" height="${H}" />`;
+  return framed(state, showCut, 0, 0, W, H, geom, parts.join(""), svgOpts);
 }
 
 function drawTaper(
@@ -412,7 +496,7 @@ function drawTaper(
   state: LabelState,
   lite: boolean,
   showCut: boolean,
-  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean },
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const { g, secs } = taperSectors(state);
   if (!g.R1 || !g.R2 || !g.arcDeg || !g.vbW || !g.vbH) {
@@ -464,15 +548,14 @@ function drawTaper(
     parts.push(`<g clip-path="url(#${d.clipId})">
       <g transform="rotate(${d.mid + n(state, `sSec${d.k}Rot`, 0)},${g.cx},${g.cy})">
         <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">
             <div style="width:${innerW}px;height:${innerH}px;overflow:visible">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
           </div>
         </foreignObject>
       </g>
     </g>`);
   }
-  if (showCut) parts.push(cutGroup(state, `<path d="${fan}" />`));
-  return svgDoc(`${g.minX} ${g.minY} ${g.vbW} ${g.vbH}`, parts.join(""), svgOpts);
+  return framed(state, showCut, g.minX, g.minY, g.vbW, g.vbH, `<path d="${fan}" />`, parts.join(""), svgOpts);
 }
 
 /** Complete SVG document. Native pixel viewBox — do not remap to 0–100. */
@@ -484,11 +567,17 @@ export function familyPreviewSvg(
   physical = false,
 ) {
   const board = artboardOf(template, state);
-  const svgOpts = physical ? { wCm: board.wCm, hCm: board.hCm, printCss: true } : undefined;
+  const stroke = cutStroke(state);
+  const padPx = physical && showCut && stroke.px > 0 ? stroke.px : 0;
+  const padCm = padPx / PPC;
+  const svgOpts = {
+    ...(physical ? { wCm: board.wCm + 2 * padCm, hCm: board.hCm + 2 * padCm, printCss: true } : {}),
+    padPx,
+  };
   const face = previewFace(template);
-  if (face === "circle") return drawCircle(template, state, lite, showCut, svgOpts || {});
-  if (face === "top") return drawTop(template, state, showCut, svgOpts || {});
-  if (face === "taper") return drawTaper(template, state, lite, showCut, svgOpts || {});
-  if (face === "back") return drawBack(template, state, lite, showCut, svgOpts || {});
+  if (face === "circle") return drawCircle(template, state, lite, showCut, svgOpts);
+  if (face === "top") return drawTop(template, state, showCut, svgOpts);
+  if (face === "taper") return drawTaper(template, state, lite, showCut, svgOpts);
+  if (face === "back") return drawBack(template, state, lite, showCut, svgOpts);
   return svgDoc("0 0 100 100", "", svgOpts);
 }
