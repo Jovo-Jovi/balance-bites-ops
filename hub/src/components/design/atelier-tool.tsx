@@ -13,6 +13,7 @@ import { productOptions, specOf, useDesignApp } from "./design-context";
 import { FaceInspector } from "./inspector-panel";
 import { LabelPreview } from "./label-preview";
 import { StudioCutBar } from "./studio-cut-bar";
+import { StudioRail } from "./studio-rail";
 
 export function StudioTool() {
   const app = useDesignApp();
@@ -145,7 +146,8 @@ export function StudioTool() {
 
       <StudioCutBar />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+        <StudioRail />
         <div className="min-w-0 flex-1">
           <p className="mb-2 text-xs text-[var(--bb-muted)]">
             Tap a section to type in it. Drag the gold border to move; round handle rotates; corner resizes. Taper QR and
@@ -181,7 +183,7 @@ export function StudioTool() {
           </div>
         </div>
 
-        <aside className="w-full shrink-0 lg:sticky lg:top-24 lg:w-[26rem]">
+        <aside className="w-full shrink-0 xl:sticky xl:top-24 xl:w-[26rem]">
           <FaceInspector face={face} />
         </aside>
       </div>

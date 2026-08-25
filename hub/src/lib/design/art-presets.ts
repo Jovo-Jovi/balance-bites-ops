@@ -53,6 +53,28 @@ export function presetSrcForKey(artKey: string) {
   return file ? publicSrc(file) : "";
 }
 
+export function characterPresetKeys() {
+  return Object.keys(PRESET_FILES);
+}
+
+export function characterPresetLabel(artKey: string) {
+  return String(artKey || "")
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-")
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+export function isPrintPackExcludedArt(artKey: string) {
+  const k = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  return k === "popcorn-blue" || k === "popcorn-red";
+}
+
 export function resolveArtSrc(raw: unknown, artKey?: string) {
   if (artKey) {
     const fromKey = presetSrcForKey(artKey);

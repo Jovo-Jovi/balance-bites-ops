@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Accordion, ActionBtn, Field, Modal, TextInput } from "@/components/invoices/ui";
+import { ActionBtn, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
 import { isStorageEnabled } from "@/lib/firebase-config";
 import {
@@ -669,19 +669,6 @@ export function IconsPanel() {
         ))}
       </div>
     </div>
-  );
-}
-
-export function ArtPanel() {
-  return (
-    <>
-      <Accordion title="Uploaded images">
-        <ImagesPanel />
-      </Accordion>
-      <Accordion title="Icon library">
-        <IconsPanel />
-      </Accordion>
-    </>
   );
 }
 

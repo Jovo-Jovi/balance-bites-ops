@@ -166,14 +166,15 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 - [x] Deep link `bb_label_open` from finance stickers
 - [x] Product select from `bb_products`; sticker SKUs read-only
 - [x] Print house bleed/DPI + SVG preview + editable cut stroke
-- [x] Studio Copy / Images / Icons / Layers; drag, rotate, resize
+- [x] Studio Copy / Layers; drag, rotate, resize. Libraries rail holds Images / Icons / Shapes / Brand
 - [x] Live faces: composite `_composite`; circular `buildCircleLabel`; rect wrap / top lid; taper `calcTaper`
 - [x] Icon picker in Studio (repo catalog + live A–Z letters; not a Firestore dump)
 - [x] Character art from repo `public/design-presets/` (`artref:`)
 - [x] Composite Studio Wave A (add shape / merge / group / trim / preview+approve cut)
 - [x] PNG cut pack Wave B (Cut / Exact / Bleed PNG, one label) — [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md)
-- [ ] Libraries rail (Wave C) / user-named sections (Wave D)
-- [ ] Applying `assets/presets/` folders into tenant templates / Jelly Kids dump
+- [x] Libraries rail (Wave C) — [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md)
+- [ ] User-named sections + blank-from-scratch (Wave D)
+- [ ] Dumping `assets/presets/` / Jelly Kids into Firestore (Characters rail applies `artref:` only)
 - [ ] Desktop folder scan of `bbLabel-*.json` (pick a file instead)
 
 ### Finance (`bb-stock-costs.html` tabs — all of them)
@@ -214,4 +215,4 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub and invoices are on `main`. Design is native on `feat/design`. Studio Wave B (PNG cut pack) is in test (`docs/DESIGN-STUDIO.md`) — do not start Wave C until confirmed. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub, invoices, and Design Waves A–B are on `main`. Wave C (libraries rail) is on `feat/design-c` (`docs/DESIGN-STUDIO.md`). Wave D waits. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.

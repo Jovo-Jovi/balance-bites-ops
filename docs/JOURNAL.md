@@ -310,8 +310,18 @@ Popcorn (and other character stickers) saved a white card with only the exp plat
 
 ---
 
+## 2026-08-25 — `feat/design` merged; Wave C libraries rail
+
+PR **#4** merged `feat/design` → `main` (`e4471fa`). Production Design is Waves A–B plus Library snaps.
+
+**Wave C** on `feat/design-c`: Studio left rail Shapes / Blocks / Icons / Uploads / Brand / Characters. Inspector Images / Icons tabs folded into the rail. Composite `addZone` (text, logo disc, expiry, photo). Wrap taps turn on existing `chkS*` recipes (Custom column stays a starter). Characters apply `artref:` + `artKey` with a color chip (no full SVG in the rail). Flavor packs under Brand. Merge / Trim / Cut stay on the composite bar.
+
+**Wave D parked:** blank-from-scratch, user-named section titles/fields, migrate `eSecOrd` to a generic block list.
+
+---
+
 ## Still not done (do not tick as shipped)
 
-- Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates
+- Wave D: user-named sections + blank-from-scratch; zip of every commercial character; Jelly Kids Firestore dump
 - Finance tabs and ledger formulas
-- Merge `feat/design` → `main` when asked
+- Merge `feat/design-c` → `main` when Wave C is confirmed

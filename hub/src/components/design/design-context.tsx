@@ -27,6 +27,7 @@ import {
   type FlavorSnapshot,
 } from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
+import { isPrintPackExcludedArt } from "@/lib/design/art-presets";
 import { attachLibraryThumb, stripLibraryThumb } from "@/lib/design/library-thumb";
 import { exportFileBase } from "@/lib/design/prepress";
 import { isStorageEnabled } from "@/lib/firebase-config";
@@ -52,6 +53,8 @@ import {
 import type { CutPreview } from "@/lib/design/studio-ops";
 import {
   addShape,
+  addZone,
+  applyCharacterArt,
   applyClipJoin,
   approveCutPreview,
   cancelCutPreview,
@@ -62,6 +65,7 @@ import {
   setCutToSelected,
   syncCutPath as syncCutPathInState,
   ungroupSelected,
+  type ZoneKind,
 } from "@/lib/design/studio-ops";
 import type { DesignType, LabelMode, LabelState, LabelTemplate, StickerSku } from "@/lib/design/types";
 import { removeDesignKey, writeDesignKey } from "@/lib/design/write";
@@ -128,6 +132,8 @@ type DesignContextValue = {
   rotateItem: (id: string, rot: number) => void;
   setFillCut: (on: boolean) => void;
   addStudioShape: (type: string) => void;
+  addStudioZone: (kind: ZoneKind) => void;
+  applyStudioCharacter: (artKey: string) => void;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -721,6 +727,34 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         replaceCurrent({ ...current, state: op.state });
         setSelectedIds(op.selectIds);
         toast.push(op.message, "ok");
+      },
+      addStudioZone: (kind) => {
+        if (!current) return;
+        const op = addZone(current.state, kind);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
+      },
+      applyStudioCharacter: (artKey) => {
+        if (!current) return;
+        const partId = selectedIds.find((id) => current.state._composite?.parts?.some((p) => p.id === id));
+        const op = applyCharacterArt(current.state, artKey, partId);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
+        if (isPrintPackExcludedArt(artKey)) {
+          toast.push("Licensed likeness — not for commercial print pack", "warn");
+        }
       },
       mergeStudioParts: () => {
         if (!current) return;

@@ -15,6 +15,7 @@ import {
   zoneOutlinePathPct,
 } from "./boolean-cut";
 import { MAX_OUTLINE_PARTS, makePart } from "./part-types";
+import { presetSrcForKey } from "./art-presets";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState } from "./types";
 
 export type CutSnapshot = {
@@ -559,4 +560,122 @@ export function syncCutPath(state: LabelState): LabelState {
   const { next, blob } = packed;
   if (blob.parts?.length || blob.cutGroupId || blob.cutZoneId || blob.unionPath) recomputeUnion(blob);
   return next;
+}
+
+export type ZoneKind = "text" | "logo" | "exp" | "image";
+
+function defaultExpMonthYear() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+/** Live `BBComposite.addZone`. Recipe blocks for composite, not wrap columns. */
+export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
+  const packed = withBlob(state);
+  if (!packed) return fail(state, "Switch family to Composite to drop this block.");
+  const { next, blob } = packed;
+  bumpZ(blob);
+  const zTop = Math.max(0, ...(blob.zones || []).map((z) => z.z || 0), ...(blob.parts || []).map((p) => p.z || 0));
+  const ink = blob.txt || String(state.cTxtMain || "#ffffff");
+  const fill = blob.bg || String(state.cLabel || "#2e7d32");
+  let zone: CompositeZone;
+  if (kind === "logo") {
+    zone = {
+      id: genId("z"),
+      kind: "logo",
+      x: 50,
+      y: 28,
+      w: 22,
+      h: 22,
+      lockAspect: true,
+      shape: "circle",
+      label: "Logo",
+      text: "BB",
+      z: zTop + 1,
+      color: ink,
+      textColor: fill,
+      fontScale: 0.42,
+      rot: 0,
+    };
+  } else if (kind === "image") {
+    zone = {
+      id: genId("z"),
+      kind: "image",
+      x: 58,
+      y: 58,
+      w: 28,
+      h: 28,
+      label: `Photo ${(blob.zones || []).filter((z) => z.kind === "image").length + 1}`,
+      z: zTop + 1,
+      color: "#ffffff",
+      rot: 0,
+      src: "",
+    };
+  } else if (kind === "exp") {
+    const exp = String(next.eCDate1 || "").trim() || defaultExpMonthYear();
+    if (!String(next.eCDate1 || "").trim()) next.eCDate1 = exp;
+    zone = {
+      id: genId("z"),
+      kind: "text",
+      x: 50,
+      y: 84,
+      w: 28,
+      h: 14,
+      label: "Exp",
+      field: "eCDate1",
+      text: `Exp.\n${exp}`,
+      z: zTop + 1,
+      color: "#ffffff",
+      fill: "#000000",
+      rot: 0,
+    };
+  } else {
+    zone = {
+      id: genId("z"),
+      kind: "text",
+      x: 50,
+      y: 50,
+      w: 40,
+      h: 14,
+      label: "Text",
+      text: "TEXT",
+      z: zTop + 1,
+      color: ink,
+      rot: 0,
+    };
+  }
+  blob.zones = [...(blob.zones || []), zone];
+  const labels: Record<ZoneKind, string> = {
+    text: "Text added — drag it on the canvas.",
+    logo: "Logo disc added.",
+    exp: "Expiry box added.",
+    image: "Photo layer added — pick a file in Uploads.",
+  };
+  return { state: next, selectIds: [zone.id], message: labels[kind], ok: true };
+}
+
+/** Store `artref:` + `artKey` only. Never write preset SVG bytes into the template. */
+export function applyCharacterArt(state: LabelState, artKey: string, partId?: string): StudioOp {
+  const packed = withBlob(state);
+  if (!packed) return fail(state, "Switch family to Composite to apply character art.");
+  const { next, blob } = packed;
+  const parts = blob.parts || [];
+  if (!parts.length) return fail(state, "Add a shape first, then apply character art.");
+  const key = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  if (!key || !presetSrcForKey(key)) return fail(state, "Unknown character art.");
+  const part =
+    (partId ? findPart(blob, partId) : null) ||
+    parts.find((p) => p.showImage) ||
+    parts[0];
+  if (!part) return fail(state, "Select a shape, then apply character art.");
+  part.artKey = key;
+  part.src = `artref:${key}`;
+  delete part.srcUrl;
+  part.showImage = true;
+  blob.presetId = key;
+  return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
 }

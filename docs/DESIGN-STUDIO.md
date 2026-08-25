@@ -1,8 +1,8 @@
 # Design Studio — plan
 
-**Status:** confirmed 22 Aug 2026. **Wave B in test** on `feat/design` (stop for user test before C). Waves C–D not started.
+**Status:** Waves A–B merged to `main` (PR #4, 25 Aug 2026). **Wave C in test** on `feat/design-c`. Wave D not started.
 
-This is a Design-slice follow-up on `feat/design`, not a fourth hub app and not Finance. Current map: [DESIGN.md](DESIGN.md). Live source: `costs/bb-composite-label.js`, `costs/bb-prepress.js`, `costs/balance-bites-sticker.html`.
+This is a Design-slice follow-up, not a fourth hub app and not Finance. Current map: [DESIGN.md](DESIGN.md). Live source: `costs/bb-composite-label.js`, `costs/bb-prepress.js`, `costs/balance-bites-sticker.html`.
 
 ---
 
@@ -212,13 +212,15 @@ Likely new hub files (Wave A–B): `hub/src/lib/design/boolean-cut.ts` (port uni
 
 ## Confirm checklist
 
-- [x] **Wave A** — shapes + join / trim / cut / merge (live composite parity) — **in test**
-- [x] **Wave B** — Cut PNG + exact PNG + bleed PNG (one open label, not a zip)
-- [ ] **Wave C** — libraries rail inside Studio (Canva-shaped, label-scoped)
-- [ ] **Wave D** — user-named sections + blank-from-scratch
+- [x] **Wave A** — shapes + join / trim / cut / merge (live composite parity) — on `main`
+- [x] **Wave B** — Cut PNG + exact PNG + bleed PNG (one open label, not a zip) — on `main`
+- [x] **Wave C** — libraries rail inside Studio (Canva-shaped, label-scoped) — **in test** on `feat/design-c`
+- [ ] **Wave D** — user-named sections + blank-from-scratch (parked)
 - [x] Rename Atelier label to **Studio** (keep `?tab=atelier`)
-- [x] PNG pack = **one label** first (not a zip of all templates) — agreed; **Wave B in test**
+- [x] PNG pack = **one label** first (not a zip of all templates)
 - [x] Keep wrap/taper **starters** (Ingredients / Nutrition) as library blocks, not deleted
 - [x] Do **not** add Canva/Polotno/AI
 
-Wave B shipped behavior: Print house Cut PNG / Exact PNG / Bleed PNG; Studio Cut PNG. Raster of the print SVG at 300 DPI, die clip (`unionPath` / wrap rect / taper fan / circle outline), pHYs, live `extendBleedNN`. Warn on print-pack exclude; do not refuse. Do not start Wave C until this is tested.
+Wave C shipped behavior: left **Libraries** rail in Studio — Shapes / Blocks / Icons / Uploads / Brand / Characters. Tap-to-add (drag later if needed). Inspector Images / Icons tabs folded into the rail. Flavor packs live under Brand. Composite `addZone` (text, logo disc, exp, photo). Characters apply `artref:` + `artKey` to the selected (or first) shape; warn popcorn-blue / popcorn-red; never write preset SVG into Firestore. Templates stay on the Library tab.
+
+**Wave D parked:** blank die with no forced Ingredients; user-named section title + fields; migrate wrap `eSecOrd` / `chkS*` to a generic block list; inspector Document / Selection model. Saved wrap/taper JSON must still open.
