@@ -119,11 +119,11 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 
 | Tab | Live purpose | Status |
 |---|---|---|
-| لوحة التحكم | Project cost, sales, stock, **shutdown two scenarios** | [x] |
-| الفواتير | Read invoices; paid/pending; customer ledger | [x] |
+| لوحة التحكم | Project cost, sales, stock, **shutdown two scenarios**, mix bars, formula hover | [x] |
+| الفواتير | Read invoices; paid/pending; customer account modal; multi-print | [x] |
 | COGS | Recipe unit cost vs sell / margin | [x] |
-| الأرباح | P&L = sales − COGS of **sold** − opex − hawalek (not leftover stock) | [x] |
-| المستثمرون | Capital, shares, NAV includes stock | [x] |
+| الأرباح | P&L = sales − COGS of **sold** − opex − hawalek (not leftover stock); from/to window + print | [x] |
+| المستثمرون | Peak ≈ spent−sales; join-date profit; NAV × toward/peak | [x] |
 | المخزون | Ledger qty × cost + finished goods | [x] |
 | المشتريات | Buy-ins; ledger source of qty | [x] |
 | المواد الخام | Catalog + inline qty | [x] |
@@ -194,7 +194,8 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). **Finance** is a native eight-tool workspace on `feat/finance` (not merged).
+- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). **Finance** is a native eight-tool workspace on `feat/finance` (not merged). Finance invoices: customer tap opens an account modal; multi-select print original/net. Investor table uses live join-date + peak formulas, not a raw NAV split. Overview mix bars + formula hover; stock alerts live on المخزون; الأرباح has a from/to P&L window and print; unmatched invoice lines (no recipe) hinted on Overview / Recipes.
+- Finance still does **not** port the working-capital event diary (collection lag, stock-placement journal, weekly curve), prep print sheet, or the invoice print preset/margins toolbar (Look stays on Invoices).
 - Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are on `main`. Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.

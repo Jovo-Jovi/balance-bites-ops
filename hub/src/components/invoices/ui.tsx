@@ -80,10 +80,12 @@ export function Empty({ children }: { children: ReactNode }) {
 
 export function Accordion({
   title,
+  hint,
   children,
   defaultOpen = true,
 }: {
   title: string;
+  hint?: string;
   children: ReactNode;
   defaultOpen?: boolean;
 }) {
@@ -95,9 +97,14 @@ export function Accordion({
         onClick={() => setOpen((v) => !v)}
         className="bb-pressable flex w-full items-center gap-3 px-4 py-3 text-start"
       >
-        <span className="font-label flex-1 text-[11px] tracking-[0.16em] text-[var(--bb-gold)] uppercase">
+        <span className="font-label min-w-0 flex-1 text-[11px] tracking-[0.16em] text-[var(--bb-gold)] uppercase">
           {title}
         </span>
+        {hint ? (
+          <span className="shrink-0 text-xs font-normal tracking-normal text-[var(--bb-muted)] normal-case">
+            {hint}
+          </span>
+        ) : null}
         <span
           className={`text-sm text-[var(--bb-gold)] transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden

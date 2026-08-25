@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActionBtn, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
-import { fmt, fmtQty, INV_TYPES } from "@/lib/finance/helpers";
+import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
+import { fmt, fmtQty, INV_TYPES, todayISO } from "@/lib/finance/helpers";
 import { calcCOGS } from "@/lib/finance/recipes";
 import type { Category, Product } from "@/lib/invoices/types";
 import type { StockItem } from "@/lib/finance/types";
 import { useFinanceApp, type ItemKind } from "./finance-context";
 import { ItemModal } from "./item-modal";
-import { SectionChips } from "./section-chips";
+import { FinanceTable, SectionChips, StatCard, tdClass, thClass } from "./section-chips";
 
 const SECTIONS = [
   { id: "report", label: "دفتر الكميات" },
@@ -18,6 +18,33 @@ const SECTIONS = [
   { id: "catalog", label: "الكتالوج" },
   { id: "bom", label: "بطاقات المنتج" },
 ] as const;
+
+function StockAlertsStrip() {
+  const app = useFinanceApp();
+  const alerts = [
+    ...app.materials.map((i) => ({ i, type: "bb_materials" as const })),
+    ...app.packages.map((i) => ({ i, type: "bb_packages" as const })),
+    ...app.stickers.map((i) => ({ i, type: "bb_stickers" as const })),
+  ].filter(({ i, type }) => app.itemStatus(i, type) !== "ok");
+  if (!alerts.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {alerts.map(({ i, type }) => {
+        const st = app.itemStatus(i, type);
+        return (
+          <span
+            key={`${type}-${i.id}`}
+            className={`bb-glass px-3 py-1.5 text-xs ${
+              st === "crit" ? "text-[var(--bb-bad)]" : "text-[var(--bb-warn)]"
+            }`}
+          >
+            {i.name} · {st === "crit" ? "حرج" : "منخفض"} · {fmtQty(app.qtyOf(type, i.id, i))}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export function StockTool() {
   const [section, setSection] = useState<(typeof SECTIONS)[number]["id"]>("report");
@@ -37,54 +64,275 @@ export function StockTool() {
 function StockReport() {
   const app = useFinanceApp();
   const r = app.stockReport;
+  const catVal = (key: string) => r.byCat[key]?.val || 0;
+
   return (
     <>
-      <div className="grid gap-2 sm:grid-cols-3">
-        <p className="bb-glass p-3 text-sm">
-          الإجمالي <span dir="ltr">{fmt(r.grandVal)} EGP</span>
-        </p>
-        <p className="bb-glass p-3 text-sm">
-          نشط <span dir="ltr">{fmt(r.grandValActive)} EGP</span>
-        </p>
-        <p className="bb-glass p-3 text-sm">
-          غير نشط <span dir="ltr">{fmt(r.grandValInactive)} EGP</span>
-        </p>
+      <p className="text-xs text-[var(--bb-muted)]">
+        تاريخ التقرير: {todayISO()}
+        {app.invoices.length ? ` · ${app.invoices.length} فاتورة · بعد خصم المباع` : " · لا فواتير بعد"}
+      </p>
+      <StockAlertsStrip />
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="منتجات جاهزة" value={`${fmt(catVal("منتج جاهز"))} EGP`} />
+        <StatCard label="مواد خام" value={`${fmt(catVal("مواد خام"))} EGP`} />
+        <StatCard label="تغليف" value={`${fmt(catVal("تغليف"))} EGP`} />
+        <StatCard label="ملصقات" value={`${fmt(catVal("ملصقات"))} EGP`} />
+        <StatCard label="الإجمالي" value={`${fmt(r.grandVal)} EGP`} />
+        <StatCard label="نشط" value={`${fmt(r.grandValActive)} EGP`} />
+        <StatCard label="غير نشط" value={`${fmt(r.grandValInactive)} EGP`} />
       </div>
-      {r.lines.length === 0 ? (
-        <Empty>لا مخزون بعد</Empty>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-sm">
+      {r.deficits.length ? (
+        <div className="rounded-[var(--bb-radius)] border border-[var(--bb-bad)]/40 bg-[color-mix(in_srgb,var(--bb-bad)_8%,var(--bb-panel))] p-3 text-sm">
+          <p className="text-[var(--bb-bad)]">عجز (كمية سالبة — لا تُحسب في القيمة)</p>
+          <ul className="mt-2 space-y-1 text-xs text-[var(--bb-muted)]">
+            {r.deficits.map((d) => (
+              <li key={`${d.cat}-${d.name}`}>
+                {d.name} ({d.cat}): {fmtQty(d.qty)} {d.unit} · مشتريات {fmtQty(d.purchased)} − مستخدم{" "}
+                {fmtQty(d.used)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <Accordion title="ملخص الفئات" hint={`${r.lines.length} صنف`} defaultOpen>
+        <FinanceTable minWidth="36rem">
+          <thead>
+            <tr>
+              <th className={thClass}>الفئة</th>
+              <th className={thClass}>عدد</th>
+              <th className={thClass}>مشتريات</th>
+              <th className={thClass}>مباع</th>
+              <th className={thClass}>متبقي</th>
+              <th className={thClass}>قيمة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.cats.map((c) => {
+              const d = r.byCat[c.key];
+              return (
+                <tr key={c.key}>
+                  <td className={tdClass}>
+                    {c.icon} {d.label}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {d.count}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmtQty(d.purchased)}
+                  </td>
+                  <td className={`${tdClass} text-[var(--bb-muted)]`} dir="ltr">
+                    {fmtQty(d.sold)}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmtQty(d.remain)}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmt(d.val)}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr>
+              <td className={`${tdClass} text-[var(--bb-title)]`}>
+                الإجمالي (نشط {fmt(r.grandValActive)} + غير نشط {fmt(r.grandValInactive)})
+              </td>
+              <td className={tdClass} dir="ltr">
+                {r.lines.length}
+              </td>
+              <td className={tdClass} dir="ltr">
+                {fmtQty(r.grandPurchased)}
+              </td>
+              <td className={tdClass} dir="ltr">
+                {fmtQty(r.grandSold)}
+              </td>
+              <td className={tdClass} dir="ltr">
+                {fmtQty(r.grandRemain)}
+              </td>
+              <td className={tdClass} dir="ltr">
+                {fmt(r.grandVal)}
+              </td>
+            </tr>
+          </tbody>
+        </FinanceTable>
+      </Accordion>
+      <Accordion title="كل الأصناف" hint={`${r.lines.length}`} defaultOpen={false}>
+        {r.lines.length === 0 ? (
+          <Empty>لا مخزون بعد</Empty>
+        ) : (
+          <FinanceTable minWidth="48rem">
             <thead>
-              <tr className="text-start text-[var(--bb-muted)]">
-                <th className="p-2">الصنف</th>
-                <th className="p-2">النوع</th>
-                <th className="p-2">متبقي</th>
-                <th className="p-2">تكلفة</th>
-                <th className="p-2">قيمة</th>
+              <tr>
+                <th className={thClass}>النوع</th>
+                <th className={thClass}>الصنف</th>
+                <th className={thClass}>وحدة</th>
+                <th className={thClass}>مشتريات</th>
+                <th className={thClass}>مباع</th>
+                <th className={thClass}>متبقي</th>
+                <th className={thClass}>تكلفة</th>
+                <th className={thClass}>قيمة</th>
               </tr>
             </thead>
             <tbody>
               {r.lines.map((l, i) => (
-                <tr key={`${l.cat}-${l.name}-${i}`} className="border-t border-[var(--bb-line)]/50">
-                  <td className="p-2">{l.name}</td>
-                  <td className="p-2 text-[var(--bb-muted)]">{l.cat}</td>
-                  <td className={`p-2 ${l.qty < 0 ? "text-[var(--bb-bad)]" : ""}`} dir="ltr">
+                <tr key={`${l.cat}-${l.name}-${i}`}>
+                  <td className={`${tdClass} text-[var(--bb-muted)]`}>{l.cat}</td>
+                  <td className={tdClass}>
+                    {l.name}
+                    {l.activity === "inactive" ? (
+                      <span className="ms-2 text-[10px] text-[var(--bb-muted)]">غير نشط</span>
+                    ) : null}
+                  </td>
+                  <td className={tdClass}>{l.unit}</td>
+                  <td className={tdClass} dir="ltr">
+                    {fmtQty(l.purchased)}
+                  </td>
+                  <td className={`${tdClass} text-[var(--bb-muted)]`} dir="ltr">
+                    {fmtQty(l.sold)}
+                  </td>
+                  <td className={`${tdClass} ${l.qty < 0 ? "text-[var(--bb-bad)]" : ""}`} dir="ltr">
                     {fmtQty(l.qty)}
                   </td>
-                  <td className="p-2" dir="ltr">
+                  <td className={tdClass} dir="ltr">
                     {fmt(l.cpu)}
                   </td>
-                  <td className="p-2" dir="ltr">
+                  <td className={tdClass} dir="ltr">
                     {fmt(l.val)}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-      )}
+          </FinanceTable>
+        )}
+      </Accordion>
+      <Accordion title="منتجات جاهزة" hint={`${app.productSummary.length}`} defaultOpen>
+        {app.productSummary.length === 0 ? (
+          <Empty>لا بيانات — اربط الفواتير وسجّل الإنتاج</Empty>
+        ) : (
+          <FinanceTable minWidth="40rem">
+            <thead>
+              <tr>
+                <th className={thClass}>المنتج</th>
+                <th className={thClass}>إنتاج</th>
+                <th className={thClass}>مباع</th>
+                <th className={thClass}>رصيد</th>
+                <th className={thClass}>تكلفة وحدة</th>
+                <th className={thClass}>قيمة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {app.productSummary.map((row) => (
+                <tr key={row.productId || row.recipeId}>
+                  <td className={tdClass}>
+                    {row.name}
+                    {row.weight ? ` · ${row.weight}` : ""}
+                    {row.hasRecipe ? "" : (
+                      <span className="ms-2 text-[10px] text-[var(--bb-warn)]">بلا وصفة</span>
+                    )}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmtQty(row.produced)}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmtQty(row.sold)}
+                  </td>
+                  <td className={tdClass}>
+                    <InlineQty
+                      value={row.onHand}
+                      onCommit={(v) => {
+                        if (!row.productId || !row.recipeId) return;
+                        void app.applyProductStock(row.productId, row.recipeId, v);
+                      }}
+                    />
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {row.cogsPerUnit ? fmt(row.cogsPerUnit) : "—"}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmt(row.stockValue)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </FinanceTable>
+        )}
+      </Accordion>
+      <Accordion title="مواد خام" hint={`${app.materials.length}`} defaultOpen>
+        <ReportItemTable type="bb_materials" items={app.materials} />
+      </Accordion>
+      <Accordion title="تغليف وملصقات" hint={`${app.packages.length + app.stickers.length}`} defaultOpen>
+        <ReportItemTable type="bb_packages" items={app.packages} extra={app.stickers} />
+      </Accordion>
     </>
+  );
+}
+
+function InlineQty({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  return (
+    <TextInput
+      className="w-24"
+      key={String(value)}
+      defaultValue={String(value)}
+      onBlur={(e) => {
+        const v = parseFloat(String(e.target.value).replace(/,/g, ""));
+        if (Number.isNaN(v)) return;
+        if (Math.abs(v - value) < 0.0001) return;
+        onCommit(v);
+      }}
+    />
+  );
+}
+
+function ReportItemTable({
+  type,
+  items,
+  extra,
+}: {
+  type: ItemKind;
+  items: StockItem[];
+  extra?: StockItem[];
+}) {
+  const app = useFinanceApp();
+  const rows = extra
+    ? [
+        ...items.map((i) => ({ item: i, kind: type })),
+        ...extra.map((i) => ({ item: i, kind: "bb_stickers" as const })),
+      ]
+    : items.map((i) => ({ item: i, kind: type }));
+  if (!rows.length) return <Empty>لا أصناف</Empty>;
+  return (
+    <FinanceTable minWidth="36rem">
+      <thead>
+        <tr>
+          <th className={thClass}>الصنف</th>
+          <th className={thClass}>وحدة</th>
+          <th className={thClass}>رصيد</th>
+          <th className={thClass}>تكلفة</th>
+          <th className={thClass}>قيمة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ item, kind }) => {
+          const qty = app.qtyOf(kind, item.id, item);
+          const val = Math.max(0, qty) * (item.costPerUnit || 0);
+          return (
+            <tr key={`${kind}-${item.id}`}>
+              <td className={tdClass}>{item.name}</td>
+              <td className={tdClass}>{item.unit}</td>
+              <td className={tdClass}>
+                <InlineQty value={qty} onCommit={(v) => void app.applyTruthStock(kind, item.id, v)} />
+              </td>
+              <td className={tdClass} dir="ltr">
+                {fmt(item.costPerUnit)}
+              </td>
+              <td className={tdClass} dir="ltr">
+                {fmt(val)}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </FinanceTable>
   );
 }
 

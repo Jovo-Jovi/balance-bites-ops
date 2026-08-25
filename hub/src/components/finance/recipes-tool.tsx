@@ -1,21 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionBtn, Empty, TextInput } from "@/components/invoices/ui";
 import { fmt } from "@/lib/finance/helpers";
+import { unmatchedInvoiceLines } from "@/lib/finance/recipe-match";
 import { calcCOGS, recipeSellPrice } from "@/lib/finance/recipes";
 import type { Recipe } from "@/lib/finance/types";
 import { useFinanceApp } from "./finance-context";
 import { RecipeModal } from "./recipe-modal";
+import { UnmatchedLinesHint } from "./section-chips";
 
 export function RecipesTool() {
   const app = useFinanceApp();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Recipe | null | "new">(null);
   const list = app.recipes.filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase()));
+  const unmatched = useMemo(
+    () => unmatchedInvoiceLines(app.invoices, app.recipes),
+    [app.invoices, app.recipes],
+  );
 
   return (
     <div className="flex flex-col gap-4">
+      <UnmatchedLinesHint lines={unmatched} />
       <div className="flex flex-wrap gap-2">
         <ActionBtn onClick={() => setOpen("new")}>وصفة جديدة</ActionBtn>
         <TextInput className="max-w-xs" value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث..." />

@@ -1,8 +1,8 @@
 import type { Invoice, InvoiceLine, InvoicePayments, Product, ReturnRecord } from "@/lib/invoices/types";
 import { getReturnLineTotal } from "@/lib/invoices/returns";
 import { invoicePayStatus } from "@/lib/invoices/payments";
-import type { CustomerPayment, ProductionRun, Recipe, StockItem } from "./types";
-import { catalogInactive, num } from "./helpers";
+import type { CustomerPayment, OpCost, ProductionRun, Purchase, Recipe, StockItem } from "./types";
+import { catalogInactive, dateInRange, num, round2 } from "./helpers";
 import { calcCOGS, findRecipeForItem, isRecipeInactive } from "./recipes";
 import {
   aggregateHawalekByProduct,
@@ -401,6 +401,63 @@ export function buildMonthlyProfit(
     monthly[month].opcost += num(o.amount);
   });
   return monthly;
+}
+
+export type PeriodProfit = {
+  from: string;
+  to: string;
+  sales: number;
+  paid: number;
+  pending: number;
+  cogs: number;
+  opex: number;
+  hawalek: number;
+  purchases: number;
+  net: number;
+  invoiceCount: number;
+};
+
+export function buildPeriodProfit(opts: {
+  from?: string;
+  to?: string;
+  invoices: Invoice[];
+  returns: ReturnRecord[];
+  opCosts: OpCost[];
+  purchases: Purchase[];
+  recipes: Recipe[];
+  payments: InvoicePayments;
+  customerPayments: CustomerPayment[];
+  findItem: (type: string, id: string) => StockItem | null;
+}): PeriodProfit {
+  const from = String(opts.from || "").slice(0, 10);
+  const to = String(opts.to || "").slice(0, 10);
+  const invoices = opts.invoices.filter((inv) => dateInRange(inv.date, from, to));
+  const returns = opts.returns.filter((r) => dateInRange(r.date, from, to));
+  const opCosts = opts.opCosts.filter((o) => dateInRange(o.date, from, to));
+  const purch = opts.purchases.filter((p) => dateInRange(p.date, from, to));
+  const sales = aggregateSales(invoices, returns, opts.payments, opts.customerPayments);
+  const cogs = invoices.length
+    ? calcCOGSFromInvoices(invoices, opts.recipes, returns, opts.payments, opts.findItem).total
+    : 0;
+  const hawalek = invoices.length || returns.length
+    ? calcHawalekLoss(opts.recipes, returns, opts.findItem).writeoffCogs
+    : 0;
+  const opex = opCosts.reduce((s, o) => s + num(o.amount), 0);
+  const purchases = purch.reduce((s, p) => s + num(p.totalCost), 0);
+  const net = round2(sales.totalRevenue - cogs - opex - hawalek);
+  return {
+    from,
+    to,
+    sales: round2(sales.totalRevenue),
+    paid: round2(sales.totalPaid),
+    pending: round2(sales.totalPending),
+    cogs: round2(cogs),
+    opex: round2(opex),
+    hawalek: round2(hawalek),
+    purchases: round2(purchases),
+    net,
+    invoiceCount: invoices.length,
+  };
 }
 
 export function itemUsage(

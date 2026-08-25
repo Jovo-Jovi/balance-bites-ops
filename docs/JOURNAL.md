@@ -336,6 +336,10 @@ Design Waves A–D are on `main`. Feature branches `feat/design` and `feat/desig
 
 Waves A–E on `feat/finance` (not merged). Native eight tools under `hub/src/components/finance/` — **not** an HTML wrap. Same linen chrome and Invoices UI kit (portal Modal, ActionBtn). `writeFinanceKey` rejects `bb_label_templates` and color presets. Prep approve is the only `bb_invoices` write. Ledger, purchases, prep/production, returns, opex, dashboard shutdown pair, COGS, P&L, investors, R2 backups. Map: [FINANCE.md](FINANCE.md).
 
+UX polish vs live Stock Costs: purchases as a compact filtered table; stock report in accordion sections (summary / all SKUs / FG / materials / packaging); invoice cards with live fields + customer account modal + confirm on دفعة / سدّد الكل + multi-select print; investor peak / toward / join-date profit instead of splitting NAV equally.
+
+**Wave F1 (overview + period P&L):** اللوحة mix bars (spent / sales / stock) and formula hover on StatCard + shutdown columns; تنبيهات المخزون moved to المخزون → دفتر الكميات; الأرباح from/to window (invoices by invoice date, opex/hawalek/purchases by their date) + monthly CSS bars + print; unmatched-recipe hint on Overview / Recipes (same `findRecipeForItem` matcher). Invoices catalog hub copy is pick / print prices only.
+
 ---
 
 ## Still not done (do not tick as shipped)

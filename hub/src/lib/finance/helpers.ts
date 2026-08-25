@@ -99,3 +99,24 @@ export function isCompensation(cat: string) {
 export function adjSupplier(name: string) {
   return name === "تسوية جرد" || name === "رصيد افتتاحي";
 }
+
+export function dateInRange(date: string | undefined, from?: string, to?: string) {
+  const d = String(date || "").slice(0, 10);
+  if (from && d < from) return false;
+  if (to && d > to) return false;
+  return true;
+}
+
+/** `YYYY-MM` intersects a from/to day window. Blank dates mean all-time. */
+export function monthIntersectsWindow(month: string, from?: string, to?: string) {
+  if (!/^\d{4}-\d{2}$/.test(month)) return false;
+  const [ys, ms] = month.split("-");
+  const y = Number(ys);
+  const m = Number(ms);
+  const last = new Date(y, m, 0).getDate();
+  const start = `${month}-01`;
+  const end = `${month}-${String(last).padStart(2, "0")}`;
+  if (from && end < from) return false;
+  if (to && start > to) return false;
+  return true;
+}

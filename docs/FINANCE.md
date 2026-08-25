@@ -11,7 +11,7 @@ When building later slices, reuse hub chrome and CloudStore. Do **not** duplicat
 
 | id | Arabic | Component | Live `switchView` inside |
 |---|---|---|---|
-| `overview` | نظرة عامة | `overview-tool.tsx` | dash, cogs, profit, investors |
+| `overview` | نظرة عامة | `overview-tool.tsx` | dash, cogs, profit (from/to P&L), investors |
 | `invoices` | الفواتير | `invoices-tool.tsx` | invoice cards, paid/pending, customer ledger |
 | `stock` | المخزون | `stock-tool.tsx` | stock report, materials, packaging, stickers, catalog, product BOM cards |
 | `flow` | التحضير | `flow-tool.tsx` | prep, production |
@@ -64,9 +64,10 @@ Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report
 2. Skip `تسوية جرد` when the typed count equals the ledger.
 3. After a real purchase, bump the in-memory ledger immediately.
 4. Last purchase `costPerUnit` (including adjustments).
-5. Profit = sales − COGS of sold − opex − hawalek. Leftover stock is an asset.
+5. Profit = sales − COGS of sold − opex − hawalek. Leftover stock is an asset. Overview → الأرباح can filter that window by from/to (invoices by invoice date; opex / hawalek / purchases by their own date).
 6. Shutdown: pending always collected. Stock-as-cash vs stock-as-loss. Words ربح / خسارة.
 7. Do not mix prep-approve with production-approve.
+8. Investors: peak ≈ max(0, spent − sales); toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date (dated invoice net − adj COGS − hawalek − opex). Working-capital event book (collection lag, stock placement journal) is an explicit gap.
 
 ## Do not rebuild here
 

@@ -42,3 +42,7 @@ Dashboard (project cost, sales, stock, two shutdown columns), COGS, P&L, investo
 - Dumping default products, recipes, or presets.
 - GAAP / weighted-average “fixes” unless asked.
 - Jelly Kids dump, Desktop `bbLabel-*` scan, `import:apply`.
+
+## UX polish (after Waves A–E)
+
+Purchases table + date filters. Stock report in accordion sections. Invoice cards match live fields; customer tap opens an account modal; دفعة / سدّد الكل confirm; multi-select print original/net. Investor table uses peak ≈ spent−sales, toward/overflow, and join-date profit — not a raw NAV split. **Wave F1:** overview mix bars + formula hover; stock alerts on المخزون not اللوحة; date-window P&L print on الأرباح; unmatched-recipe hint. Working-capital event diary stays an approve-point.

@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { fmt, todayISO } from "@/lib/finance/helpers";
+import { useMemo, useState } from "react";
+import { fmt, monthIntersectsWindow, todayISO } from "@/lib/finance/helpers";
+import { buildPeriodProfit } from "@/lib/finance/analytics";
+import { periodRangeLabel, printPeriodProfit } from "@/lib/finance/print-period";
+import { unmatchedInvoiceLines } from "@/lib/finance/recipe-match";
 import { recipeSellPrice, calcCOGS } from "@/lib/finance/recipes";
 import { investorShareOf } from "@/lib/finance/reports";
+import { buildInvestorSnapshot } from "@/lib/finance/investors";
 import { ActionBtn, Empty, Field, Modal, Select, TextArea, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp } from "./finance-context";
-import { SectionChips, StatCard, plTone, plWord } from "./section-chips";
+import {
+  FinanceTable,
+  MixBar,
+  SectionChips,
+  StatCard,
+  UnmatchedLinesHint,
+  plTone,
+  plWord,
+  tdClass,
+  thClass,
+} from "./section-chips";
 
 const SECTIONS = [
   { id: "dash", label: "اللوحة" },
@@ -38,11 +52,10 @@ export function OverviewTool() {
 function Dash() {
   const app = useFinanceApp();
   const L = app.linked;
-  const alerts = [
-    ...app.materials.map((i) => ({ i, type: "bb_materials" as const })),
-    ...app.packages.map((i) => ({ i, type: "bb_packages" as const })),
-    ...app.stickers.map((i) => ({ i, type: "bb_stickers" as const })),
-  ].filter(({ i, type }) => app.itemStatus(i, type) !== "ok");
+  const unmatched = useMemo(
+    () => unmatchedInvoiceLines(app.invoices, app.recipes),
+    [app.invoices, app.recipes],
+  );
 
   return (
     <>
@@ -51,28 +64,58 @@ function Dash() {
           label="تكلفة المشروع"
           value={`${fmt(L.spent)} EGP`}
           hint={`مشتريات ${fmt(L.purchases)} · تشغيل ${fmt(L.opex)}`}
+          formula="المصروف = مشتريات + تشغيل"
         />
         <StatCard
           label="إجمالي المبيعات"
           value={`${fmt(L.gross)} EGP`}
           hint={`مدفوع ${fmt(L.paid)} · معلق ${fmt(L.pending)}`}
+          formula="المبيعات = مجموع الفواتير بعد المرتجع · مدفوع / معلق من حالة التحصيل"
         />
         <StatCard
           label="قيمة المخزون"
           value={`${fmt(L.stock)} EGP`}
           hint={`نشط ${fmt(L.stockActive)} · غير نشط ${fmt(L.stockInactive)}`}
+          formula="المخزون أصل بسعر التكلفة = مواد + تغليف + ملصقات + جاهز"
+        />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <MixBar
+          label="المصروف"
+          segments={[
+            { key: "purchases", label: "مشتريات", value: L.purchases, fill: "var(--bb-gold)" },
+            { key: "opex", label: "تشغيل", value: L.opex, fill: "var(--bb-muted)" },
+          ]}
+        />
+        <MixBar
+          label="المبيعات"
+          segments={[
+            { key: "paid", label: "مدفوع", value: L.paid, fill: "var(--bb-ok)" },
+            { key: "pending", label: "معلق", value: L.pending, fill: "var(--bb-warn)" },
+          ]}
+        />
+        <MixBar
+          label="المخزون"
+          segments={[
+            { key: "mat", label: "مواد", value: L.stockMat, fill: "var(--bb-title)" },
+            { key: "pkg", label: "تغليف", value: L.stockPkg, fill: "color-mix(in srgb, var(--bb-gold) 70%, var(--bb-title))" },
+            { key: "stk", label: "ملصقات", value: L.stockStk, fill: "var(--bb-gold)" },
+            { key: "fg", label: "جاهز", value: L.stockFg, fill: "color-mix(in srgb, var(--bb-ok) 55%, var(--bb-gold))" },
+          ]}
         />
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
         <ShutdownCol
           title="① المخزون يتحول إلى نقد"
           hint="تحصّل المعلق + تبيع/تسترد المخزون بسعر التكلفة"
+          formula="السيولة = مدفوع + معلق + مخزون بالتكلفة · النتيجة = السيولة − المصروف"
           liquid={L.shutdownLiquid}
           pl={L.shutdownPL}
         />
         <ShutdownCol
           title="② المخزون خسارة"
           hint="تحصّل المعلق فقط · المخزون المتبقي يُعدم ولا يُحوَّل"
+          formula="السيولة = مدفوع + معلق فقط · النتيجة = السيولة − المصروف. المعلق يُحصَّل في الحالتين"
           liquid={L.shutdownLiquidLoss}
           pl={L.shutdownPLLoss}
         />
@@ -82,28 +125,12 @@ function Dash() {
         المعلق يُحصَّل في الحالتين. المخزون بسعر التكلفة وليس سعر التجزئة.
       </p>
       <div className="grid gap-2 sm:grid-cols-4">
-        <StatCard label="مواد" value={`${fmt(L.stockMat)} EGP`} />
-        <StatCard label="تغليف" value={`${fmt(L.stockPkg)} EGP`} />
-        <StatCard label="ملصقات" value={`${fmt(L.stockStk)} EGP`} />
-        <StatCard label="جاهز" value={`${fmt(L.stockFg)} EGP`} />
+        <StatCard label="مواد" value={`${fmt(L.stockMat)} EGP`} formula="قيمة المواد الخام بالتكلفة" />
+        <StatCard label="تغليف" value={`${fmt(L.stockPkg)} EGP`} formula="قيمة التغليف بالتكلفة" />
+        <StatCard label="ملصقات" value={`${fmt(L.stockStk)} EGP`} formula="قيمة الملصقات بالتكلفة" />
+        <StatCard label="جاهز" value={`${fmt(L.stockFg)} EGP`} formula="منتج جاهز بالتكلفة (COGS للوحدة × الكمية)" />
       </div>
-      <div>
-        <h2 className="mb-2 text-sm text-[var(--bb-muted)]">تنبيهات المخزون</h2>
-        {alerts.length === 0 ? (
-          <Empty>جميع مستويات المخزون مقبولة</Empty>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {alerts.map(({ i, type }) => (
-              <li key={`${type}-${i.id}`} className="bb-glass flex justify-between p-3 text-sm">
-                <span>{i.name}</span>
-                <span className={app.itemStatus(i, type) === "crit" ? "text-[var(--bb-bad)]" : "text-[var(--bb-warn)]"}>
-                  {app.itemStatus(i, type) === "crit" ? "حرج" : "منخفض"} · {fmt(app.qtyOf(type, i.id, i))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <UnmatchedLinesHint lines={unmatched} />
     </>
   );
 }
@@ -111,17 +138,20 @@ function Dash() {
 function ShutdownCol({
   title,
   hint,
+  formula,
   liquid,
   pl,
 }: {
   title: string;
   hint: string;
+  formula: string;
   liquid: number;
   pl: number;
 }) {
   return (
     <div
-      className={`rounded-[var(--bb-radius)] border p-4 ${
+      title={formula}
+      className={`bb-pressable rounded-[var(--bb-radius)] border p-4 ${
         pl >= -0.009
           ? "border-[var(--bb-ok)]/40 bg-[color-mix(in_srgb,var(--bb-ok)_10%,var(--bb-panel))]"
           : "border-[var(--bb-bad)]/40 bg-[color-mix(in_srgb,var(--bb-bad)_10%,var(--bb-panel))]"
@@ -142,9 +172,22 @@ function ShutdownCol({
 
 function Cogs() {
   const app = useFinanceApp();
-  if (!app.recipes.length) return <Empty>لا وصفات — أضف وصفة لرؤية تكلفة الوحدة</Empty>;
+  const unmatched = useMemo(
+    () => unmatchedInvoiceLines(app.invoices, app.recipes),
+    [app.invoices, app.recipes],
+  );
+  if (!app.recipes.length) {
+    return (
+      <>
+        <UnmatchedLinesHint lines={unmatched} />
+        <Empty>لا وصفات — أضف وصفة لرؤية تكلفة الوحدة</Empty>
+      </>
+    );
+  }
   return (
-    <ul className="flex flex-col gap-2">
+    <>
+      <UnmatchedLinesHint lines={unmatched} />
+      <ul className="flex flex-col gap-2">
       {app.recipes.map((r) => {
         const cogs = calcCOGS(r, app.findItem).total;
         const sell = recipeSellPrice(r, app.products);
@@ -163,43 +206,148 @@ function Cogs() {
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </>
   );
 }
 
 function Profit() {
   const app = useFinanceApp();
-  const L = app.linked;
-  const months = Object.keys(app.monthly).sort().reverse();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const period = useMemo(
+    () =>
+      buildPeriodProfit({
+        from,
+        to,
+        invoices: app.invoices,
+        returns: app.returns,
+        opCosts: app.opCosts,
+        purchases: app.purchases,
+        recipes: app.recipes,
+        payments: app.payments,
+        customerPayments: app.customerPayments,
+        findItem: app.findItem,
+      }),
+    [
+      from,
+      to,
+      app.invoices,
+      app.returns,
+      app.opCosts,
+      app.purchases,
+      app.recipes,
+      app.payments,
+      app.customerPayments,
+      app.findItem,
+    ],
+  );
+  const months = Object.keys(app.monthly)
+    .filter((m) => monthIntersectsWindow(m, from, to))
+    .sort()
+    .reverse();
+  const maxRev = Math.max(1, ...months.map((m) => app.monthly[m].revenue));
+
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="مبيعات" value={`${fmt(L.gross)} EGP`} />
-        <StatCard label="تكلفة المباع" value={`${fmt(L.cogs)} EGP`} />
-        <StatCard label="تشغيل + حوالك" value={`${fmt(L.opex + L.hawalekCogs)} EGP`} />
+        <Field label="من">
+          <TextInput type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </Field>
+        <Field label="إلى">
+          <TextInput type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </Field>
+        <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
+          <ActionBtn
+            tone="ghost"
+            onClick={() => {
+              setFrom("");
+              setTo("");
+            }}
+          >
+            كل الفترة
+          </ActionBtn>
+          <ActionBtn
+            onClick={() => {
+              if (!printPeriodProfit(period)) {
+                window.alert("اسمح بالنوافذ المنبثقة للطباعة");
+              }
+            }}
+          >
+            طباعة الفترة
+          </ActionBtn>
+          <span className="text-xs text-[var(--bb-muted)]">{periodRangeLabel(from, to)}</span>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="مبيعات"
+          value={`${fmt(period.sales)} EGP`}
+          formula="مجموع الفواتير في الفترة (بتاريخ الفاتورة) بعد مرتجعات الفترة"
+        />
+        <StatCard
+          label="مدفوع / معلق"
+          value={`${fmt(period.paid)} / ${fmt(period.pending)}`}
+          formula="حالة التحصيل الحالية للفواتير داخل الفترة"
+        />
+        <StatCard
+          label="تكلفة المباع"
+          value={`${fmt(period.cogs)} EGP`}
+          formula="COGS الوصفة × كمية المباع في فواتير الفترة"
+        />
+        <StatCard
+          label="تشغيل + حوالك"
+          value={`${fmt(period.opex + period.hawalek)} EGP`}
+          formula="تشغيل وحوالك بتاريخها داخل الفترة"
+        />
         <StatCard
           label="صافي الربح"
-          value={`${fmt(L.netProfit)} EGP`}
-          tone={plTone(L.netProfit)}
+          value={`${fmt(period.net)} EGP`}
+          tone={plTone(period.net)}
           hint="مبيعات − COGS المباع − تشغيل − حوالك. المخزون أصل."
+          formula="صافي = مبيعات − تكلفة المباع − تشغيل − حوالك. المخزون المتبقي لا يُطرح"
+        />
+        <StatCard
+          label="مشتريات الفترة"
+          value={`${fmt(period.purchases)} EGP`}
+          formula="مشتريات بتاريخها — أصل مخزون وليست في سطر الربح"
         />
       </div>
       {months.length === 0 ? (
-        <Empty>لا أشهر بعد</Empty>
+        <Empty>لا أشهر في هذه الفترة</Empty>
       ) : (
         <ul className="flex flex-col gap-2">
           {months.map((m) => {
             const row = app.monthly[m];
             const net = row.revenue - row.cogs - row.opcost - row.hawalekCogs;
+            const paidPct = maxRev > 0 ? (row.paid / maxRev) * 100 : 0;
+            const pendPct = maxRev > 0 ? (row.pending / maxRev) * 100 : 0;
+            const hover = `مدفوع ${fmt(row.paid)} · معلق ${fmt(row.pending)} · صافي ${fmt(net)}`;
             return (
-              <li key={m} className="bb-glass flex flex-wrap justify-between gap-2 p-3 text-sm">
-                <span>{m}</span>
-                <span dir="ltr">
-                  {fmt(row.revenue)} − {fmt(row.cogs)} − {fmt(row.opcost)} − {fmt(row.hawalekCogs)} ={" "}
-                  <span className={plTone(net) === "ok" ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"}>
-                    {fmt(net)}
+              <li key={m} className="bb-glass bb-pressable p-3 text-sm" title={hover}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>{m}</span>
+                  <span
+                    className={plTone(net) === "ok" ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"}
+                    dir="ltr"
+                  >
+                    {net >= 0 ? "+" : ""}
+                    {fmt(net)} EGP
                   </span>
-                </span>
+                </div>
+                <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
+                  <div
+                    className="absolute inset-y-0 start-0 rounded-full bg-[var(--bb-ok)]/85"
+                    style={{ width: `${paidPct}%` }}
+                  />
+                  <div
+                    className="absolute inset-y-0 bg-[var(--bb-warn)]/70"
+                    style={{ insetInlineStart: `${paidPct}%`, width: `${pendPct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-[var(--bb-muted)]" dir="ltr">
+                  {fmt(row.revenue)} − {fmt(row.cogs)} − {fmt(row.opcost)} − {fmt(row.hawalekCogs)}
+                </p>
               </li>
             );
           })}
@@ -211,93 +359,288 @@ function Profit() {
 
 function Investors() {
   const app = useFinanceApp();
-  const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState<(typeof app.investors)[number] | "new" | null>(null);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [joinDate, setJoinDate] = useState(todayISO());
   const L = app.linked;
-  const shares = investorShareOf(app.investors, L.nav, app.investorTarget.split || "share");
+  const snap = useMemo(
+    () =>
+      buildInvestorSnapshot({
+        investors: app.investors,
+        plan: app.investorTarget,
+        invoices: app.invoices,
+        returns: app.returns,
+        recipes: app.recipes,
+        opCosts: app.opCosts,
+        ledger: app.customerLedger,
+        linked: L,
+        findItem: app.findItem,
+      }),
+    [
+      app.investors,
+      app.investorTarget,
+      app.invoices,
+      app.returns,
+      app.recipes,
+      app.opCosts,
+      app.customerLedger,
+      L,
+      app.findItem,
+    ],
+  );
+  const earliest = snap.rows.reduce((m, r) => (r.joinDay && r.joinDay < m ? r.joinDay : m), "9999-99-99");
+  const visibleNow = L.stock + L.pending + L.cashIfAny;
+
+  function start(rec?: (typeof app.investors)[number]) {
+    setEdit(rec || "new");
+    setName(rec?.name || "");
+    setAmount(rec ? String(rec.amount) : "");
+    setPhone(rec?.phone || "");
+    setNotes(rec?.notes || "");
+    setJoinDate(rec?.date || todayISO());
+  }
+
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="رأس المال المدفوع" value={`${fmt(L.invested)} EGP`} />
-        <StatCard label="NAV (يشمل المخزون)" value={`${fmt(L.nav)} EGP`} hint="نقد + مخزون + معلق" />
-        <StatCard label="صافي الربح" value={`${fmt(L.netProfit)} EGP`} tone={plTone(L.netProfit)} />
+      <p className="text-xs text-[var(--bb-muted)]">
+        الذروة ≈ المصروف − المبيعات (رأس المال الذي لم يُعَد من البيع). حصة قيمة المشروع = NAV × (الحصة نحو
+        الفعلي / الذروة). الربح يُوزَّع من تاريخ دخول كل مستثمر فقط — الربح السابق للمستثمرين الأقدم.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="رأس المال الأصلي (ذروة)" value={`${fmt(snap.peak)} EGP`} />
+        <StatCard label="مسجّل للمستثمرين" value={`${fmt(L.invested)} EGP`} />
+        <StatCard
+          label="المطلوب للوضع الحالي"
+          value={`${fmt(snap.cap.gap)} EGP`}
+          tone={snap.cap.gap > 0.009 ? "warn" : "ok"}
+        />
+        <StatCard
+          label="فائض نقدي"
+          value={`${fmt(snap.cap.overflow)} EGP`}
+          tone={snap.cap.overflow > 0.009 ? "warn" : undefined}
+        />
+        <StatCard label="أُعيد من المبيعات" value={`${fmt(snap.recycled)} EGP`} />
+        <StatCard label="السيولة التقديرية" value={`${fmt(L.cash)} EGP`} tone={L.cash >= -0.009 ? "ok" : "warn"} />
+        <StatCard label="قيمة المشروع NAV" value={`${fmt(L.nav)} EGP`} hint="نقد + مخزون + معلق" />
+        <StatCard
+          label="عائد على رأس المال"
+          value={snap.roi == null ? "—" : `${snap.roi >= 0 ? "+" : ""}${snap.roi.toFixed(1)}%`}
+          tone={plTone(L.netProfit)}
+        />
       </div>
+      <p className="text-xs text-[var(--bb-muted)]">
+        النقد = مسجّل {fmt(L.invested)} + محصّل {fmt(L.paid)} − مصروف {fmt(L.spent)} = {fmt(L.cash)}. ما تراه الآن =
+        مخزون {fmt(L.stock)} + معلق {fmt(L.pending)} + نقد إن وُجد {fmt(L.cashIfAny)} = {fmt(visibleNow)}.
+      </p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="المطلوب">
+        <Field label="زيادة رأس مال إضافية (اختياري)">
           <TextInput
             type="number"
             value={String(app.investorTarget.needed || "")}
             onChange={(e) => app.saveInvestorTarget({ needed: parseFloat(e.target.value) || 0 })}
           />
         </Field>
-        <Field label="التوزيع">
+        <Field label="توزيع الفعلي">
           <Select
             value={app.investorTarget.split || "equal"}
             onChange={(e) =>
               app.saveInvestorTarget({ split: e.target.value === "share" ? "share" : "equal" })
             }
           >
+            <option value="share">حسب الحصة الحالية</option>
             <option value="equal">بالتساوي</option>
-            <option value="share">حسب الحصة</option>
           </Select>
         </Field>
         <Field label="بداية المشروع">
           <TextInput
             type="date"
-            value={app.investorTarget.projectStart || ""}
+            value={app.investorTarget.projectStart || snap.start || ""}
             onChange={(e) => app.saveInvestorTarget({ projectStart: e.target.value })}
           />
         </Field>
       </div>
-      <ActionBtn onClick={() => setOpen(true)}>مستثمر جديد</ActionBtn>
+      <div className="flex flex-wrap gap-2">
+        <ActionBtn onClick={() => start()}>مستثمر جديد</ActionBtn>
+        <ActionBtn
+          tone="ghost"
+          onClick={() => {
+            if (snap.peak <= 0.009) {
+              window.alert("لا يوجد رأس مال فعلي محسوب بعد");
+              return;
+            }
+            if (!app.investors.length) {
+              window.alert("أضف المستثمرين أولاً ثم وزّع رأس المال الفعلي");
+              return;
+            }
+            const mode = app.investorTarget.split === "equal" ? "بالتساوي" : "حسب الحصة الحالية";
+            if (app.investors.length === 1) {
+              if (
+                !window.confirm(
+                  "يوجد مستثمر واحد فقط. التعيين سيجعل حصته 100% من رأس المال الفعلي.\nإذا كان هناك شركاء آخرون، أضفهم أولاً ثم وزّع.\nالمتابعة على أي حال؟",
+                )
+              ) {
+                return;
+              }
+            }
+            if (
+              !window.confirm(
+                `تعيين مبالغ المستثمرين حسب رأس المال الفعلي ${fmt(snap.peak)} EGP (${mode})؟\nالمصروف الإجمالي يُعاد تدويره من المبيعات ولا يُقسَم كما هو.`,
+              )
+            ) {
+              return;
+            }
+            app.assignInvestorAmounts(
+              investorShareOf(app.investors, snap.peak, app.investorTarget.split || "share"),
+            );
+          }}
+        >
+          تعيين كرأس مال المستثمرين
+        </ActionBtn>
+      </div>
       {app.investors.length === 0 ? (
-        <Empty>لا مستثمرين بعد</Empty>
+        <Empty>لا مستثمرين بعد — أضف الشركاء ثم اضغط «تعيين كرأس مال المستثمرين» لتوزيع رأس المال الفعلي</Empty>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {app.investors.map((p) => (
-            <li key={p.id} className="bb-glass flex flex-wrap items-center justify-between gap-2 p-3">
-              <div>
-                <p className="text-[var(--bb-title)]">{p.name}</p>
-                <p className="text-xs text-[var(--bb-muted)]" dir="ltr">
-                  حصة {fmt(p.amount)} · NAV {fmt(shares[p.id] || 0)}
-                </p>
-              </div>
-              <ActionBtn tone="danger" onClick={() => app.removeInvestor(p.id)}>
-                حذف
-              </ActionBtn>
-            </li>
-          ))}
-        </ul>
+        <FinanceTable minWidth="64rem">
+          <thead>
+            <tr>
+              <th className={thClass}>المستثمر</th>
+              <th className={thClass}>تاريخ الدخول</th>
+              <th className={thClass}>المبلغ المسجّل</th>
+              <th className={thClass}>الحصة</th>
+              <th className={thClass}>حصة الفعلي</th>
+              <th className={thClass}>المطلوب منه</th>
+              <th className={thClass}>حصة الربح بعد الدخول</th>
+              <th className={thClass}>حصة قيمة المشروع</th>
+              <th className={thClass} />
+            </tr>
+          </thead>
+          <tbody>
+            {snap.rows.map((row) => {
+              const p = row.investor;
+              const isNew = row.joinDay > earliest;
+              return (
+                <tr key={p.id}>
+                  <td className={tdClass}>
+                    <span className="text-[var(--bb-title)]">{p.name}</span>
+                    {p.phone ? <div className="text-xs text-[var(--bb-muted)]">{p.phone}</div> : null}
+                  </td>
+                  <td className={tdClass}>
+                    {row.joinDay}
+                    {isNew ? <div className="text-[10px] text-[var(--bb-muted)]">من هذا التاريخ فقط</div> : null}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmt(row.recorded)}
+                    {row.overflow > 0.009 ? (
+                      <div className="text-[10px] text-[var(--bb-warn)]">فائض {fmt(row.overflow)}</div>
+                    ) : null}
+                  </td>
+                  <td className={tdClass}>
+                    <span dir="ltr">{row.pctActual.toFixed(1)}%</span>
+                    <div className="text-[10px] text-[var(--bb-muted)]" dir="ltr">
+                      من المسجّلين {row.pctRecorded.toFixed(1)}%
+                    </div>
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmt(row.toward)}
+                  </td>
+                  <td className={tdClass}>
+                    {row.extraNeed > 0.009 ? (
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <span className="text-[var(--bb-bad)]" dir="ltr">
+                          {fmt(row.extraNeed)}
+                        </span>
+                        <ActionBtn
+                          tone="ghost"
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                `إضافة ${fmt(row.extraNeed)} EGP إلى «${p.name}»؟ يصبح رأس ماله ${fmt(p.amount + row.extraNeed)} EGP.`,
+                              )
+                            ) {
+                              return;
+                            }
+                            app.saveInvestor({ ...p, amount: p.amount + row.extraNeed });
+                            app.saveInvestorTarget({
+                              needed: Math.max(0, (app.investorTarget.needed || 0) - row.extraNeed),
+                            });
+                          }}
+                        >
+                          أضف
+                        </ActionBtn>
+                      </span>
+                    ) : snap.cap.gap > 0.009 ? (
+                      <span className="text-xs text-[var(--bb-muted)]">يتبقى للقادمين</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className={`${tdClass} ${plTone(row.profitAfterJoin) === "ok" ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"}`} dir="ltr">
+                    {row.profitAfterJoin >= 0 ? "+" : ""}
+                    {fmt(row.profitAfterJoin)}
+                    {isNew && Math.abs(row.profitAfterJoin) < 0.01 ? (
+                      <div className="text-[10px] text-[var(--bb-muted)]">مال جديد — الربح السابق ليس له</div>
+                    ) : null}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmt(row.navShare)}
+                  </td>
+                  <td className={`${tdClass} whitespace-nowrap`}>
+                    <ActionBtn tone="ghost" onClick={() => start(p)}>
+                      تعديل
+                    </ActionBtn>{" "}
+                    <ActionBtn
+                      tone="danger"
+                      onClick={() => {
+                        if (window.confirm(`حذف المستثمر «${p.name}»؟`)) app.removeInvestor(p.id);
+                      }}
+                    >
+                      حذف
+                    </ActionBtn>
+                  </td>
+                </tr>
+              );
+            })}
+            {snap.cap.gap > 0.009 ? (
+              <tr>
+                <td className={tdClass} colSpan={4}>
+                  غير موزّع بعد
+                  <div className="text-[10px] text-[var(--bb-muted)]">يُسجَّل عند إضافة باقي المستثمرين</div>
+                </td>
+                <td className={tdClass} dir="ltr">
+                  {fmt(snap.cap.gap)}
+                </td>
+                <td className={tdClass} colSpan={4} />
+              </tr>
+            ) : null}
+          </tbody>
+        </FinanceTable>
       )}
       <Modal
-        open={open}
-        title="مستثمر"
-        onClose={() => setOpen(false)}
+        open={edit !== null}
+        title={edit && edit !== "new" ? "تعديل مستثمر" : "مستثمر"}
+        onClose={() => setEdit(null)}
         footer={
           <>
             <ActionBtn
               onClick={() => {
                 if (!name.trim()) return;
                 app.saveInvestor({
+                  id: edit && edit !== "new" ? edit.id : undefined,
                   name: name.trim(),
                   amount: parseFloat(amount) || 0,
                   phone,
                   notes,
-                  date: todayISO(),
+                  date: joinDate || todayISO(),
                 });
-                setOpen(false);
-                setName("");
-                setAmount("");
-                setPhone("");
-                setNotes("");
+                setEdit(null);
               }}
             >
               حفظ
             </ActionBtn>
-            <ActionBtn tone="ghost" onClick={() => setOpen(false)}>
+            <ActionBtn tone="ghost" onClick={() => setEdit(null)}>
               إلغاء
             </ActionBtn>
           </>
@@ -309,6 +652,9 @@ function Investors() {
           </Field>
           <Field label="المبلغ">
             <TextInput type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </Field>
+          <Field label="تاريخ الدخول">
+            <TextInput type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} />
           </Field>
           <Field label="هاتف">
             <TextInput value={phone} onChange={(e) => setPhone(e.target.value)} />

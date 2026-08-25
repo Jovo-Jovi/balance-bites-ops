@@ -1,5 +1,5 @@
 import { calcTotals, esc, fmt } from "./helpers";
-import { buildInvoicePrintHtml } from "./print-layout";
+import { buildInvoicePageHtml, buildInvoicePrintHtml, invoiceProCss } from "./print-layout";
 import { enrichInvoice } from "./returns";
 import type {
   Category,
@@ -50,6 +50,42 @@ export function printInvoiceDocument(opts: {
     items: liveItems,
     autoPrint: true,
   });
+  const w = window.open("", "_blank", "width=820,height=960");
+  if (!w) return false;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  return true;
+}
+
+export function printInvoiceDocuments(opts: {
+  drafts: InvoiceDraft[];
+  theme: InvoiceTheme;
+  strings: InvoiceStrings;
+  mode: "original" | "net";
+  returns: ReturnRecord[];
+  invoices: Invoice[];
+  fitOne: boolean;
+  pageSize: PrintPageSize;
+  margins: PrintMargins;
+}) {
+  if (!opts.drafts.length) return false;
+  if (opts.drafts.length === 1) {
+    return printInvoiceDocument({ ...opts, draft: opts.drafts[0] });
+  }
+  const css = invoiceProCss(opts.theme, opts.pageSize, opts.margins, false);
+  const pages = opts.drafts
+    .map((draft) => {
+      const items = draft.items.filter((it) => String(it.name || "").trim());
+      return buildInvoicePageHtml({ ...opts, draft, items });
+    })
+    .join("");
+  const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<title>${esc(opts.strings.brand)} — ${opts.drafts.length}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>${css}</style></head>
+<body><div class="inv-doc"><div class="inv-pattern"></div>${pages}</div>
+<script>window.onload=function(){window.print();};<\/script></body></html>`;
   const w = window.open("", "_blank", "width=820,height=960");
   if (!w) return false;
   w.document.open();

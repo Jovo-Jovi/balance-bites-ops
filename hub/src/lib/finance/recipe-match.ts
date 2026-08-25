@@ -1,4 +1,5 @@
-import type { InvoiceLine } from "@/lib/invoices/types";
+import type { Invoice, InvoiceLine } from "@/lib/invoices/types";
+import { num } from "./helpers";
 import type { Recipe } from "./types";
 
 export function findRecipeForItem(
@@ -34,4 +35,35 @@ export function findRecipeByProductId(
 ) {
   if (!productId) return null;
   return recipes.find((r) => r.productId === productId) || null;
+}
+
+export type UnmatchedInvoiceLine = {
+  invoiceId: string;
+  invoiceNumber: string;
+  date: string;
+  customerName: string;
+  name: string;
+  qty: number;
+};
+
+/** Lines that `findRecipeForItem` cannot join — same matcher, no new rules. */
+export function unmatchedInvoiceLines(invoices: Invoice[], recipes: Recipe[]) {
+  const out: UnmatchedInvoiceLine[] = [];
+  invoices.forEach((inv) => {
+    (inv.items || []).forEach((it) => {
+      if (num(it.qty) <= 0) return;
+      const name = String(it.name || "").trim();
+      if (!name || name.toLowerCase() === "discount") return;
+      if (findRecipeForItem(it, recipes)) return;
+      out.push({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber || "",
+        date: inv.date || "",
+        customerName: inv.customerName || "",
+        name: it.name,
+        qty: num(it.qty),
+      });
+    });
+  });
+  return out;
 }

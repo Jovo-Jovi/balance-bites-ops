@@ -16,6 +16,7 @@ import {
   asRecord,
   emptyStockItem,
   financeId,
+  fmt,
   num,
   roundQty,
   todayISO,
@@ -56,6 +57,7 @@ import {
 import {
   buildCustomerLedger,
   invoicesToMarkPaid,
+  invCustKey,
   settleAmount,
 } from "@/lib/finance/customer-ledger";
 import {
@@ -78,7 +80,7 @@ import {
 } from "@/lib/finance/backups";
 import { normalizeDisposition } from "@/lib/finance/returns-live";
 import { nextInvoiceNumber, draftFromInvoice } from "@/lib/invoices/helpers";
-import { printInvoiceDocument } from "@/lib/invoices/print";
+import { printInvoiceDocument, printInvoiceDocuments } from "@/lib/invoices/print";
 import { parseInv2, parsePrintLookId, resolvePrintTheme } from "@/lib/invoices/look";
 import { parseMargins, parsePageSize } from "@/lib/invoices/print-layout";
 import type {
@@ -150,6 +152,7 @@ type FinanceContextValue = {
   saveReturn: (data: Omit<ReturnRecord, "id"> & { id?: string }) => void;
   removeReturn: (id: string) => void;
   setPayment: (invoiceId: string, status: "paid" | "pending") => void;
+  toggleInvoicePaid: (invoiceId: string) => { ok: boolean; msg?: string };
   applyCustomerPayment: (data: {
     customerKey: string;
     mode: string;
@@ -157,8 +160,9 @@ type FinanceContextValue = {
     date?: string;
     notes?: string;
     invoiceId?: string;
-  }) => { ok: boolean; msg?: string };
+  }) => { ok: boolean; msg?: string; amount?: number; remaining?: number };
   removeCustomerPayment: (id: string) => void;
+  assignInvestorAmounts: (amounts: Record<string, number>) => void;
   saveOpCost: (data: Omit<OpCost, "id"> & { id?: string }) => void;
   removeOpCost: (id: string) => void;
   saveInvestor: (data: Omit<Investor, "id"> & { id?: string }) => void;
@@ -175,7 +179,8 @@ type FinanceContextValue = {
   approveProduction: (id: string) => Promise<boolean>;
   addProductionRun: (recipeId: string, units: number, notes: string, date?: string) => void;
   prepareLabelOpen: (stickerId: string) => void;
-  printSavedInvoice: (invoiceId: string) => void;
+  printSavedInvoice: (invoiceId: string, mode?: "original" | "net") => void;
+  printSavedInvoices: (invoiceIds: string[], mode?: "original" | "net") => void;
   createNamedBackup: (label: string) => Promise<boolean>;
   restoreNamedBackup: (id: string, load: (id: string) => Promise<unknown>) => Promise<boolean>;
   itemStatus: (item: StockItem, type: ItemKind) => "ok" | "low" | "crit";
@@ -753,18 +758,68 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         readArr<CustomerPayment>("bb_customer_payments"),
       );
       const c2 = led2.byCustomer[data.customerKey];
+      const remaining = c2?.remaining ?? Math.max(0, c.remaining - amount);
       if (c2) {
         const all = asRecord<InvoicePayments>(CloudStore.get("bb_invoice_payments", {}));
         const next = { ...all };
         invoicesToMarkPaid(c2).forEach((id) => {
           next[id] = { status: "paid", updatedAt: todayISO() };
         });
+        if (data.invoiceId && data.mode === "invoice_paid") {
+          next[data.invoiceId] = { status: "paid", updatedAt: todayISO() };
+        }
         void writeFinanceKey("bb_invoice_payments", next);
       }
-      toast.push("سُجّلت الدفعة", "ok");
-      return { ok: true };
+      toast.push(
+        remaining < 0.009
+          ? `تم سداد ${fmt(amount)} EGP · الحساب مُسوّى`
+          : `دفعة ${fmt(amount)} EGP · متبقي ${fmt(remaining)}`,
+        "ok",
+      );
+      return { ok: true, amount, remaining };
     },
     [payments, toast],
+  );
+
+  const toggleInvoicePaid = useCallback(
+    (invoiceId: string) => {
+      const all = asRecord<InvoicePayments>(CloudStore.get("bb_invoice_payments", {}));
+      const current = all[invoiceId]?.status === "paid" ? "paid" : "pending";
+      if (current === "paid") {
+        void writeFinanceKey(
+          "bb_customer_payments",
+          readArr<CustomerPayment>("bb_customer_payments").filter(
+            (p) => !(p.mode === "invoice_paid" && p.invoiceId === invoiceId),
+          ),
+        );
+        void writeFinanceKey("bb_invoice_payments", {
+          ...all,
+          [invoiceId]: { status: "pending", updatedAt: todayISO() },
+        });
+        toast.push("عُلّقت الفاتورة", "ok");
+        return { ok: true };
+      }
+      const led = buildCustomerLedger(
+        readArr<Invoice>("bb_invoices"),
+        readArr<ReturnRecord>("bb_returns"),
+        all,
+        readArr<CustomerPayment>("bb_customer_payments"),
+      );
+      const row = led.byInvoice[invoiceId];
+      if (row && row.remaining > 0.009) {
+        return applyCustomerPayment({
+          customerKey: invCustKey(row.inv) || "_none",
+          mode: "invoice_paid",
+          amount: row.remaining,
+          invoiceId,
+          notes: `تسجيل مدفوع ${row.inv.invoiceNumber || ""}`,
+        });
+      }
+      setPayment(invoiceId, "paid");
+      toast.push("سُجّلت مدفوعة", "ok");
+      return { ok: true };
+    },
+    [applyCustomerPayment, setPayment, toast],
   );
 
   const removeCustomerPayment = useCallback((id: string) => {
@@ -837,6 +892,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       projectStart: "",
     }) || {}) as InvestorTarget;
     void writeFinanceKey("bb_investor_target", { ...cur, ...patch });
+  }, []);
+
+  const assignInvestorAmounts = useCallback((amounts: Record<string, number>) => {
+    const arr = readArr<Investor>("bb_investors").map((p) =>
+      amounts[p.id] != null ? { ...p, amount: num(amounts[p.id]) } : p,
+    );
+    void writeFinanceKey("bb_investors", arr);
   }, []);
 
   const setPrepLines = useCallback((lines: PrepLine[]) => {
@@ -1034,7 +1096,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   );
 
   const printSavedInvoice = useCallback(
-    (invoiceId: string) => {
+    (invoiceId: string, mode: "original" | "net" = "original") => {
       const inv = invoices.find((i) => i.id === invoiceId);
       if (!inv) {
         toast.push("لم يتم إيجاد الفاتورة", "warn");
@@ -1045,7 +1107,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         draft: draftFromInvoice(inv),
         theme: resolvePrintTheme(printLook, snap.C, presets),
         strings: snap.S,
-        mode: "original",
+        mode,
         returns,
         invoices,
         fitOne,
@@ -1053,6 +1115,44 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         margins,
       });
       if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+    },
+    [fitOne, invoices, margins, pageSize, presets, printLook, returns, toast],
+  );
+
+  const printSavedInvoices = useCallback(
+    (invoiceIds: string[], mode: "original" | "net" = "original") => {
+      if (!invoiceIds.length) {
+        toast.push("حدد فاتورة واحدة على الأقل", "warn");
+        return;
+      }
+      const byId = new Map(invoices.map((inv) => [inv.id, inv]));
+      const selected = invoiceIds
+        .map((id) => byId.get(id))
+        .filter((inv): inv is Invoice => !!inv)
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+      if (!selected.length) {
+        toast.push("لم يتم إيجاد الفواتير المحددة", "warn");
+        return;
+      }
+      const snap = parseInv2(CloudStore.get("bb_inv2", {}));
+      const ok = printInvoiceDocuments({
+        drafts: selected.map((inv) => draftFromInvoice(inv)),
+        theme: resolvePrintTheme(printLook, snap.C, presets),
+        strings: snap.S,
+        mode,
+        returns,
+        invoices,
+        fitOne: selected.length === 1 ? fitOne : false,
+        pageSize,
+        margins,
+      });
+      if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+      else {
+        toast.push(
+          `${mode === "net" ? "بعد المرتجع" : "أصلية"} · ${selected.length} فاتورة`,
+          "ok",
+        );
+      }
     },
     [fitOne, invoices, margins, pageSize, presets, printLook, returns, toast],
   );
@@ -1173,6 +1273,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     saveReturn,
     removeReturn,
     setPayment,
+    toggleInvoicePaid,
     applyCustomerPayment,
     removeCustomerPayment,
     saveOpCost,
@@ -1180,6 +1281,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     saveInvestor,
     removeInvestor,
     saveInvestorTarget,
+    assignInvestorAmounts,
     setPrepLines,
     setPrepProdMode,
     addToCustomerDraft,
@@ -1192,6 +1294,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     addProductionRun,
     prepareLabelOpen,
     printSavedInvoice,
+    printSavedInvoices,
     createNamedBackup,
     restoreNamedBackup,
     itemStatus,

@@ -265,3 +265,8 @@ export function settleAmount(cust: CustomerLedgerCard, mode: string) {
 export function invoicesToMarkPaid(cust: CustomerLedgerCard) {
   return cust.invoices.filter((row) => row.remaining < 0.009 && !row.fullReturn).map((row) => row.inv.id);
 }
+
+export function lastDueInvoice(cust: CustomerLedgerCard) {
+  const due = cust.invoices.filter((r) => r.remaining > 0.009);
+  return due.length ? due[due.length - 1] : null;
+}
