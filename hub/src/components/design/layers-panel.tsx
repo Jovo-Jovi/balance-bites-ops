@@ -107,6 +107,8 @@ export function LayersPanel() {
                     step={size.step}
                     value={size.value}
                     onChange={(e) => app.patchLayer(layer.id, { size: Number(e.target.value) })}
+                    onPointerUp={() => app.syncCutPath()}
+                    onPointerCancel={() => app.syncCutPath()}
                     className="w-full accent-[var(--bb-gold)]"
                   />
                 </Field>

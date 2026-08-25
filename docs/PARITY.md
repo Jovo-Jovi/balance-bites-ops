@@ -100,9 +100,9 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
 - [x] Inspector Layers / Layout / Type / Size / Color / Images / Icons stay open when a wrap column is selected; Nutrition does not trap Layers
 - [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
-- [x] Compact Library thumbs (raster WebP/PNG snap per template; no SVG / no `/design-presets` in the grid; no live FO). Design scroll uses a solid sheet, not glass blur
+- [x] Compact Library thumbs (saved raster WebP/PNG snap; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
-- [x] Composite Size / resize keeps Print cut (`unionPath`) aligned with the silhouette, including seeded characters without `cutSourceIds`
+- [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
 - [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`

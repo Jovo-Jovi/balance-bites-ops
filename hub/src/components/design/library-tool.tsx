@@ -30,7 +30,7 @@ const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelT
           io.disconnect();
         }
       },
-      { rootMargin: "200px" },
+      { rootMargin: "80px" },
     );
     io.observe(el);
     return () => io.disconnect();

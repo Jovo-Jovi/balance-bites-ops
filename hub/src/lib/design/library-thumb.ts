@@ -4,6 +4,7 @@ import { hydrateAssetValue } from "./assets";
 import { familyDieView } from "./family-preview";
 import { rasterizeLabelCanvas } from "./png-pack";
 import { artboardCm } from "./preview";
+import { presetThumbFill } from "./art-presets";
 import { getDesignSpec } from "./specs";
 import { asLibraryThumb, isAssetRef, toR2Ref } from "./templates";
 import type { LabelTemplate } from "./types";
@@ -62,6 +63,9 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 function fillForDie(template: LabelTemplate) {
+  const artKey = (template.state._composite?.parts || []).find((p) => p.artKey)?.artKey;
+  const preset = presetThumbFill(artKey);
+  if (preset) return preset;
   const raw = String(template.state.cLabel || template.state._composite?.bg || "#2e7d32");
   return /^#fff(fff)?$/i.test(raw.trim()) || raw.trim().toLowerCase() === "white" ? "#FECE00" : raw;
 }
@@ -79,9 +83,14 @@ function fallbackDieCanvas(template: LabelTemplate, wPx: number, hPx: number) {
     if (spec.composite && template.state._composite) {
       ctx.save();
       ctx.scale(wPx / 100, hPx / 100);
+      const parts = template.state._composite.parts || [];
+      const part = parts[0];
       const union = String(template.state._composite.unionPath || "").trim();
-      const part = (template.state._composite.parts || [])[0];
-      if (union) {
+      if (parts.length === 1 && part?.pathLocal) {
+        ctx.translate(part.x - part.w / 2, part.y - part.h / 2);
+        ctx.scale(part.w / 100, part.h / 100);
+        ctx.fill(new Path2D(part.pathLocal));
+      } else if (union) {
         ctx.fill(new Path2D(union));
       } else if (part?.pathLocal) {
         ctx.translate(part.x - part.w / 2, part.y - part.h / 2);
@@ -166,22 +175,22 @@ function remember(key: string, url: string) {
 }
 
 async function snapThumbSrc(template: LabelTemplate) {
-  const cacheKey = `snap:${template.id}:${template.updatedAt}`;
+  const cacheKey = `die:${template.id}:${template.updatedAt}`;
   const hit = viewCache.get(cacheKey);
   if (hit) return hit;
   const pending = viewPending.get(cacheKey);
   if (pending) return pending;
-  const job = renderLibraryThumbBlob(template)
-    .then((blob) => {
-      const url = URL.createObjectURL(blob);
-      remember(cacheKey, url);
-      viewPending.delete(cacheKey);
-      return url;
-    })
-    .catch(() => {
-      viewPending.delete(cacheKey);
-      return "";
-    });
+  const job = (async () => {
+    const { wPx, hPx } = libraryThumbSize(template);
+    const blob = await canvasToThumbBlob(fallbackDieCanvas(template, wPx, hPx));
+    const url = URL.createObjectURL(blob);
+    remember(cacheKey, url);
+    viewPending.delete(cacheKey);
+    return url;
+  })().catch(() => {
+    viewPending.delete(cacheKey);
+    return "";
+  });
   viewPending.set(cacheKey, job);
   return job;
 }

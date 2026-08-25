@@ -35,7 +35,7 @@ export const BG_SLOTS = [
     opa: "",
     zoom: "",
     label: "Product photo",
-    hint: "Shows on circular, composite, and other cuts.",
+    hint: "Shows on circular and photo cuts. Hidden on character stickers that already have artref / artKey.",
   },
 ] as const;
 
@@ -65,6 +65,27 @@ export function usableImage(value: unknown, artKey?: string) {
     return s;
   }
   return "";
+}
+
+function srcLooksLikeCharacterArt(src: unknown) {
+  const s = String(src || "");
+  return s.startsWith("artref:") || /assets\/presets\//i.test(s);
+}
+
+/** Character stickers use repo `artref:` / `artKey` on a part. Product photo (`hxCProd`) must not cover them. */
+export function compositeHasCharacterArt(state: LabelState) {
+  return Boolean(
+    state._composite?.parts?.some(
+      (p) =>
+        p.showImage === true &&
+        (Boolean(p.artKey) || srcLooksLikeCharacterArt(p.src) || srcLooksLikeCharacterArt(p.srcUrl)),
+    ),
+  );
+}
+
+export function compositeShowsProductPhoto(state: LabelState) {
+  if (compositeHasCharacterArt(state)) return false;
+  return Boolean(usableImage(state.hxCProd) || isAssetRef(state.hxCProd));
 }
 
 export function previewImage(value: unknown, artKey: string | undefined, lite: boolean) {

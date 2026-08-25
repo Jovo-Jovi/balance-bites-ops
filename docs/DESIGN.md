@@ -125,7 +125,7 @@ Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a tem
 | `data:` / blob | Device upload; strip to `__asset__:` on save when storage is on |
 | `artref:` / `assets/presets/…` | Repo file under `hub/public/design-presets/`. Not a tenant dump |
 
-`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards are a **raster snap** (`libraryThumb`: WebP/PNG, max 256 px, stored as `__r2__:…/library_thumb.webp` on save/create). Never `data:image/svg+xml` and never `/design-presets/*.svg` in the grid. Studio keeps the full live SVG/FO preview. Existing templates without a snap are rasterized once when the card is on screen (memory only; the next Save writes R2). Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
+`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards are a **raster snap** (`libraryThumb`: WebP/PNG, max 256 px, stored as `__r2__:…/library_thumb.webp` on save/create). Never `data:image/svg+xml` and never `/design-presets/*.svg` in the grid. Studio keeps the full live SVG/FO preview. Existing templates without a snap paint a **cheap Path2D die** (no FO, no preset SVG fetch) until the next Save. Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
 
 Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from the commercial print pack (`PRINT_PACK_EXCLUDE`) because of licensed likeness.
 
@@ -138,8 +138,8 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - **Print cut** (`__cut__`) is listed and can show the overlay; it is not draggable. The black rim on character art (popcorn) is this die, not a decorative part stroke. Each layer has a **size** control plus an **outward** border (wrap Dates / QR / Weight are separate; not the whole column).
 - Wrap / taper Layers **Up / Down** reorder `eSecOrd` columns. Composite Up / Down still restack z-order.
 - Inspector Copy / Nutrition follow the selected wrap column only while you are already on a content tab. **Layers / Layout / Type / Size / Color / Images / Icons stay put** until you click another inspector tab (selecting Nutrition must not trap Layers).
-- Composite Size / resize / move of the silhouette **updates Print cut** (`unionPath` scales about the part center). Seeded characters without `cutSourceIds` still rebuild the die on drag-end.
-- Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. The previous sticker’s photos must not stay on screen.
+- Composite Size / resize / move of a sole silhouette **rebuilds Print cut from `pathLocal`** (same mapping as the art). Do not scale a raster-traced `unionPath` — that halo sits outside the sticker. Multi-part unions still recompute; Size slider pointer-up calls `syncCutPath`.
+- Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 
 ## Print house
 

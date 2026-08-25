@@ -1,5 +1,5 @@
-import { BG_MORE, BG_SLOTS, usableImage } from "./art";
-import { layersInLayerGroup, recomputeUnion } from "./boolean-cut";
+import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./art";
+import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys } from "./layout";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
@@ -140,7 +140,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
     });
   }
   if (face === "composite") {
-  if (usableImage(state.hxCProd) || isAssetRef(state.hxCProd)) {
+  if (compositeShowsProductPhoto(state)) {
     layers.push({
       id: PHOTO_LAYER,
       kind: "photo",
@@ -237,7 +237,7 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
     });
   }
   if (face === "composite") {
-  if (usableImage(state.hxCProd) || isAssetRef(state.hxCProd)) {
+  if (compositeShowsProductPhoto(state)) {
     const box = productPhotoBox(state, circular);
     items.push({ id: PHOTO_LAYER, kind: "photo", ...box, z: 0.5, lock: false });
   }
@@ -403,6 +403,10 @@ function groupIsEntireCut(blob: CompositeBlob, gid: string) {
 function refreshCutToBox(blob: CompositeBlob, id: string, oldBox: CutBox, newBox: CutBox): CompositeBlob {
   const next: CompositeBlob = { ...blob };
   if (!itemAffectsCut(next, id)) return next;
+  const part = (next.parts || []).find((p) => p.id === id);
+  if (isSoleCutItem(next, id) && part?.pathLocal) {
+    return { ...next, unionPath: partFillPath(part) };
+  }
   if (isSoleCutItem(next, id) && next.unionPath) {
     const sx = newBox.w / Math.max(oldBox.w, 0.01);
     const sy = newBox.h / Math.max(oldBox.h, 0.01);
@@ -423,6 +427,10 @@ function refreshCutTranslate(blob: CompositeBlob, id: string, dx: number, dy: nu
   const next: CompositeBlob = { ...blob };
   if (!dx && !dy) return next;
   const whole = (gid && groupIsEntireCut(next, gid)) || isSoleCutItem(next, id);
+  const part = (next.parts || []).find((p) => p.id === id);
+  if (whole && part?.pathLocal && isSoleCutItem(next, id)) {
+    return { ...next, unionPath: partFillPath(part) };
+  }
   if (whole && next.unionPath && (itemAffectsCut(next, id) || (gid && groupIsEntireCut(next, gid)))) {
     return { ...next, unionPath: translatePathD(next.unionPath, dx, dy) };
   }

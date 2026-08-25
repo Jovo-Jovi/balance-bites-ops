@@ -1,4 +1,4 @@
-import { previewImage, usableImage } from "./art";
+import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
 import { partFillPath } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
@@ -158,15 +158,19 @@ function partShape(part: CompositePart, lite = false) {
   return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
 }
 
-function compositeClip(comp: CompositeBlob) {
+/** Sole silhouette: clip/cut follow `pathLocal` in the part box, not a scaled raster-traced union. */
+function compositeDiePath(comp: CompositeBlob) {
+  const parts = comp.parts || [];
+  if (parts.length === 1 && parts[0]?.pathLocal) return partFillPath(parts[0]);
   const union = String(comp.unionPath || "").trim();
-  if (union) return `<path d="${esc(union)}" />`;
-  const part = (comp.parts || [])[0];
-  if (part?.pathLocal) {
-    const left = part.x - part.w / 2;
-    const top = part.y - part.h / 2;
-    return `<path d="${esc(part.pathLocal)}" transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})" />`;
-  }
+  if (union) return union;
+  if (parts[0]?.pathLocal) return partFillPath(parts[0]);
+  return "";
+}
+
+function compositeClip(comp: CompositeBlob) {
+  const d = compositeDiePath(comp);
+  if (d) return `<path d="${esc(d)}" />`;
   return `<rect width="100" height="100" />`;
 }
 
@@ -489,15 +493,8 @@ function familyCutMm(kind: string, wMm: number, hMm: number) {
 function compositeCutMm(comp: CompositeBlob, wMm: number, hMm: number) {
   const sx = wMm / 100;
   const sy = hMm / 100;
-  const union = String(comp.unionPath || "").trim();
-  if (union) return `<path d="${esc(scalePathD(union, sx, sy))}" />`;
-  const part = (comp.parts || [])[0];
-  if (part?.pathLocal) {
-    const left = (part.x - part.w / 2) * sx;
-    const top = (part.y - part.h / 2) * sy;
-    const d = scalePathD(part.pathLocal, (part.w / 100) * sx, (part.h / 100) * sy);
-    return `<path d="${esc(d)}" transform="translate(${left} ${top})" />`;
-  }
+  const d = compositeDiePath(comp);
+  if (d) return `<path d="${esc(scalePathD(d, sx, sy))}" />`;
   return `<rect x="0" y="0" width="${wMm}" height="${hMm}" />`;
 }
 
@@ -566,7 +563,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
         html: iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot, s.letterStyle),
       });
     }
-    const photo = productLayer(state, false, lite);
+    const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);
     if (photo) stack.push({ z: 0.5, html: photo });
     stack.sort((a, b) => a.z - b.z);
     const inner = `

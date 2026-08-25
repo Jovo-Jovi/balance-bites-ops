@@ -16,7 +16,7 @@ import { useToast } from "@/components/toast";
 import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
-import { addProductPhotos, applyIconToState, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
+import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
 import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState } from "@/lib/design/layers";
 import {
   flavorPackById,
@@ -234,17 +234,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       setCutPreview(null);
       undoStack.current = [];
       setCanUndo(false);
-      setCurrent(t);
-      assetOrigins.current[t.id] = collectAssetRefs(t.state);
-      setLoadedFlavor(flavorSnapshot(t.state));
+      const openState = compositeHasCharacterArt(t.state) ? { ...t.state, hxCProd: "" } : t.state;
+      setCurrent({ ...t, state: openState });
+      assetOrigins.current[t.id] = collectAssetRefs(openState);
+      setLoadedFlavor(flavorSnapshot(openState));
       setBusy(true);
       try {
-        const state = await hydrateStateAssets(t.id, t.state);
+        const state = await hydrateStateAssets(t.id, openState);
         if (seq !== loadSeq.current || wantedId.current !== t.id) return;
         setCurrent({ ...t, state });
       } catch {
         if (seq !== loadSeq.current || wantedId.current !== t.id) return;
-        setCurrent(t);
+        setCurrent({ ...t, state: openState });
         toast.push("Opened the template. Some art files could not load.", "warn");
       } finally {
         if (seq === loadSeq.current) setBusy(false);

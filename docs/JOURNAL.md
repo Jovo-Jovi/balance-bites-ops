@@ -276,6 +276,16 @@ Rect wrap inspector no longer jumps to Nutrition and traps Layers: auto-focus on
 
 ---
 
+## 2026-08-25 — Popcorn Size halo, cheap Library, no cheese on characters
+
+Sizing popcorn scaled a raster-traced `unionPath`, so clip/cut sat outside the character (outer ring). Sole silhouettes now clip and cut from `pathLocal` in the part box; Size pointer-up still runs `syncCutPath`.
+
+Library first-open was rasterizing every on-screen card (html-to-image + multi-MB presets). Cards without a saved `libraryThumb` now paint a cheap Path2D die. Full snaps still write on Save / New / Duplicate / Save as new.
+
+`hxCProd` was painting on composite character stickers (pretzel, china crackers). Character art (`showImage` + `artref:` / `artKey`) skips that overlay and does not hydrate the leftover cheese file.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

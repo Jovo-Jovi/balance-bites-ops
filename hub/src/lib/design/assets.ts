@@ -1,3 +1,4 @@
+import { compositeHasCharacterArt } from "./art";
 import { isStorageEnabled } from "@/lib/firebase-config";
 import { getLabelAssetUrl, getLabelAssetUrls, uploadLabelAsset } from "@/lib/storage";
 import { isBinaryImageKey, labelAssetKey } from "@/lib/storage-paths";
@@ -130,6 +131,10 @@ export async function hydrateStateAssets(
   for (const key of Object.keys(out)) {
     const value = out[key];
     if (!isAssetRef(value)) continue;
+    if (key === "hxCProd" && compositeHasCharacterArt(out)) {
+      out[key] = "";
+      continue;
+    }
     jobs.push({
       value: String(value),
       assign: (next) => {
