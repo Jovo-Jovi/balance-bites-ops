@@ -15,6 +15,7 @@ import {
 } from "@/lib/workspace";
 import { InvoiceApp } from "./invoices/invoice-app";
 import { DesignApp } from "./design/design-app";
+import { FinanceApp } from "./finance/finance-app";
 
 export function WorkspaceScreen({ appId }: { appId: AppId }) {
   const app = getWorkspaceApp(appId);
@@ -141,49 +142,15 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
             <DesignApp tab={tool.id} />
           </section>
         ) : (
-          <>
-            <section className="bb-glass min-w-0 flex-1 p-5 sm:p-6">
-              <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
-                {tool.en}
-              </p>
-              <h1 className="mt-2 text-[clamp(1.5rem,3vw,2rem)] text-[var(--bb-title)]">
-                {tool.label}
-              </h1>
-              <p className="mt-3 max-w-2xl text-[var(--bb-text)]">{tool.summary}</p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {tool.actions.map((action) => (
-                  <button
-                    key={action.label}
-                    type="button"
-                    disabled={action.soon}
-                    className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-gold)] bg-[var(--bb-btn)] text-sm text-[var(--bb-btn-text)] disabled:cursor-not-allowed disabled:opacity-55"
-                  >
-                    {action.label}
-                    {action.soon ? (
-                      <span className="ms-2 text-[11px] opacity-80">
-                        {app.lang === "ar" ? "قريباً" : "Soon"}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <aside className="bb-glass w-full shrink-0 p-5 lg:w-80">
-              <h2 className="text-sm text-[var(--bb-muted)]">
-                {app.lang === "ar" ? "في هذه الأداة" : "In this tool"}
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm text-[var(--bb-text)]">
-                {tool.features.map((feature) => (
-                  <li
-                    key={feature}
-                    className="border-b border-[var(--bb-line)]/60 py-2 last:border-b-0"
-                  >
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </aside>
-          </>
+          <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">
+            <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
+              {tool.en}
+            </p>
+            <h1 className="mt-1 mb-4 text-[clamp(1.35rem,2.6vw,1.85rem)] text-[var(--bb-title)]">
+              {tool.label}
+            </h1>
+            <FinanceApp tab={tool.id} />
+          </section>
         )}
       </main>
 

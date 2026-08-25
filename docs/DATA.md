@@ -65,3 +65,7 @@ Desktop FileStore skipped these; they are now Firestore keys so they survive a n
 ## Hub Design (this slice)
 
 Live HTML designer is listed as a writer of `bb_color_presets` / theme keys above. The **hub** Design app does **not** write those — Invoices → Look already owns the shared list. Hub Design writes `bb_label_templates`, consumes/clears `bb_label_open`, and puts binaries on R2 `label_assets/{templateId}/` (`__asset__:` / reuse `__r2__:`, including `library_thumb.webp`). User-named wrap sections live on the template as `state._blocks` (no extra `bb_*` key). Flavor packs are code in `hub/src/lib/design/colors.ts`, not a Firestore dump. Map: [DESIGN.md](DESIGN.md). Studio waves: [DESIGN-STUDIO.md](DESIGN-STUDIO.md).
+
+## Hub Finance (this slice)
+
+Live HTML Stock Costs is listed as a writer of `bb_label_templates` and color/theme keys above. The **hub** Finance app does **not** write those — Design owns templates; Invoices → Look owns presets. Hub Finance writes catalog, recipes, purchases, production, returns, opex, investors, sticker SKUs (`templateKey` + `bb_label_open`), prep drafts, and payments. Prep **approve** is the only `bb_invoices` write (`commitPrepInvoice`). Named backups go to R2 `bb_backups/`; `bb_backup_locals` stays out of Firestore. Map: [FINANCE.md](FINANCE.md). Waves: [FINANCE-WAVES.md](FINANCE-WAVES.md).

@@ -13,6 +13,8 @@ Related maps:
 |---|---|
 | [INVOICES.md](INVOICES.md) | Invoice app file map, keys, UX decisions |
 | [DESIGN.md](DESIGN.md) | Design app file map, filtered tools, gaps |
+| [FINANCE.md](FINANCE.md) | Finance app file map, eight tools, writers |
+| [FINANCE-WAVES.md](FINANCE-WAVES.md) | Finance waves A–E |
 | [PARITY.md](PARITY.md) | Tick-list vs live HTML |
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
 | [MODULES.md](MODULES.md) | Live HTML module map (Finance source; Design gaps) |
@@ -330,7 +332,13 @@ Design Waves A–D are on `main`. Feature branches `feat/design` and `feat/desig
 
 ---
 
+## 2026-08-25 — Finance native app (`feat/finance`)
+
+Waves A–E on `feat/finance` (not merged). Native eight tools under `hub/src/components/finance/` — **not** an HTML wrap. Same linen chrome and Invoices UI kit (portal Modal, ActionBtn). `writeFinanceKey` rejects `bb_label_templates` and color presets. Prep approve is the only `bb_invoices` write. Ledger, purchases, prep/production, returns, opex, dashboard shutdown pair, COGS, P&L, investors, R2 backups. Map: [FINANCE.md](FINANCE.md).
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
-- Finance tabs and ledger formulas
+- Merge `feat/finance` → `main` when Waves A–E are confirmed

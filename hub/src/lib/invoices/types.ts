@@ -85,6 +85,7 @@ export type ReturnLine = {
   price?: number;
   lineTotal?: number;
   disposition?: string;
+  skipCustomerCredit?: boolean;
 };
 
 export type ReturnRecord = {
@@ -97,6 +98,8 @@ export type ReturnRecord = {
   amount?: number;
   reason?: string;
   notes?: string;
+  source?: string;
+  skipCustomerCredit?: boolean;
   disposition?: string;
   fullReturn?: boolean;
   items?: ReturnLine[];

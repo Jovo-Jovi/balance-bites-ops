@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { LABEL_ASSETS_PREFIX } from "@/lib/storage-paths";
+import { BACKUPS_PREFIX, LABEL_ASSETS_PREFIX } from "@/lib/storage-paths";
 import { requireStaff, StaffAuthError } from "@/lib/server/require-staff";
 import { isR2Configured, listR2Prefix } from "@/lib/server/r2";
 
@@ -15,7 +15,9 @@ export async function GET(req: Request) {
         { status: 503 },
       );
     }
-    const listed = await listR2Prefix(LABEL_ASSETS_PREFIX, 400);
+    const kind = new URL(req.url).searchParams.get("kind");
+    const prefix = kind === "backups" ? BACKUPS_PREFIX : LABEL_ASSETS_PREFIX;
+    const listed = await listR2Prefix(prefix, 400);
     // Keys + sizes only. Signing 400 URLs here made Images → Storage hang; thumbs sign when visible.
     return NextResponse.json({ items: listed });
   } catch (err) {

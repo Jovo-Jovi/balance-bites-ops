@@ -3,7 +3,7 @@
 Native React. Live behavior: `costs/balance-bites-invoice-pro.html`.  
 Entry: `/invoices` → `InvoiceApp` → `InvoiceProvider`.
 
-When building **Finance**, reuse this chrome and CloudStore. Do **not** duplicate these tools, keys, or print pipelines. Design map: [DESIGN.md](DESIGN.md).
+When building **Finance**, reuse this chrome and CloudStore. Do **not** duplicate these tools, keys, or print pipelines. Design map: [DESIGN.md](DESIGN.md). Finance map: [FINANCE.md](FINANCE.md).
 
 ## Tabs (`?tab=`)
 

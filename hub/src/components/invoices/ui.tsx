@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 
 export function Field({
@@ -32,6 +32,15 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
     <textarea
       {...props}
       className={`bb-glass-input w-full px-3 py-2 text-[var(--bb-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)] ${props.className ?? ""}`}
+    />
+  );
+}
+
+export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className={`bb-glass-input w-full px-3 text-[var(--bb-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--bb-gold)] ${props.className ?? ""}`}
     />
   );
 }
