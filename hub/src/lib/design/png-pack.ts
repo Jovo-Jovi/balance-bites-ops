@@ -227,6 +227,66 @@ async function blobToDataUrl(blob: Blob) {
   });
 }
 
+function isSvgHref(href: string) {
+  const s = href.trim();
+  if (/^data:image\/svg/i.test(s)) return true;
+  return /\.svg(?:\?|#|$)/i.test(s);
+}
+
+async function flattenSvgHrefToPng(href: string) {
+  const src = href.startsWith("data:") ? href : absUrl(href);
+  const cacheKey = href.startsWith("data:") ? `png:data:${href.length}:${href.slice(18, 42)}` : `png:${src}`;
+  const hit = resourceCache.get(cacheKey);
+  if (hit) return hit;
+  const img = new Image();
+  img.decoding = "sync";
+  img.src = src;
+  if (typeof img.decode === "function") await img.decode();
+  else {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Could not flatten SVG art"));
+      if (img.complete && img.naturalWidth) resolve();
+    });
+  }
+  const iw = Math.max(1, img.naturalWidth || 512);
+  const ih = Math.max(1, img.naturalHeight || 512);
+  const scale = Math.min(1, 1024 / Math.max(iw, ih));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(iw * scale));
+  canvas.height = Math.max(1, Math.round(ih * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return href;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  try {
+    const png = canvas.toDataURL("image/png");
+    resourceCache.set(cacheKey, png);
+    return png;
+  } catch {
+    return href;
+  }
+}
+
+async function flattenNestedSvgImages(svg: string) {
+  const re = /(?:href|xlink:href|src)=["']([^"']+)["']/gi;
+  const map = new Map<string, string>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(svg))) {
+    const href = m[1].trim();
+    if (!href || map.has(href) || !isSvgHref(href)) continue;
+    try {
+      map.set(href, await flattenSvgHrefToPng(href));
+    } catch {
+      map.set(href, href);
+    }
+  }
+  let out = svg;
+  for (const [from, to] of map) {
+    if (from && to && from !== to) out = out.split(from).join(to);
+  }
+  return out;
+}
+
 async function urlToDataUrl(url: string) {
   const abs = absUrl(url);
   if (!abs || abs.startsWith("#")) return url;
@@ -305,12 +365,13 @@ async function inlineSvgAssets(svg: string) {
   }
   for (const u of urls) {
     try {
-      const data = await urlToDataUrl(u);
+      const data = isSvgHref(u) ? await flattenSvgHrefToPng(u) : await urlToDataUrl(u);
       out = out.split(u).join(data);
     } catch {
       out = out.split(u).join("");
     }
   }
+  out = await flattenNestedSvgImages(out);
   return stripRemoteRefs(out);
 }
 
@@ -386,39 +447,57 @@ function svgViewSize(svg: SVGSVGElement, fallbackW: number, fallbackH: number) {
   return { x: 0, y: 0, w: fallbackW, h: fallbackH };
 }
 
-/** FO local → canvas pixels. Prefer SVG getCTM (iframe-safe). Never require getScreenCTM. */
+function applySvgTransformAttr(m: DOMMatrix, attr: string) {
+  const re = /(matrix|rotate|translate|scale)\s*\(([^)]*)\)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(attr))) {
+    const kind = match[1].toLowerCase();
+    const nums = match[2]
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number)
+      .filter((n) => Number.isFinite(n));
+    if (kind === "rotate") {
+      const ang = nums[0] || 0;
+      if (nums.length >= 3) m.translateSelf(nums[1], nums[2]).rotateSelf(ang).translateSelf(-nums[1], -nums[2]);
+      else m.rotateSelf(ang);
+    } else if (kind === "translate") {
+      m.translateSelf(nums[0] || 0, nums[1] || 0);
+    } else if (kind === "scale") {
+      m.scaleSelf(nums[0] ?? 1, nums[1] ?? nums[0] ?? 1);
+    } else if (kind === "matrix" && nums.length >= 6) {
+      m.multiplySelf(new DOMMatrix([nums[0], nums[1], nums[2], nums[3], nums[4], nums[5]]));
+    }
+  }
+}
+
+/** FO local → canvas pixels from viewBox + ancestor transforms. Do not use getCTM / clientWidth (off-screen iframe is often 0). */
 function foCanvasTransform(fo: SVGForeignObjectElement, svg: SVGSVGElement, wPx: number, hPx: number) {
   const box = foSize(fo);
-  const ctm = fo.getCTM();
-  if (ctm && Number.isFinite(ctm.a) && Number.isFinite(ctm.d)) {
-    const vw = svg.clientWidth || svg.getBoundingClientRect().width || wPx;
-    const vh = svg.clientHeight || svg.getBoundingClientRect().height || hPx;
-    const sx = wPx / Math.max(1, vw);
-    const sy = hPx / Math.max(1, vh);
-    return new DOMMatrix([sx * ctm.a, sy * ctm.b, sx * ctm.c, sy * ctm.d, sx * ctm.e, sy * ctm.f]);
-  }
   const vb = svgViewSize(svg, wPx, hPx);
   const sx = wPx / vb.w;
   const sy = hPx / vb.h;
-  const rotEl = fo.closest("g[transform]");
-  const rot = String(rotEl?.getAttribute("transform") || "");
-  const rm = rot.match(/rotate\(\s*([^,\s)]+)(?:[,\s]+([^,\s)]+)[,\s]+([^)]+))?/);
-  const m = new DOMMatrix();
-  if (rm) {
-    const ang = Number(rm[1]) || 0;
-    const cx = rm[2] != null ? Number(rm[2]) : 0;
-    const cy = rm[3] != null ? Number(rm[3]) : 0;
-    m.translateSelf(cx, cy).rotateSelf(ang).translateSelf(-cx, -cy);
+  const user = new DOMMatrix();
+  const chain: Element[] = [];
+  let el: Element | null = fo.parentElement;
+  while (el && el !== svg && el.tagName.toLowerCase() !== "svg") {
+    chain.push(el);
+    el = el.parentElement;
   }
-  m.translateSelf(box.x, box.y);
-  return new DOMMatrix([sx, 0, 0, sy, -vb.x * sx, -vb.y * sy]).multiply(m);
+  for (let i = chain.length - 1; i >= 0; i--) {
+    applySvgTransformAttr(user, chain[i].getAttribute("transform") || "");
+  }
+  user.translateSelf(box.x, box.y);
+  return new DOMMatrix([sx, 0, 0, sy, -vb.x * sx, -vb.y * sy]).multiply(user);
 }
 
 function openLtrFrame(w: number, h: number) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   iframe.setAttribute("dir", "ltr");
-  iframe.style.cssText = `position:fixed;left:0;top:0;width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;border:0;transform:translateX(-100vw);pointer-events:none;background:transparent;`;
+  const ww = Math.max(1, Math.round(w));
+  const hh = Math.max(1, Math.round(h));
+  iframe.style.cssText = `position:fixed;left:-${ww}px;top:0;width:${ww}px;height:${hh}px;border:0;opacity:1;pointer-events:none;background:transparent;`;
   document.body.appendChild(iframe);
   return iframe;
 }
@@ -519,9 +598,9 @@ async function paintForeignObjects(canvas: HTMLCanvasElement, svgMarkup: string,
       try {
         overlay = await snapshotFoHtml(
           node,
-          box.w,
-          box.h,
-          Math.max(1, Math.min(2, canvas.width / Math.max(box.w, 1))),
+          Math.max(1, Math.round(box.w)),
+          Math.max(1, Math.round(box.h)),
+          Math.max(2, Math.min(3, canvas.width / Math.max(box.w, 1))),
           fonts,
           shot,
         );

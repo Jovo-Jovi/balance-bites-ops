@@ -100,7 +100,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
 - [x] Inspector Layers / Layout / Type / Size / Color / Images / Icons stay open when a wrap column is selected; Nutrition does not trap Layers
 - [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
-- [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
+- [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy and character kernels; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
 - [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
 - [x] Design Save / Delete / New / Duplicate show an indeterminate progress bar (snap + cloud wait)

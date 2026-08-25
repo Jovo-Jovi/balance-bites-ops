@@ -93,7 +93,7 @@ hub/src/lib/design/
   studio-ops.ts     merge / group / trim / cut ops on LabelState
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
-  png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN)
+  png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN); FO overlay; nested preset SVG→PNG
   library-thumb.ts  Raster Library snap (WebP/PNG on R2 `library_thumb.webp`)
 hub/src/app/api/storage/list/route.ts   list R2 prefix for Images → Storage
 hub/src/lib/storage.ts                  listLabelAssets

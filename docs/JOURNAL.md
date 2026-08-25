@@ -302,6 +302,14 @@ FO overlay used `getScreenCTM` (often null in an iframe) so wrap/circle/taper st
 
 ---
 
+## 2026-08-25 — Taper sector copy + popcorn kernels on snaps
+
+Circular and rect wrap snaps already showed copy (full-bleed FO stretch). Taper sectors still saved colour + photo only: off-screen `getCTM` looked valid while the iframe had no layout, so sector text was mapped off-canvas. Overlay now uses viewBox scale plus ancestor `rotate(mid, cx, cy)` only (no `clientWidth`). The snapshot iframe sits at `left:-width` instead of `translateX(-100vw)`.
+
+Popcorn (and other character stickers) saved a white card with only the exp plate: parent SVG-as-`<img>` does not paint nested `/design-presets/*.svg` images. Save/print now flatten those hrefs to a PNG data URL (direct `Image` load, cap 1024 px) before rasterizing the parent. Re-save taper and popcorn once (new `library_thumb_{stamp}` file).
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates
