@@ -81,6 +81,7 @@ export function LabelPreview({
     >
       <div
         ref={boardRef}
+        data-bb-preview={template.id}
         className="relative w-full touch-none [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
         style={{ aspectRatio: `${wCm} / ${hCm}` }}
         onPointerMove={interactive ? applyPointer : undefined}

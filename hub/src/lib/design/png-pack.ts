@@ -354,6 +354,10 @@ function hasForeignObject(svg: string) {
   return /<foreignObject[\s>]/i.test(svg);
 }
 
+function stripForeignObjects(svg: string) {
+  return svg.replace(/<foreignObject\b[\s\S]*?<\/foreignObject>/gi, "");
+}
+
 function emptyCanvas(wPx: number, hPx: number) {
   const canvas = document.createElement("canvas");
   canvas.width = wPx;
@@ -363,25 +367,125 @@ function emptyCanvas(wPx: number, hPx: number) {
   return canvas;
 }
 
-/** html-to-image sees 0×0 inside SVG FO; clone the XHTML into a real HTML box first. */
+function foSize(fo: SVGForeignObjectElement) {
+  const w = Number(fo.width.baseVal?.value);
+  const h = Number(fo.height.baseVal?.value);
+  const x = Number(fo.x.baseVal?.value);
+  const y = Number(fo.y.baseVal?.value);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    w: Number.isFinite(w) && w > 0 ? w : 1,
+    h: Number.isFinite(h) && h > 0 ? h : 1,
+  };
+}
+
+function svgViewSize(svg: SVGSVGElement, fallbackW: number, fallbackH: number) {
+  const vb = svg.viewBox?.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) return { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
+  return { x: 0, y: 0, w: fallbackW, h: fallbackH };
+}
+
+/** FO local → canvas pixels. Prefer SVG getCTM (iframe-safe). Never require getScreenCTM. */
+function foCanvasTransform(fo: SVGForeignObjectElement, svg: SVGSVGElement, wPx: number, hPx: number) {
+  const box = foSize(fo);
+  const ctm = fo.getCTM();
+  if (ctm && Number.isFinite(ctm.a) && Number.isFinite(ctm.d)) {
+    const vw = svg.clientWidth || svg.getBoundingClientRect().width || wPx;
+    const vh = svg.clientHeight || svg.getBoundingClientRect().height || hPx;
+    const sx = wPx / Math.max(1, vw);
+    const sy = hPx / Math.max(1, vh);
+    return new DOMMatrix([sx * ctm.a, sy * ctm.b, sx * ctm.c, sy * ctm.d, sx * ctm.e, sy * ctm.f]);
+  }
+  const vb = svgViewSize(svg, wPx, hPx);
+  const sx = wPx / vb.w;
+  const sy = hPx / vb.h;
+  const rotEl = fo.closest("g[transform]");
+  const rot = String(rotEl?.getAttribute("transform") || "");
+  const rm = rot.match(/rotate\(\s*([^,\s)]+)(?:[,\s]+([^,\s)]+)[,\s]+([^)]+))?/);
+  const m = new DOMMatrix();
+  if (rm) {
+    const ang = Number(rm[1]) || 0;
+    const cx = rm[2] != null ? Number(rm[2]) : 0;
+    const cy = rm[3] != null ? Number(rm[3]) : 0;
+    m.translateSelf(cx, cy).rotateSelf(ang).translateSelf(-cx, -cy);
+  }
+  m.translateSelf(box.x, box.y);
+  return new DOMMatrix([sx, 0, 0, sy, -vb.x * sx, -vb.y * sy]).multiply(m);
+}
+
+function openLtrFrame(w: number, h: number) {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("dir", "ltr");
+  iframe.style.cssText = `position:fixed;left:0;top:0;width:${Math.max(1, w)}px;height:${Math.max(1, h)}px;border:0;transform:translateX(-100vw);pointer-events:none;background:transparent;`;
+  document.body.appendChild(iframe);
+  return iframe;
+}
+
+async function fillFrame(iframe: HTMLIFrameElement, bodyHtml: string, w: number, h: number, fonts: string) {
+  const html = `<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"/>
+<style>${fonts}
+html,body{margin:0;padding:0;width:${w}px;height:${h}px;overflow:hidden;background:transparent;direction:ltr}
+svg{display:block;width:${w}px;height:${h}px}
+</style></head><body>${bodyHtml}</body></html>`;
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    iframe.onload = () => done();
+    iframe.onerror = () => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("Preview frame failed"));
+    };
+    iframe.srcdoc = html;
+    window.setTimeout(() => {
+      if (iframe.contentDocument?.body?.childNodes.length) done();
+    }, 120);
+    window.setTimeout(done, 600);
+  });
+  const doc = iframe.contentDocument;
+  if (!doc) throw new Error("Preview frame is empty.");
+  try {
+    await doc.fonts.ready;
+  } catch {
+    /* ignore */
+  }
+  await Promise.all(
+    [...doc.images].map((im) => {
+      if (/^https?:/i.test(im.getAttribute("src") || "")) im.removeAttribute("src");
+      return im.decode().catch(() => {
+        /* ignore */
+      });
+    }),
+  );
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  return doc;
+}
+
+/** html-to-image sees 0×0 inside SVG FO; rasterize the XHTML in a real LTR HTML document. */
 async function snapshotFoHtml(
-  node: HTMLElement,
+  node: Element,
   fw: number,
   fh: number,
   pixelRatio: number,
   fonts: string,
   toCanvas: (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>,
 ) {
-  const host = document.createElement("div");
-  host.setAttribute("dir", "ltr");
-  host.style.cssText = `position:fixed;left:-12000px;top:0;width:${fw}px;height:${fh}px;overflow:hidden;background:transparent;pointer-events:none;z-index:-1;`;
-  const clone = node.cloneNode(true) as HTMLElement;
-  clone.style.width = `${fw}px`;
-  clone.style.height = `${fh}px`;
-  host.appendChild(clone);
-  document.body.appendChild(host);
+  const inner = new XMLSerializer()
+    .serializeToString(node)
+    .replace(/\sxmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, "");
+  const iframe = openLtrFrame(fw, fh);
   try {
-    return await toCanvas(host, {
+    const doc = await fillFrame(iframe, inner, fw, fh, fonts);
+    const el = (doc.body.firstElementChild as HTMLElement | null) || doc.body;
+    el.style.width = `${fw}px`;
+    el.style.height = `${fh}px`;
+    return await toCanvas(el, {
       width: fw,
       height: fh,
       pixelRatio,
@@ -390,7 +494,7 @@ async function snapshotFoHtml(
       fontEmbedCSS: fonts || " ",
     });
   } finally {
-    host.remove();
+    iframe.remove();
   }
 }
 
@@ -401,78 +505,48 @@ async function paintForeignObjects(canvas: HTMLCanvasElement, svgMarkup: string,
   const { toCanvas } = await import("html-to-image");
   const fonts = await printFontCss();
   const markup = svgMarkup.replace(/^<\?xml[^>]*>/, "").replace(/@import\s+url\([^)]+\);?/g, "");
-  const html = `<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"/>
-<style>${fonts}
-html,body{margin:0;padding:0;width:${wPx}px;height:${hPx}px;overflow:hidden;background:transparent;direction:ltr}
-svg{display:block;width:${wPx}px;height:${hPx}px}
-</style>
-</head><body>${markup}</body></html>`;
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.setAttribute("dir", "ltr");
-  iframe.style.cssText = `position:fixed;left:-10000px;top:0;width:${wPx}px;height:${hPx}px;border:0;opacity:1;pointer-events:none;`;
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
+  const iframe = openLtrFrame(wPx, hPx);
   try {
-    await new Promise<void>((resolve, reject) => {
-      iframe.onload = () => resolve();
-      iframe.onerror = () => reject(new Error("PNG preview frame failed"));
-      iframe.src = url;
-      document.body.appendChild(iframe);
-    });
-    const doc = iframe.contentDocument;
-    const win = iframe.contentWindow;
-    if (!doc || !win) return;
-    try {
-      await doc.fonts.ready;
-    } catch {
-      /* ignore */
-    }
-    await Promise.all(
-      [...doc.images].map((im) => {
-        if (/^https?:/i.test(im.getAttribute("src") || "")) im.removeAttribute("src");
-        return im.decode().catch(() => {
-          /* ignore */
-        });
-      }),
-    );
-    const svg = doc.querySelector("svg");
+    const svg = (await fillFrame(iframe, markup, wPx, hPx, fonts)).querySelector("svg");
     if (!svg) return;
-    const iframeRect = iframe.getBoundingClientRect();
-    const fos = [...svg.querySelectorAll("foreignObject")];
-    for (const fo of fos) {
+    const shot = toCanvas as (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>;
+    for (const fo of svg.querySelectorAll("foreignObject")) {
       if (!canvasIsClean(ctx)) return;
-      const node = fo.firstElementChild as HTMLElement | null;
+      const node = fo.firstElementChild;
       if (!node) continue;
-      const fw = Math.max(1, fo.width.baseVal.value);
-      const fh = Math.max(1, fo.height.baseVal.value);
-      const ctm = fo.getScreenCTM();
-      if (!ctm) continue;
+      const box = foSize(fo);
       let overlay: HTMLCanvasElement;
       try {
         overlay = await snapshotFoHtml(
           node,
-          fw,
-          fh,
-          Math.max(1, Math.min(3, canvas.width / Math.max(fw, 1))),
+          box.w,
+          box.h,
+          Math.max(1, Math.min(2, canvas.width / Math.max(box.w, 1))),
           fonts,
-          toCanvas as (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>,
+          shot,
         );
       } catch {
         continue;
       }
       const overlayCtx = overlay.getContext("2d");
       if (!overlayCtx || !canvasIsClean(overlayCtx)) continue;
+      const vb = svgViewSize(svg, wPx, hPx);
+      const full = box.x <= 1 && box.y <= 1 && box.w >= vb.w * 0.92 && box.h >= vb.h * 0.92;
       ctx.save();
-      ctx.setTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e - iframeRect.left, ctm.f - iframeRect.top);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(overlay, 0, 0, fw, fh);
+      if (full) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(overlay, 0, 0, wPx, hPx);
+      } else {
+        const m = foCanvasTransform(fo, svg, wPx, hPx);
+        ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+        ctx.drawImage(overlay, 0, 0, box.w, box.h);
+      }
       ctx.restore();
     }
   } finally {
     iframe.remove();
-    URL.revokeObjectURL(url);
   }
 }
 
@@ -574,7 +648,7 @@ export async function rasterizeLabelCanvas(
   const svg = await inlineSvgAssets(sized);
   let canvas: HTMLCanvasElement;
   try {
-    canvas = await rasterizeSvg(svg, wPx, hPx);
+    canvas = await rasterizeSvg(hasForeignObject(svg) ? stripForeignObjects(svg) : svg, wPx, hPx);
   } catch {
     if (!hasForeignObject(svg)) throw new Error("Could not snapshot the label.");
     canvas = emptyCanvas(wPx, hPx);

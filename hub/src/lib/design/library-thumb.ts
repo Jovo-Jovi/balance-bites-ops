@@ -153,15 +153,30 @@ export async function renderLibraryThumbBlob(template: LabelTemplate): Promise<B
   }
 }
 
-function thumbFileName(blob: Blob) {
-  return blob.type.includes("png") ? LIBRARY_THUMB_PNG : LIBRARY_THUMB_WEBP;
+function forgetTemplateThumbs(id: string) {
+  for (const k of [...viewCache.keys()]) {
+    if (!k.includes(id)) continue;
+    const prev = viewCache.get(k);
+    if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+    viewCache.delete(k);
+  }
+  for (const k of [...viewPending.keys()]) {
+    if (k.includes(id)) viewPending.delete(k);
+  }
+}
+
+function thumbFileName(blob: Blob, stamp = "") {
+  const ext = blob.type.includes("png") ? "png" : "webp";
+  return stamp ? `library_thumb_${stamp}.${ext}` : ext === "png" ? LIBRARY_THUMB_PNG : LIBRARY_THUMB_WEBP;
 }
 
 export async function attachLibraryThumb(template: LabelTemplate): Promise<LabelTemplate> {
   if (typeof document === "undefined") return template;
+  forgetTemplateThumbs(template.id);
   const blob = await renderLibraryThumbBlob(template);
+  const stamp = String(Date.now());
   if (isStorageEnabled()) {
-    const key = await uploadLabelAsset(template.id, thumbFileName(blob), blob);
+    const key = await uploadLabelAsset(template.id, thumbFileName(blob, stamp), blob);
     return { ...template, libraryThumb: toR2Ref(key) };
   }
   return { ...template, libraryThumb: await blobToDataUrl(blob) };
@@ -175,7 +190,7 @@ export async function stripLibraryThumb(templateId: string, value: string | unde
     try {
       const res = await fetch(thumb);
       const blob = await res.blob();
-      const key = await uploadLabelAsset(templateId, thumbFileName(blob), blob);
+      const key = await uploadLabelAsset(templateId, thumbFileName(blob, String(Date.now())), blob);
       return toR2Ref(key);
     } catch {
       return undefined;

@@ -298,6 +298,8 @@ Save rasterizes a Library snap then writes Firestore + R2; Delete writes then cl
 
 Composite Save already rasterized SVG art (popcorn). Wrap / taper / circle / lid put copy in `foreignObject`, which `<img>` SVG cannot paint, and html-to-image saw those nodes as 0×0 — Library stored only the die colour (white / yellow / brown / orange). Save now clones FO XHTML into a real HTML box before snapshot, rasterizes at 720 px, then stores the 256 px WebP. Re-save each family card once.
 
+FO overlay used `getScreenCTM` (often null in an iframe) so wrap/circle/taper still saved as a colour die. Copy is now snapshotted in an LTR HTML frame and mapped by SVG `getCTM` / viewBox; full-bleed faces stretch onto the canvas. Each Save writes a new `library_thumb_{stamp}.webp` so the old colour file is not reused from cache.
+
 ---
 
 ## Still not done (do not tick as shipped)
