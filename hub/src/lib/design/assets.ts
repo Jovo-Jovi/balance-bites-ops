@@ -135,6 +135,7 @@ export async function hydrateStateAssets(
   type Job = { value: string; assign: (next: string) => void };
   const jobs: Job[] = [];
   for (const key of Object.keys(out)) {
+    if (key === "_composite" || key === "_stamps" || key === "_blocks") continue;
     const value = out[key];
     if (!isAssetRef(value)) continue;
     if (key === "hxCProd" && compositeHasCharacterArt(out)) {
@@ -214,7 +215,7 @@ export async function hydrateStateAssets(
 export function collectAssetRefs(state: LabelState) {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(state)) {
-    if (key === "_composite" || key === "_stamps") continue;
+    if (key === "_composite" || key === "_stamps" || key === "_blocks") continue;
     if (isAssetRef(value)) out[key] = String(value);
   }
   for (const part of state._composite?.parts || []) {

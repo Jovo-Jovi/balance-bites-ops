@@ -1,4 +1,5 @@
 import { usableImage } from "./art";
+import { findBlock } from "./blocks";
 import { FAM, flag, n, s, wrapLayerBorderKeys } from "./layout";
 import type { LabelState } from "./types";
 
@@ -296,6 +297,31 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
         <div style="font-family:${esc(FH)};font-weight:700;font-size:${fs * 1.4}px;margin-bottom:4px;color:${ink};text-transform:uppercase">${html(s(state, "eCusTitle"))}</div>
         <div style="font-family:${esc(FB)};font-size:${fs * 1.1}px;color:${mut}">${html(s(state, "eCusBody"))}</div>
         ${s(state, "eCusBodyAr") ? `<div style="direction:rtl;margin-top:4px;font-family:${esc(FAR)};font-size:${fs * 1.1}px;color:${mut}">${html(s(state, "eCusBodyAr"))}</div>` : ""}
+      </div>`,
+    );
+  }
+
+  const named = findBlock(state, k);
+  if (named) {
+    const fs = n(state, "sTipFS", 6.5);
+    const lines = named.fields
+      .map((f) => {
+        const rawLabel = String(f.label || "").trim();
+        const en = f.en
+          ? `<div style="font-family:${esc(FB)};font-size:${fs * 1.05}px;color:${mut}">${html(
+              rawLabel && rawLabel.toLowerCase() !== "line" ? `${rawLabel}: ${f.en}` : f.en,
+            )}</div>`
+          : "";
+        const ar = f.ar
+          ? `<div style="direction:rtl;text-align:right;font-family:${esc(FAR)};font-size:${fs}px;color:${mut}">${html(f.ar)}</div>`
+          : "";
+        return `${en}${ar}`;
+      })
+      .join("");
+    return wrap(
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;display:flex;flex-direction:column;justify-content:center;text-align:center;overflow:visible">
+        <div style="font-family:${esc(FH)};font-weight:700;font-size:${fs * 1.4}px;margin-bottom:4px;color:${ink};text-transform:uppercase">${html(named.title)}</div>
+        ${lines}
       </div>`,
     );
   }

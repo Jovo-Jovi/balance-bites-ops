@@ -8,6 +8,7 @@ import {
   characterThumbUrl,
   type CharacterStyleId,
 } from "@/lib/design/character-library";
+import { blockLayerId, listBlocks } from "@/lib/design/blocks";
 import { previewFace } from "@/lib/design/layout";
 import { PART_TYPES } from "@/lib/design/part-types";
 import {
@@ -53,6 +54,7 @@ export function StudioRail() {
   const composite = face === "composite";
   const wrap = isWrapFace(face);
   const placedBlocks = composite ? placedCompositeBlocks(t.state) : [];
+  const namedWrap = wrap ? listBlocks(t.state) : [];
   const charsOnCanvas = placedCharacters(t.state);
 
   return (
@@ -104,8 +106,10 @@ export function StudioRail() {
           wrap ? (
             <div className="grid gap-2">
               <p className="text-xs text-[var(--bb-muted)]">
-                Starter recipes on this wrap. Remove turns a column off. User-named sections come later.
+                Starter recipes on this wrap. Remove turns a column off. Named sections are yours — title plus EN/AR
+                fields.
               </p>
+              <ActionBtn onClick={() => app.addNamedSection()}>Named section</ActionBtn>
               {WRAP_RECIPE_BLOCKS.map((b) => {
                 const on = wrapBlockOn(t.state, b.chk, b.fallbackOn);
                 return (
@@ -136,12 +140,35 @@ export function StudioRail() {
                   </div>
                 );
               })}
+              {namedWrap.length ? (
+                <div className="grid gap-1.5 border-t border-[var(--bb-line)] pt-2">
+                  <p className="text-[11px] uppercase tracking-wide text-[var(--bb-muted)]">Named on this wrap</p>
+                  {namedWrap.map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex min-h-11 items-center gap-1.5 rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-2"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 truncate text-left text-sm text-[var(--bb-text)]"
+                        onClick={() => app.selectLayer(blockLayerId(b.id))}
+                      >
+                        {b.title || "Section"}
+                      </button>
+                      <ActionBtn tone="ghost" onClick={() => app.removeArt(blockLayerId(b.id))}>
+                        Remove
+                      </ActionBtn>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : composite ? (
             <div className="grid gap-2">
               <p className="text-xs text-[var(--bb-muted)]">
                 Drop a content block onto the die. Select it and tap Remove, or press Delete.
               </p>
+              <ActionBtn onClick={() => app.addNamedSection()}>Named section</ActionBtn>
               {COMPOSITE_BLOCKS.map((b) => (
                 <button
                   key={b.id}

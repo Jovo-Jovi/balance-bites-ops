@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { Field, TextArea, TextInput } from "@/components/invoices/ui";
+import { ActionBtn, Field, TextArea, TextInput } from "@/components/invoices/ui";
+import { blockLayerId, listBlocks } from "@/lib/design/blocks";
 import { familyFocus, flag, n, previewFace, s } from "@/lib/design/layout";
+import type { DesignBlock } from "@/lib/design/types";
 import { stickerCopyFields } from "@/lib/design/layers";
 import { useDesignApp } from "./design-context";
 
@@ -60,6 +62,48 @@ function FocusBlock({
       ) : null}
       {children}
     </div>
+  );
+}
+
+function NamedBlockFields({ block }: { block: DesignBlock }) {
+  const app = useDesignApp();
+  return (
+    <FocusBlock id={`blk:${block.id}`} title={block.title || "Section"}>
+      <Field label="Section title">
+        <TextInput value={block.title} onChange={(e) => app.patchNamedSection(block.id, { title: e.target.value })} />
+      </Field>
+      <Field label="Width %">
+        <TextInput
+          inputMode="decimal"
+          value={String(block.widthPct ?? 20)}
+          onChange={(e) => app.patchNamedSection(block.id, { widthPct: Number(e.target.value) })}
+        />
+      </Field>
+      {block.fields.map((f) => (
+        <div key={f.id} className="grid gap-2 border-t border-[var(--bb-line)] pt-2">
+          <Field label="Field label">
+            <TextInput value={f.label} onChange={(e) => app.patchNamedField(block.id, f.id, { label: e.target.value })} />
+          </Field>
+          <Field label="English">
+            <TextArea rows={2} value={f.en} onChange={(e) => app.patchNamedField(block.id, f.id, { en: e.target.value })} />
+          </Field>
+          <Field label="Arabic">
+            <TextArea
+              rows={2}
+              value={f.ar}
+              onChange={(e) => app.patchNamedField(block.id, f.id, { ar: e.target.value })}
+              dir="rtl"
+            />
+          </Field>
+          <ActionBtn tone="ghost" onClick={() => app.removeNamedField(block.id, f.id)}>
+            Remove field
+          </ActionBtn>
+        </div>
+      ))}
+      <ActionBtn tone="ghost" onClick={() => app.addNamedField(block.id)}>
+        Add field
+      </ActionBtn>
+    </FocusBlock>
   );
 }
 
@@ -317,6 +361,9 @@ export function CopyPanel() {
           <TextArea rows={2} value={s(st, "eCusBodyAr")} onChange={(e) => app.setField("eCusBodyAr", e.target.value)} dir="rtl" />
         </Field>
       </FocusBlock>
+      {listBlocks(st).map((b) => (
+        <NamedBlockFields key={b.id} block={b} />
+      ))}
     </div>
   );
 }
@@ -387,6 +434,7 @@ export function LayoutPanel() {
   const t = app.current;
   if (!t) return null;
   const st = t.state;
+  const named = listBlocks(st);
   const sec = (key: string, label: string, fallback = true) => (
     <label key={key} className="flex items-center gap-2 text-sm text-[var(--bb-text)]">
       <input
@@ -408,6 +456,26 @@ export function LayoutPanel() {
         {sec("chkS5", "Dates")}
         {sec("chkS6", "Custom", false)}
       </div>
+      {named.length ? (
+        <div className="grid gap-2">
+          <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">Named sections</p>
+          {named.map((b) => (
+            <div key={b.id} className="grid gap-2 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-2">
+              <p className="text-sm text-[var(--bb-text)]">{b.title || "Section"}</p>
+              <Field label="Width %">
+                <TextInput
+                  inputMode="decimal"
+                  value={String(b.widthPct ?? 20)}
+                  onChange={(e) => app.patchNamedSection(b.id, { widthPct: Number(e.target.value) })}
+                />
+              </Field>
+              <ActionBtn tone="ghost" onClick={() => app.removeArt(blockLayerId(b.id))}>
+                Remove
+              </ActionBtn>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <Field label="Section order">
         <TextInput value={s(st, "eSecOrd", "1,2,3,4,5,6")} onChange={(e) => app.setField("eSecOrd", e.target.value)} />
       </Field>

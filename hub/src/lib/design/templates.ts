@@ -177,7 +177,7 @@ function uid(prefix: string) {
   return genId(prefix);
 }
 
-export function starterComposite(pack: FlavorPack): CompositeBlob {
+export function starterComposite(pack: FlavorPack, opts?: { content?: boolean }): CompositeBlob {
   return {
     version: 1,
     artboard: { wCm: 8, hCm: 8 },
@@ -196,7 +196,9 @@ export function starterComposite(pack: FlavorPack): CompositeBlob {
         color: pack.bg,
       },
     ],
-    zones: [
+    zones: opts?.content === false
+      ? []
+      : [
       {
         id: uid("z"),
         kind: "logo",
@@ -287,8 +289,9 @@ export function patchState(state: LabelState, patch: Record<string, unknown>): L
   return next;
 }
 
-export function starterState(designType: DesignType, pack: FlavorPack): LabelState {
+export function starterState(designType: DesignType, pack: FlavorPack, opts?: { blank?: boolean }): LabelState {
   const spec = getDesignSpec(designType);
+  const blank = opts?.blank !== false;
   const size =
     designType === "taper_top"
       ? { cW: "10", cH: "7" }
@@ -297,21 +300,33 @@ export function starterState(designType: DesignType, pack: FlavorPack): LabelSta
         : spec.composite
           ? { cW: "8", cH: "8" }
           : { cW: "6", cH: "6" };
+  const wrapBlank = blank && (designType === "rect_top" || designType === "taper_top");
   const base = applyFlavorPack(
     {
       eBrand: "BB",
-      eCBrand1: "BALANCE",
-      eCBrand2: "BITES",
-      eCFlavorTxt: "FLAVOR",
+      eCBrand1: blank && !spec.composite ? "" : "BALANCE",
+      eCBrand2: blank && !spec.composite ? "" : "BITES",
+      eCFlavorTxt: blank && !spec.composite ? "" : "FLAVOR",
       eWeight: "",
       ...size,
       _isTapered: spec.isTapered,
       _designType: designType,
+      eSecOrd: "1,2,3,4,5,6",
+      ...(wrapBlank
+        ? {
+            chkS1: "false",
+            chkS2: "false",
+            chkS3: "false",
+            chkS4: "false",
+            chkS5: "false",
+            chkS6: "false",
+          }
+        : {}),
     },
     pack,
   );
   if (spec.composite) {
-    base._composite = starterComposite(pack);
+    base._composite = starterComposite(pack, { content: !blank });
   }
   return base;
 }
@@ -332,9 +347,10 @@ export function createTemplate(opts: {
   pack: FlavorPack;
   productId?: string;
   weight?: string;
+  blank?: boolean;
 }): LabelTemplate {
   const spec = getDesignSpec(opts.designType);
-  const state = starterState(opts.designType, opts.pack);
+  const state = starterState(opts.designType, opts.pack, { blank: opts.blank !== false });
   if (opts.weight) state.eWeight = formatWeight(opts.weight);
   const identity = identityFromState(state);
   return {

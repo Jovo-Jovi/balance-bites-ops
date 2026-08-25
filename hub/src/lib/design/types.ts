@@ -118,9 +118,24 @@ export type CompositeBlob = {
   cutGroupId?: string | null;
 };
 
+export type DesignBlockField = {
+  id: string;
+  label: string;
+  en: string;
+  ar: string;
+};
+
+export type DesignBlock = {
+  id: string;
+  title: string;
+  fields: DesignBlockField[];
+  widthPct?: number;
+};
+
 export type LabelState = Record<string, unknown> & {
   _composite?: CompositeBlob;
   _stamps?: LabelStamp[];
+  _blocks?: DesignBlock[];
   _fillCutWithPaper?: boolean;
   _isTapered?: boolean;
   _designType?: string;

@@ -78,6 +78,7 @@ export function LibraryTool() {
   const [draftType, setDraftType] = useState<DesignType>("composite");
   const [draftPack, setDraftPack] = useState(FLAVOR_PACKS[0].id);
   const [draftProduct, setDraftProduct] = useState("");
+  const [draftRecipes, setDraftRecipes] = useState(false);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -208,6 +209,7 @@ export function LibraryTool() {
                   designType: draftType,
                   packId: draftPack,
                   productId: draftProduct || undefined,
+                  blank: !draftRecipes,
                 });
                 if (t) {
                   setCreating(false);
@@ -265,6 +267,14 @@ export function LibraryTool() {
               ))}
             </select>
           </Field>
+          <label className="flex items-center gap-2 text-sm text-[var(--bb-text)]">
+            <input type="checkbox" checked={draftRecipes} onChange={(e) => setDraftRecipes(e.target.checked)} />
+            Include starter recipes
+          </label>
+          <p className="text-xs text-[var(--bb-muted)]">
+            Off = die only (no Ingredients column, no default Composite logo/brand/flavor). Add blocks from Studio →
+            Blocks.
+          </p>
         </div>
       </Modal>
 

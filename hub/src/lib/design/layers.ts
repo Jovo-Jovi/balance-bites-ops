@@ -1,3 +1,4 @@
+import { findBlock, parseBlockLayerId, sectionOrder } from "./blocks";
 import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./art";
 import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
@@ -59,6 +60,11 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
 }
 
 export function canvasEditText(template: LabelTemplate, id: string): { value: string; multiline: boolean } | null {
+  const named = parseBlockLayerId(id);
+  if (named) {
+    const block = findBlock(template.state, named);
+    return { value: block?.fields[0]?.en || "", multiline: true };
+  }
   const fam = familyTextField(id);
   if (fam) return { value: s(template.state, fam.field), multiline: fam.multiline };
   const zone = template.state._composite?.zones?.find((z) => z.id === id);
@@ -92,7 +98,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         z: 40 - i,
         color: box.id === FAM.blogo ? s(state, "cLogoCircle", "#ffffff") : undefined,
         lock: box.lock,
-        removable: Boolean(wrapRecipeChkForLayer(box.id)),
+        removable: Boolean(wrapRecipeChkForLayer(box.id) || parseBlockLayerId(box.id)),
       });
     });
   }
@@ -490,7 +496,7 @@ const FAMILY_SECTION: Record<string, string> = {
 };
 
 export function familySectionKey(id: string) {
-  return FAMILY_SECTION[id] || "";
+  return FAMILY_SECTION[id] || parseBlockLayerId(id) || "";
 }
 
 const WRAP_RECIPE_PRIMARY = new Set<string>([FAM.ing, FAM.nut, FAM.blogo, FAM.tip, FAM.bdates, FAM.cus]);
@@ -503,26 +509,13 @@ export function wrapRecipeChkForLayer(id: string) {
 }
 
 function secOn(state: LabelState, k: string) {
-  return flag(state, `chkS${k}`, k === "6" ? false : true);
+  if (/^[1-5]$/.test(k)) return flag(state, `chkS${k}`, true);
+  if (k === "6") return flag(state, "chkS6", false);
+  return Boolean(findBlock(state, k));
 }
 
 function parseSecOrd(state: LabelState) {
-  const raw = s(state, "eSecOrd", "1,2,3,4,5,6")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
-  const seen = new Set<string>();
-  const order: string[] = [];
-  for (const k of raw) {
-    if (!seen.has(k)) {
-      seen.add(k);
-      order.push(k);
-    }
-  }
-  for (const k of ["1", "2", "3", "4", "5", "6"]) {
-    if (!seen.has(k)) order.push(k);
-  }
-  return order;
+  return sectionOrder(state);
 }
 
 function moveFamilySection(state: LabelState, sec: string, listDir: -1 | 1): LabelState {

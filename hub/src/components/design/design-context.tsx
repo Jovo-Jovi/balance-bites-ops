@@ -49,10 +49,23 @@ import {
   safeRemoveTemplate,
   toR2Ref,
 } from "@/lib/design/templates";
+import {
+  addBlockField,
+  addNamedBlock,
+  parseBlockLayerId,
+  patchBlockField,
+  patchNamedBlock,
+  removeBlockField,
+  removeNamedBlock,
+  setBlockFirstEn,
+  type DesignBlockField,
+} from "@/lib/design/blocks";
 import { fetchCharacterPng } from "@/lib/design/character-library";
+import { previewFace } from "@/lib/design/layout";
 import type { CutPreview } from "@/lib/design/studio-ops";
 import {
   addLibraryCharacter,
+  addNamedTextZone,
   addShape,
   addZone,
   applyClipJoin,
@@ -108,6 +121,7 @@ type DesignContextValue = {
     designType: DesignType;
     packId: string;
     productId?: string;
+    blank?: boolean;
   }) => Promise<LabelTemplate | null>;
   openTemplate: (id: string) => Promise<void>;
   duplicate: (id: string) => Promise<void>;
@@ -133,6 +147,12 @@ type DesignContextValue = {
   setFillCut: (on: boolean) => void;
   addStudioShape: (type: string) => void;
   addStudioZone: (kind: ZoneKind) => void;
+  addNamedSection: () => void;
+  patchNamedSection: (id: string, patch: { title?: string; widthPct?: number }) => void;
+  addNamedField: (blockId: string) => void;
+  removeNamedField: (blockId: string, fieldId: string) => void;
+  patchNamedField: (blockId: string, fieldId: string, patch: Partial<Pick<DesignBlockField, "label" | "en" | "ar">>) => void;
+  setNamedBlockFirstEn: (blockId: string, en: string) => void;
   applyStudioCharacter: (style: string, seed: string) => Promise<void>;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
@@ -421,7 +441,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         else go("atelier", current?.id || null);
       },
       openPrint: () => go("print", current?.id || null),
-      newTemplate: async ({ name, designType, packId, productId }) => {
+      newTemplate: async ({ name, designType, packId, productId, blank }) => {
         const pack = flavorPackById(packId) || FLAVOR_PACKS[0];
         const product = products.find((p) => p.id === productId);
         const t = createTemplate({
@@ -430,6 +450,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           pack,
           productId: product?.id,
           weight: product?.weight,
+          blank: blank !== false,
         });
         beginBusy("Creating sticker…");
         try {
@@ -642,6 +663,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       removeArt: (id) => {
         if (!current) return;
+        const namedId = parseBlockLayerId(id);
+        if (namedId) {
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: removeNamedBlock(current.state, namedId) });
+          setSelectedIds((prev) => prev.filter((x) => parseBlockLayerId(x) !== namedId && x !== id));
+          toast.push("Section removed.", "ok");
+          return;
+        }
         const chk = wrapRecipeChkForLayer(id);
         if (chk) {
           pushUndo(current.state);
@@ -750,6 +779,53 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         replaceCurrent({ ...current, state: op.state });
         setSelectedIds(op.selectIds);
         toast.push(op.message, "ok");
+      },
+      addNamedSection: () => {
+        if (!current) return;
+        const face = previewFace(current);
+        if (face === "back" || face === "taper") {
+          const op = addNamedBlock(current.state);
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds([op.selectId]);
+          toast.push("Section added — name it in Copy.", "ok");
+          return;
+        }
+        if (face === "composite") {
+          const op = addNamedTextZone(current.state);
+          if (!op.ok) {
+            toast.push(op.message, "warn");
+            return;
+          }
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds(op.selectIds);
+          toast.push(op.message, "ok");
+          return;
+        }
+        toast.push("Named sections sit on wrap, taper, or Composite.", "warn");
+      },
+      patchNamedSection: (id, patch) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: patchNamedBlock(current.state, id, patch) });
+      },
+      addNamedField: (blockId) => {
+        if (!current) return;
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: addBlockField(current.state, blockId) });
+      },
+      removeNamedField: (blockId, fieldId) => {
+        if (!current) return;
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: removeBlockField(current.state, blockId, fieldId) });
+      },
+      patchNamedField: (blockId, fieldId, patch) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: patchBlockField(current.state, blockId, fieldId, patch) });
+      },
+      setNamedBlockFirstEn: (blockId, en) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: setBlockFirstEn(current.state, blockId, en) });
       },
       applyStudioCharacter: async (style, seed) => {
         if (!current) return;

@@ -655,6 +655,31 @@ export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
   return { state: next, selectIds: [zone.id], message: labels[kind], ok: true };
 }
 
+export function addNamedTextZone(state: LabelState, title = "Section"): StudioOp {
+  const packed = withBlob(state);
+  if (!packed) return fail(state, "Switch family to Composite to drop a named section.");
+  const { next, blob } = packed;
+  bumpZ(blob);
+  const zTop = Math.max(0, ...(blob.zones || []).map((z) => z.z || 0), ...(blob.parts || []).map((p) => p.z || 0));
+  const ink = blob.txt || String(state.cTxtMain || "#ffffff");
+  const count = (blob.zones || []).filter((z) => z.kind === "text" && String(z.label || "").startsWith("Section")).length;
+  const zone: CompositeZone = {
+    id: genId("z"),
+    kind: "text",
+    x: 50,
+    y: Math.min(82, 42 + count * 10),
+    w: 46,
+    h: 18,
+    label: title.trim() || "Section",
+    text: title.trim() || "Section",
+    z: zTop + 1,
+    color: ink,
+    rot: 0,
+  };
+  blob.zones = [...(blob.zones || []), zone];
+  return { state: next, selectIds: [zone.id], message: "Section added — type it on the canvas or in Copy.", ok: true };
+}
+
 /** Store `artref:` + `artKey` only. Never write preset SVG bytes into the template. */
 export function applyCharacterArt(state: LabelState, artKey: string, partId?: string): StudioOp {
   const packed = withBlob(state);

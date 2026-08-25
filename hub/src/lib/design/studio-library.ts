@@ -7,7 +7,7 @@ export const WRAP_RECIPE_BLOCKS = [
   { k: "3", chk: "chkS3", label: "Logo", famId: FAM.blogo, fallbackOn: true, hint: "Disc + brand names" },
   { k: "4", chk: "chkS4", label: "Tips", famId: FAM.tip, fallbackOn: true, hint: "Storage / serving tips" },
   { k: "5", chk: "chkS5", label: "Dates + QR + weight", famId: FAM.bdates, fallbackOn: true, hint: "One print recipe" },
-  { k: "6", chk: "chkS6", label: "Custom column", famId: FAM.cus, fallbackOn: false, hint: "Starter column. Naming extra fields is later." },
+  { k: "6", chk: "chkS6", label: "Custom column", famId: FAM.cus, fallbackOn: false, hint: "Legacy starter column. Prefer a named section for new copy." },
 ] as const;
 
 export const COMPOSITE_BLOCKS = [

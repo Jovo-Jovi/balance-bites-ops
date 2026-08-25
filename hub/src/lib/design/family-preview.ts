@@ -493,7 +493,7 @@ function drawBack(
   const clips: string[] = [];
   const parts: string[] = [`<rect width="${W}" height="${H}" fill="${esc(fill)}" />`];
   for (const sec of secs) {
-    const clip = `${uid}c${sec.k}`;
+    const clip = `${uid}c${safeId(sec.k)}`;
     clips.push(`<clipPath id="${clip}"><rect x="${sec.l}" y="0" width="${sec.w}" height="${H}" /></clipPath>`);
     const href = lite ? "" : usableImage(state[`hxBg${sec.k}`]);
     if (href) {
@@ -539,7 +539,7 @@ function drawTaper(
     ...sec,
     saG: sec.sa - 0.25,
     eaG: sec.ea + 0.25,
-    clipId: `${uid}c${sec.k}`,
+    clipId: `${uid}c${safeId(sec.k)}`,
   }));
 
   const fan = sectorPath(g.cx, g.cy, g.R1, g.R2, -half, half);

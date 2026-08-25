@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
 import { CUT_LAYER, listLayers } from "@/lib/design/layers";
+import { parseBlockLayerId } from "@/lib/design/blocks";
 import { familyTextField, n, previewFace } from "@/lib/design/layout";
 import { downloadLabelPng } from "@/lib/design/png-pack";
 import { printExcludeNote } from "@/lib/design/prepress";
@@ -184,6 +185,11 @@ export function StudioTool() {
                 onDragEnd={app.syncCutPath}
                 onRemove={app.removeArt}
                 onEdit={(id, text) => {
+                  const named = parseBlockLayerId(id);
+                  if (named) {
+                    app.setNamedBlockFirstEn(named, text);
+                    return;
+                  }
                   const fam = familyTextField(id);
                   if (fam) app.setField(fam.field, text);
                   else app.patchLayer(id, { text });

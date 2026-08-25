@@ -7,7 +7,7 @@ This is **not** a paste of the sticker HTML and **not** an iframe. Tools are fil
 
 When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, studio, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
 
-**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Waves A–B are on `main` (PR #4). **Wave C** (libraries rail) is in test on `feat/design-c`. Wave D (user-named sections + blank-from-scratch) waits.
+**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Waves A–B are on `main` (PR #4). **Wave C confirmed.** **Wave D** (blank die + user-named wrap sections) is in test on `feat/design-c`.
 
 Branch while Wave C is open: `feat/design-c`. Live templates were seeded 2026-08-21 (Desktop `bb_label_templates.json` → Firestore; 73 files on R2). Do **not** re-seed or run `import:apply` unless asked.
 
@@ -29,13 +29,13 @@ Inspector tabs depend on the **open face**. A control that does not change this 
 
 | id | Wrap / taper | Circle / outlines | Top lid | Composite |
 |---|---|---|---|---|
-| Copy | Logo disc + brand names (separate), ingredients, tips, dates, weight, custom, badges | Logo, brand, product, flavor, weight, dates | Logo, titles, subtitles | Zones already on the die-cut |
+| Copy | Logo disc + brand names (separate), ingredients, tips, dates, weight, custom, **named `_blocks`**, badges | Logo, brand, product, flavor, weight, dates | Logo, titles, subtitles | Zones already on the die-cut |
 | Nutrition | Serving, calories, macros, DV, row on/off | — | — | — |
-| Layout | `chkS*`, order, `sw*`, badge toggles | — | — | — (Layers) |
+| Layout | `chkS*`, named section width, `eSecOrd`, `sw*`, badge toggles | — | — | — (Layers) |
 | Type | Wrap font/size sliders | Circle font/size keys | Lid sizes | — |
 | Size | `sW`×`sH` **or** cup Ø / `tpCupH` / `tpLblH` / wrap % / `tpOffsetBot`; screen zoom `sScale` | `cW`×`cH`; `sScale` | `tSz`; `sScale` | `cW`×`cH`; `sScale` |
 | Color | Label / ink / logo circle (packs in Libraries → Brand) | Flavor ink | Ink | Part colors via Layers |
-| Libraries rail | Shapes (Composite) · wrap recipe blocks · Icons · Uploads · Brand · Characters | same | Icons · Uploads · Brand | Shapes · composite blocks (`addZone`) · Characters |
+| Libraries rail | Shapes (Composite) · wrap recipes + named section · Icons · Uploads · Brand · Characters | same | Icons · Uploads · Brand | Shapes · named section · composite blocks (`addZone`) · Characters |
 | Layers | Print cut + section boxes (logo disc ≠ brand names) | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
 
 No fourth Design workspace tool.
@@ -63,7 +63,7 @@ hub/src/components/design/
   design-context.tsx
   library-tool.tsx
   atelier-tool.tsx  StudioTool (chrome label Studio; tab id atelier)
-  studio-rail.tsx   Wave C libraries: Shapes / Blocks / Icons / Uploads / Brand / Characters
+  studio-rail.tsx   Wave C libraries: Shapes / Blocks / Icons / Uploads / Brand / Characters; Wave D named section
   studio-cut-bar.tsx Composite merge / group / trim / cut (shapes live in the rail)
   inspector-panel.tsx face-aware Copy / Nutrition / Layout / Type / Size / Color / Layers
   flavor-packs.tsx  Brand rail packs (code only)
@@ -80,7 +80,8 @@ hub/src/lib/design/
   layout.ts         previewFace, artboard cm, family hit-boxes, move/resize/rotate offsets
   section-html.ts   wrap/taper section bodies (live getSectionHTML, hub field names)
   family-preview.ts circle / top / back wrap / taper SVG (pixel viewBox)
-  templates.ts      normalize, starter, import/export, safe delete
+  templates.ts      normalize, starter, import/export, safe delete; blank die vs starter recipes
+  blocks.ts         user-named wrap sections (`state._blocks`, `eSecOrd`)
   assets.ts         strip/hydrate `__asset__:` / `__r2__:`; reuse existing R2 objects
   colors.ts         flavor packs (code only) + Loaded snapshot
   icons.ts          repo catalog + LETTER_STYLES. Not Firestore.
@@ -91,8 +92,8 @@ hub/src/lib/design/
   layers.ts         layer list / move / rotate / recolor / drag; grouped parts move together
   part-types.ts     live PART_TYPES + add-shape factory
   boolean-cut.ts    live raster union / intersect / Moore contour
-  studio-ops.ts     merge / group / trim / cut / addZone / library character drop
-  studio-library.ts wrap recipe block ids (Wave C; not user-named Wave D)
+  studio-ops.ts     merge / group / trim / cut / addZone / named text zone / library character drop
+  studio-library.ts wrap recipe block ids + named-section rail copy
   character-library.ts DiceBear style/seed catalog (not product stickers)
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
@@ -149,6 +150,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image. Save still writes the 256 px WebP. Re-save a family card to replace a colour-only die.
 - **Libraries rail (Wave C)** sits left of the canvas: Shapes, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`.
+- **Blank die + named sections (Wave D).** New template defaults to die only (Library checkbox **Include starter recipes** is off). Wrap/taper: `chkS1–6` false. Composite: empty zones. **Named section** on wrap/taper writes `state._blocks` and extends `eSecOrd`; Copy edits title / fields / width; Remove deletes it. Recipes stay `chkS*`. Legacy Custom column still opens. Composite named section is a text zone. No new `bb_*` key.
 
 ## Print house
 
@@ -171,12 +173,11 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 | Theme / `bb_color_presets` editor | Invoices → Look (one list) |
 | Icon library, Jelly Kids, `assets/presets/` dump | Studio icon picker (repo catalog). No fourth tab. Flavor packs stay code-only |
 | Folder-connect, `bbLabel-*` disk scan | Import a JSON file the user picks |
-| Full BBComposite drawing + PNG cut pack | Wave A die-cut tools. Wave B: one-label Cut / Exact / Bleed PNG. Wave C: Studio libraries rail |
+| Full BBComposite drawing + PNG cut pack | Wave A die-cut tools. Wave B: one-label Cut / Exact / Bleed PNG. Wave C: Studio libraries rail. Wave D: blank die + named wrap sections |
 
 ## Explicit gaps
 
 - Zip of every commercial character (Print pack exclude still applies) — not this wave
-- User-named sections + blank sticker from scratch — Wave D
 - Scanning Desktop `bbLabel-*.json` (import the file instead)
 - Auto-seed of any template or gold theme when Firestore is empty
 - Jelly Kids as a dumped catalog
