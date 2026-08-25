@@ -87,6 +87,7 @@ type DesignContextValue = {
   clipPick: ClipPick | null;
   cutPreview: CutPreview | null;
   busy: boolean;
+  busyMessage: string;
   loadedFlavor: FlavorSnapshot | null;
   loadedFlavorOn: boolean;
   restoreLoadedFlavor: () => void;
@@ -176,6 +177,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<LabelTemplate | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [busyMessage, setBusyMessage] = useState("");
+  const busyDepth = useRef(0);
   const [loadedFlavor, setLoadedFlavor] = useState<FlavorSnapshot | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [clipPick, setClipPick] = useState<ClipPick | null>(null);
@@ -225,6 +228,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [toast],
   );
 
+  const beginBusy = useCallback((message: string) => {
+    busyDepth.current += 1;
+    setBusyMessage(message);
+    setBusy(true);
+  }, []);
+
+  const endBusy = useCallback(() => {
+    busyDepth.current = Math.max(0, busyDepth.current - 1);
+    if (busyDepth.current === 0) {
+      setBusy(false);
+      setBusyMessage("");
+    }
+  }, []);
+
   const loadIntoCurrent = useCallback(
     async (t: LabelTemplate) => {
       const seq = ++loadSeq.current;
@@ -238,7 +255,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       setCurrent({ ...t, state: openState });
       assetOrigins.current[t.id] = collectAssetRefs(openState);
       setLoadedFlavor(flavorSnapshot(openState));
-      setBusy(true);
+      beginBusy("Opening sticker…");
       try {
         const state = await hydrateStateAssets(t.id, openState);
         if (seq !== loadSeq.current || wantedId.current !== t.id) return;
@@ -248,10 +265,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         setCurrent({ ...t, state: openState });
         toast.push("Opened the template. Some art files could not load.", "warn");
       } finally {
-        if (seq === loadSeq.current) setBusy(false);
+        endBusy();
       }
     },
-    [toast],
+    [beginBusy, endBusy, toast],
   );
 
   const openTemplate = useCallback(
@@ -326,6 +343,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       clipPick,
       cutPreview,
       busy,
+      busyMessage,
       loadedFlavor,
       loadedFlavorOn: Boolean(current && loadedFlavor && flavorSnapshotEquals(current.state, loadedFlavor)),
       restoreLoadedFlavor: () => {
@@ -407,9 +425,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           productId: product?.id,
           weight: product?.weight,
         });
-        setBusy(true);
+        beginBusy("Creating sticker…");
         try {
+          setBusyMessage("Preparing library snap…");
           const saved = await withLibrarySnap(t);
+          setBusyMessage("Saving…");
           await persist([...templates, saved]);
           wantedId.current = saved.id;
           assetOrigins.current[saved.id] = collectAssetRefs(saved.state);
@@ -422,7 +442,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(err instanceof Error ? err.message : "Could not save the template.", "bad");
           return null;
         } finally {
-          setBusy(false);
+          endBusy();
         }
       },
       openTemplate,
@@ -430,9 +450,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         const src = templates.find((t) => t.id === id);
         if (!src) return;
         const copy = duplicateTemplate(src);
-        setBusy(true);
+        beginBusy("Duplicating…");
         try {
+          setBusyMessage("Preparing library snap…");
           const saved = await withLibrarySnap(copy);
+          setBusyMessage("Saving…");
           await persist([...templates, saved]);
           toast.push("Duplicated.", "ok");
           await loadIntoCurrent(saved);
@@ -440,7 +462,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           toast.push(err instanceof Error ? err.message : "Could not duplicate.", "bad");
         } finally {
-          setBusy(false);
+          endBusy();
         }
       },
       remove: async (id) => {
@@ -449,8 +471,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(result.error, "bad");
           return;
         }
-        setBusy(true);
+        beginBusy("Deleting sticker…");
         try {
+          setBusyMessage("Removing template…");
           await persist(result.next);
           if (current?.id === id) {
             wantedId.current = null;
@@ -459,6 +482,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           }
           if (isStorageEnabled()) {
             try {
+              setBusyMessage("Clearing art files…");
               const n = await deleteLabelAssetFolder(id);
               toast.push(n ? `Deleted (${n} art file${n === 1 ? "" : "s"}).` : "Deleted.", "ok");
             } catch {
@@ -470,7 +494,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           toast.push(err instanceof Error ? err.message : "Could not delete.", "bad");
         } finally {
-          setBusy(false);
+          endBusy();
         }
       },
       importFiles: async (raw) => {
@@ -479,7 +503,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push("No templates in that file.", "warn");
           return 0;
         }
-        setBusy(true);
+        beginBusy("Importing…");
         try {
           await persist([...templates, ...incoming]);
           toast.push(`Imported ${incoming.length} template${incoming.length === 1 ? "" : "s"}.`, "ok");
@@ -488,7 +512,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(err instanceof Error ? err.message : "Import failed.", "bad");
           return 0;
         } finally {
-          setBusy(false);
+          endBusy();
         }
       },
       exportCurrent: () => {
@@ -819,9 +843,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           productIdentity: identityFromState(current.state),
           updatedAt: new Date().toISOString(),
         };
-        setBusy(true);
+        beginBusy("Saving sticker…");
         try {
+          setBusyMessage("Preparing library snap…");
           const saved = await withLibrarySnap(next);
+          setBusyMessage("Saving…");
           const list = templates.some((t) => t.id === saved.id)
             ? templates.map((t) => (t.id === saved.id ? saved : t))
             : [...templates, saved];
@@ -833,16 +859,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(err instanceof Error ? err.message : "Save failed.", "bad");
           return false;
         } finally {
-          setBusy(false);
+          endBusy();
         }
       },
       saveAsNew: async () => {
         if (!current) return false;
         const copy = duplicateTemplate(current);
         copy.name = `${current.name.trim() || "Label"} copy`;
-        setBusy(true);
+        beginBusy("Saving as new…");
         try {
+          setBusyMessage("Preparing library snap…");
           const saved = await withLibrarySnap(copy);
+          setBusyMessage("Saving…");
           await persist([...templates, saved]);
           wantedId.current = saved.id;
           setLoadedFlavor(flavorSnapshot(saved.state));
@@ -854,7 +882,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(err instanceof Error ? err.message : "Save failed.", "bad");
           return false;
         } finally {
-          setBusy(false);
+          endBusy();
         }
       },
       linkedStickers,
@@ -870,6 +898,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     clipPick,
     cutPreview,
     busy,
+    busyMessage,
     loadedFlavor,
     go,
     openTemplate,
@@ -877,6 +906,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     loadIntoCurrent,
     replaceCurrent,
     pushUndo,
+    beginBusy,
+    endBusy,
     toast,
   ]);
 

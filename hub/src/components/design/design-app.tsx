@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { DesignProvider } from "./design-context";
+import { DesignBusyOverlay } from "./design-busy";
 import { LibraryTool } from "./library-tool";
 import { AtelierTool } from "./atelier-tool";
 import { PrintTool } from "./print-tool";
@@ -35,7 +36,10 @@ export function DesignApp({ tab }: { tab: string }) {
 }
 
 function DesignPanel({ tab }: { tab: string }) {
-  if (tab === "atelier") return <AtelierTool />;
-  if (tab === "print") return <PrintTool />;
-  return <LibraryTool />;
+  return (
+    <>
+      <DesignBusyOverlay />
+      {tab === "atelier" ? <AtelierTool /> : tab === "print" ? <PrintTool /> : <LibraryTool />}
+    </>
+  );
 }

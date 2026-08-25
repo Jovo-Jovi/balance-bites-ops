@@ -95,13 +95,18 @@ export function LibraryTool() {
     <div className="flex flex-col gap-4">
       <p className="text-sm text-[var(--bb-muted)]">Cloud templates. Open one to edit.</p>
       <div className="flex flex-wrap gap-2">
-        <ActionBtn onClick={() => setCreating(true)}>New template</ActionBtn>
-        <label className="bb-btn inline-flex cursor-pointer items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-text)]">
+        <ActionBtn disabled={app.busy} onClick={() => setCreating(true)}>
+          New template
+        </ActionBtn>
+        <label
+          className={`bb-btn inline-flex items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] text-sm text-[var(--bb-text)] ${app.busy ? "pointer-events-none opacity-50" : "cursor-pointer"}`}
+        >
           Import JSON
           <input
             type="file"
             accept="application/json,.json"
             className="sr-only"
+            disabled={app.busy}
             onChange={async (e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
@@ -166,13 +171,13 @@ export function LibraryTool() {
                   </div>
                 </button>
                 <div className="flex flex-wrap gap-1">
-                  <ActionBtn className="min-h-8 px-2 text-[11px]" onClick={() => void app.openTemplate(t.id)}>
+                  <ActionBtn className="min-h-8 px-2 text-[11px]" disabled={app.busy} onClick={() => void app.openTemplate(t.id)}>
                     Open
                   </ActionBtn>
-                  <ActionBtn tone="ghost" className="min-h-8 px-2 text-[11px]" onClick={() => void app.duplicate(t.id)}>
+                  <ActionBtn tone="ghost" className="min-h-8 px-2 text-[11px]" disabled={app.busy} onClick={() => void app.duplicate(t.id)}>
                     Copy
                   </ActionBtn>
-                  <ActionBtn tone="danger" className="min-h-8 px-2 text-[11px]" onClick={() => setPendingDelete(t.id)}>
+                  <ActionBtn tone="danger" className="min-h-8 px-2 text-[11px]" disabled={app.busy} onClick={() => setPendingDelete(t.id)}>
                     Delete
                   </ActionBtn>
                 </div>
@@ -185,11 +190,14 @@ export function LibraryTool() {
       <Modal
         open={creating}
         title="New template"
-        onClose={() => setCreating(false)}
+        onClose={() => {
+          if (app.busy) return;
+          setCreating(false);
+        }}
         closeLabel="Close"
         footer={
           <>
-            <ActionBtn tone="ghost" onClick={() => setCreating(false)}>
+            <ActionBtn tone="ghost" disabled={app.busy} onClick={() => setCreating(false)}>
               Cancel
             </ActionBtn>
             <ActionBtn
@@ -207,7 +215,7 @@ export function LibraryTool() {
                 }
               }}
             >
-              Create
+              {app.busy ? app.busyMessage || "Creating…" : "Create"}
             </ActionBtn>
           </>
         }
@@ -263,11 +271,14 @@ export function LibraryTool() {
       <Modal
         open={Boolean(pendingDelete)}
         title="Delete template"
-        onClose={() => setPendingDelete(null)}
+        onClose={() => {
+          if (app.busy) return;
+          setPendingDelete(null);
+        }}
         closeLabel="Close"
         footer={
           <>
-            <ActionBtn tone="ghost" onClick={() => setPendingDelete(null)}>
+            <ActionBtn tone="ghost" disabled={app.busy} onClick={() => setPendingDelete(null)}>
               Cancel
             </ActionBtn>
             <ActionBtn
@@ -279,7 +290,7 @@ export function LibraryTool() {
                 setPendingDelete(null);
               }}
             >
-              Delete
+              {app.busy ? app.busyMessage || "Deleting…" : "Delete"}
             </ActionBtn>
           </>
         }

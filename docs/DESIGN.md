@@ -71,6 +71,7 @@ hub/src/components/design/
   layers-panel.tsx  z-order, shift multi-select, color, rotate, print-cut stroke
   print-tool.tsx
   label-preview.tsx tap / drag / rotate / resize overlay; shift multi-select
+  design-busy.tsx   indeterminate bar + message while Save / Delete / snap run
 hub/src/lib/design/
   write.ts          writeDesignKey / removeDesignKey
   types.ts
@@ -139,7 +140,9 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Wrap / taper Layers **Up / Down** reorder `eSecOrd` columns. Composite Up / Down still restack z-order.
 - Inspector Copy / Nutrition follow the selected wrap column only while you are already on a content tab. **Layers / Layout / Type / Size / Color / Images / Icons stay put** until you click another inspector tab (selecting Nutrition must not trap Layers).
 - Composite Size / resize / move of a sole silhouette **rebuilds Print cut from `pathLocal`** (same mapping as the art). Do not scale a raster-traced `unionPath` — that halo sits outside the sticker. Multi-part unions still recompute; Size slider pointer-up calls `syncCutPath`.
+- Character preset SVGs (`/design-presets/`) have a square `viewBox` inside a tall or wide canvas, so default SVG meet letterboxes the kernels. Studio / print paint those files with `preserveAspectRatio="xMidYMid slice"` so the art fills the part and Print cut sits on the silhouette. Device photos still use `none` (live fill). PNG cut uses the same `compositeDiePath` as the overlay.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
+- Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 
 ## Print house
 

@@ -286,6 +286,14 @@ Library first-open was rasterizing every on-screen card (html-to-image + multi-M
 
 ---
 
+## 2026-08-25 — Popcorn cut hug + Save/Delete wait bar
+
+Preset character SVGs (popcorn especially) use `viewBox="0 0 100 100"` inside a tall `width`×`height`, so default meet letterboxes the kernels. Stretching that canvas with `preserveAspectRatio="none"` left empty bands inside the part while Print cut followed `pathLocal` (full silhouette). Character art now uses `xMidYMid slice` so the kernels fill the die. Cut PNG uses the same `compositeDiePath` as Studio (sole `pathLocal`, not a stale halo `unionPath`).
+
+Save rasterizes a Library snap then writes Firestore + R2; Delete writes then clears the art folder — both felt frozen. Design shows a gold indeterminate bar and a short status (`Saving…` / `Deleting…` / `Preparing library snap…`) over the workspace, including over the delete dialog.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

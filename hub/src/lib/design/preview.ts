@@ -1,4 +1,5 @@
 import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
+import { isCharacterPresetArt } from "./art-presets";
 import { partFillPath } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
@@ -131,9 +132,10 @@ function partShape(part: CompositePart, lite = false) {
   const src = previewImage(part.src || part.srcUrl, part.artKey, lite);
   const wantImage = Boolean(src) && part.showImage === true;
   if (wantImage) {
+    const par = isCharacterPresetArt(src, part.artKey) ? "xMidYMid slice" : "none";
     return partLocalGroup(
       part,
-      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="none" />`,
+      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="${par}" />`,
     );
   }
   if (part.pathLocal) {
@@ -159,7 +161,7 @@ function partShape(part: CompositePart, lite = false) {
 }
 
 /** Sole silhouette: clip/cut follow `pathLocal` in the part box, not a scaled raster-traced union. */
-function compositeDiePath(comp: CompositeBlob) {
+export function compositeDiePath(comp: CompositeBlob) {
   const parts = comp.parts || [];
   if (parts.length === 1 && parts[0]?.pathLocal) return partFillPath(parts[0]);
   const union = String(comp.unionPath || "").trim();

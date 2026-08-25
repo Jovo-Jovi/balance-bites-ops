@@ -45,7 +45,7 @@ export function StudioTool() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         <ActionBtn disabled={app.busy} onClick={() => void app.save()}>
-          Save
+          {app.busy ? app.busyMessage || "Saving…" : "Save"}
         </ActionBtn>
         <ActionBtn tone="ghost" disabled={app.busy} onClick={() => void app.saveAsNew()}>
           Save as new

@@ -8,7 +8,7 @@ import {
   exportFileBase,
   pxFromMm,
 } from "./prepress";
-import { artboardCm, labelPreviewSvg } from "./preview";
+import { artboardCm, compositeDiePath, labelPreviewSvg } from "./preview";
 import type { CompositeBlob, LabelState, LabelTemplate } from "./types";
 
 export type PngKind = "cut" | "exact" | "bleed";
@@ -456,19 +456,12 @@ function applyCompositeCut(ctx: CanvasRenderingContext2D, comp: CompositeBlob, w
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = "destination-in";
   ctx.scale(wPx / 100, hPx / 100);
-  const union = String(comp.unionPath || "").trim();
-  if (union) {
-    fillPath(ctx, union);
+  const d = compositeDiePath(comp);
+  if (d) {
+    fillPath(ctx, d);
   } else {
-    const part = (comp.parts || [])[0];
-    if (part?.pathLocal) {
-      ctx.translate(part.x - part.w / 2, part.y - part.h / 2);
-      ctx.scale(part.w / 100, part.h / 100);
-      fillPath(ctx, part.pathLocal);
-    } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 100, 100);
-    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 100, 100);
   }
   ctx.restore();
 }

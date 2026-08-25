@@ -68,3 +68,10 @@ export function resolveArtSrc(raw: unknown, artKey?: string) {
   }
   return "";
 }
+
+/** Repo character SVGs use a square viewBox inside a tall/wide canvas (default meet letterbox). */
+export function isCharacterPresetArt(src?: string, artKey?: string) {
+  if (artKey && fileForKey(artKey)) return true;
+  const s = String(src || "");
+  return s.startsWith("artref:") || /\/design-presets\//i.test(s) || /assets\/presets\//i.test(s);
+}

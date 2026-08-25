@@ -91,7 +91,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
 - [x] Flavor pack **Loaded** chip for the colors already on the open template
 - [x] Icon library in Studio (repo catalog + live A–Z letter fonts; wrap / taper / circle / lid / composite)
-- [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path)
+- [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path). Preset files letterbox a square viewBox in a tall canvas — hub slices that into the part so Print cut hugs the kernels
 - [x] Studio select + drag of parts, zones, stamps, and uploaded images
 - [x] Studio rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)
 - [x] Circular / outline families use live front layout (logo, brand, flavor, photo, weight, dates) in **pixel** `cW`×`cH` (ellipse clip, not a stretched 0–100 square)
@@ -103,6 +103,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Compact Library thumbs (saved raster WebP/PNG snap; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
 - [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
+- [x] Design Save / Delete / New / Duplicate show an indeterminate progress bar (snap + cloud wait)
 - [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
