@@ -12,6 +12,7 @@ import type { LabelTemplate } from "./types";
 export const LIBRARY_THUMB_WEBP = "library_thumb.webp";
 export const LIBRARY_THUMB_PNG = "library_thumb.png";
 export const LIBRARY_THUMB_MAX_PX = 256;
+const LIBRARY_WORK_MAX_PX = 720;
 
 const viewCache = new Map<string, string>();
 const viewPending = new Map<string, Promise<string>>();
@@ -27,15 +28,36 @@ function thumbKind(template: LabelTemplate): "cut" | "exact" {
   return "exact";
 }
 
-export function libraryThumbSize(template: LabelTemplate) {
+function scaledBoard(template: LabelTemplate, maxPx: number, minPx: number) {
   const { wCm, hCm } = artboardCm(template);
   const w = Math.max(0.8, wCm);
   const h = Math.max(0.8, hCm);
-  const scale = LIBRARY_THUMB_MAX_PX / Math.max(w, h);
+  const scale = maxPx / Math.max(w, h);
   return {
-    wPx: Math.max(32, Math.round(w * scale)),
-    hPx: Math.max(32, Math.round(h * scale)),
+    wPx: Math.max(minPx, Math.round(w * scale)),
+    hPx: Math.max(minPx, Math.round(h * scale)),
   };
+}
+
+export function libraryThumbSize(template: LabelTemplate) {
+  return scaledBoard(template, LIBRARY_THUMB_MAX_PX, 32);
+}
+
+function libraryWorkSize(template: LabelTemplate) {
+  return scaledBoard(template, LIBRARY_WORK_MAX_PX, 64);
+}
+
+function scaleCanvas(src: HTMLCanvasElement, wPx: number, hPx: number) {
+  if (src.width === wPx && src.height === hPx) return src;
+  const out = document.createElement("canvas");
+  out.width = wPx;
+  out.height = hPx;
+  const ctx = out.getContext("2d", { alpha: true });
+  if (!ctx) return src;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(src, 0, 0, wPx, hPx);
+  return out;
 }
 
 function canvasToThumbBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -123,8 +145,9 @@ function fallbackDieCanvas(template: LabelTemplate, wPx: number, hPx: number) {
 export async function renderLibraryThumbBlob(template: LabelTemplate): Promise<Blob> {
   const { wPx, hPx } = libraryThumbSize(template);
   try {
-    const canvas = await rasterizeLabelCanvas(template, template.state, wPx, hPx, thumbKind(template));
-    return await canvasToThumbBlob(canvas);
+    const work = libraryWorkSize(template);
+    const canvas = await rasterizeLabelCanvas(template, template.state, work.wPx, work.hPx, thumbKind(template));
+    return await canvasToThumbBlob(scaleCanvas(canvas, wPx, hPx));
   } catch {
     return await canvasToThumbBlob(fallbackDieCanvas(template, wPx, hPx));
   }

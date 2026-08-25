@@ -294,6 +294,12 @@ Save rasterizes a Library snap then writes Firestore + R2; Delete writes then cl
 
 ---
 
+## 2026-08-25 — Family Library snaps match Studio
+
+Composite Save already rasterized SVG art (popcorn). Wrap / taper / circle / lid put copy in `foreignObject`, which `<img>` SVG cannot paint, and html-to-image saw those nodes as 0×0 — Library stored only the die colour (white / yellow / brown / orange). Save now clones FO XHTML into a real HTML box before snapshot, rasterizes at 720 px, then stores the 256 px WebP. Re-save each family card once.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

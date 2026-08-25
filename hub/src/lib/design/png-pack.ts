@@ -350,8 +350,52 @@ async function rasterizeSvg(svg: string, wPx: number, hPx: number) {
   return canvas;
 }
 
+function hasForeignObject(svg: string) {
+  return /<foreignObject[\s>]/i.test(svg);
+}
+
+function emptyCanvas(wPx: number, hPx: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = wPx;
+  canvas.height = hPx;
+  const ctx = canvas.getContext("2d", { alpha: true });
+  if (ctx) ctx.clearRect(0, 0, wPx, hPx);
+  return canvas;
+}
+
+/** html-to-image sees 0×0 inside SVG FO; clone the XHTML into a real HTML box first. */
+async function snapshotFoHtml(
+  node: HTMLElement,
+  fw: number,
+  fh: number,
+  pixelRatio: number,
+  fonts: string,
+  toCanvas: (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>,
+) {
+  const host = document.createElement("div");
+  host.setAttribute("dir", "ltr");
+  host.style.cssText = `position:fixed;left:-12000px;top:0;width:${fw}px;height:${fh}px;overflow:hidden;background:transparent;pointer-events:none;z-index:-1;`;
+  const clone = node.cloneNode(true) as HTMLElement;
+  clone.style.width = `${fw}px`;
+  clone.style.height = `${fh}px`;
+  host.appendChild(clone);
+  document.body.appendChild(host);
+  try {
+    return await toCanvas(host, {
+      width: fw,
+      height: fh,
+      pixelRatio,
+      cacheBust: false,
+      skipFonts: true,
+      fontEmbedCSS: fonts || " ",
+    });
+  } finally {
+    host.remove();
+  }
+}
+
 async function paintForeignObjects(canvas: HTMLCanvasElement, svgMarkup: string, wPx: number, hPx: number) {
-  if (!/<foreignObject[\s>]/i.test(svgMarkup)) return;
+  if (!hasForeignObject(svgMarkup)) return;
   const ctx = canvas.getContext("2d");
   if (!ctx || !canvasIsClean(ctx)) return;
   const { toCanvas } = await import("html-to-image");
@@ -406,14 +450,14 @@ svg{display:block;width:${wPx}px;height:${hPx}px}
       if (!ctm) continue;
       let overlay: HTMLCanvasElement;
       try {
-        overlay = await toCanvas(node, {
-          width: fw,
-          height: fh,
-          pixelRatio: Math.max(2, Math.min(4, canvas.width / Math.max(fw, 1))),
-          cacheBust: false,
-          skipFonts: true,
-          fontEmbedCSS: fonts || " ",
-        });
+        overlay = await snapshotFoHtml(
+          node,
+          fw,
+          fh,
+          Math.max(1, Math.min(3, canvas.width / Math.max(fw, 1))),
+          fonts,
+          toCanvas as (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>,
+        );
       } catch {
         continue;
       }
@@ -528,7 +572,13 @@ export async function rasterizeLabelCanvas(
   const raw = labelPreviewSvg(template, state, { showCut: false, physical: true });
   const sized = setSvgPixelSize(raw, wPx, hPx);
   const svg = await inlineSvgAssets(sized);
-  const canvas = await rasterizeSvg(svg, wPx, hPx);
+  let canvas: HTMLCanvasElement;
+  try {
+    canvas = await rasterizeSvg(svg, wPx, hPx);
+  } catch {
+    if (!hasForeignObject(svg)) throw new Error("Could not snapshot the label.");
+    canvas = emptyCanvas(wPx, hPx);
+  }
   try {
     await paintForeignObjects(canvas, svg, wPx, hPx);
   } catch {

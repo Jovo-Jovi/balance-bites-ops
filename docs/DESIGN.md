@@ -143,6 +143,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Character preset SVGs (`/design-presets/`) have a square `viewBox` inside a tall or wide canvas, so default SVG meet letterboxes the kernels. Studio / print paint those files with `preserveAspectRatio="xMidYMid slice"` so the art fills the part and Print cut sits on the silhouette. Device photos still use `none` (live fill). PNG cut uses the same `compositeDiePath` as the overlay.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
+- Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image. Save still writes the 256 px WebP. Re-save a family card to replace a colour-only die.
 
 ## Print house
 
