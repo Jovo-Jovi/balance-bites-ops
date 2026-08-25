@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
-import { fmt, fmtQty, INV_TYPES, todayISO } from "@/lib/finance/helpers";
-import { calcCOGS } from "@/lib/finance/recipes";
+import { fmt, fmtQty, INV_TYPES, todayISO, typeLabel } from "@/lib/finance/helpers";
+import { calcCOGS, recipeSellPrice } from "@/lib/finance/recipes";
 import type { Category, Product } from "@/lib/invoices/types";
 import type { StockItem } from "@/lib/finance/types";
 import { useFinanceApp, type ItemKind } from "./finance-context";
@@ -74,13 +74,13 @@ function StockReport() {
       </p>
       <StockAlertsStrip />
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="منتجات جاهزة" value={`${fmt(catVal("منتج جاهز"))} EGP`} />
-        <StatCard label="مواد خام" value={`${fmt(catVal("مواد خام"))} EGP`} />
-        <StatCard label="تغليف" value={`${fmt(catVal("تغليف"))} EGP`} />
-        <StatCard label="ملصقات" value={`${fmt(catVal("ملصقات"))} EGP`} />
-        <StatCard label="الإجمالي" value={`${fmt(r.grandVal)} EGP`} />
-        <StatCard label="نشط" value={`${fmt(r.grandValActive)} EGP`} />
-        <StatCard label="غير نشط" value={`${fmt(r.grandValInactive)} EGP`} />
+        <StatCard size="lg" label="منتجات جاهزة" value={`${fmt(catVal("منتج جاهز"))} EGP`} />
+        <StatCard size="lg" label="مواد خام" value={`${fmt(catVal("مواد خام"))} EGP`} />
+        <StatCard size="lg" label="تغليف" value={`${fmt(catVal("تغليف"))} EGP`} />
+        <StatCard size="lg" label="ملصقات" value={`${fmt(catVal("ملصقات"))} EGP`} />
+        <StatCard size="lg" label="الإجمالي" value={`${fmt(r.grandVal)} EGP`} />
+        <StatCard size="lg" label="نشط" value={`${fmt(r.grandValActive)} EGP`} />
+        <StatCard size="lg" label="غير نشط" value={`${fmt(r.grandValInactive)} EGP`} />
       </div>
       {r.deficits.length ? (
         <div className="rounded-[var(--bb-radius)] border border-[var(--bb-bad)]/40 bg-[color-mix(in_srgb,var(--bb-bad)_8%,var(--bb-panel))] p-3 text-sm">
@@ -239,6 +239,7 @@ function StockReport() {
                   <td className={tdClass}>
                     <InlineQty
                       value={row.onHand}
+                      name={row.name}
                       onCommit={(v) => {
                         if (!row.productId || !row.recipeId) return;
                         void app.applyProductStock(row.productId, row.recipeId, v);
@@ -267,16 +268,34 @@ function StockReport() {
   );
 }
 
-function InlineQty({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+function confirmQtyChange(name: string, from: number, to: number) {
+  return window.confirm(
+    `تأكيد تعديل الكمية؟\n«${name}»\nمن ${fmtQty(from)} إلى ${fmtQty(to)}\nيُسجَّل كتسوية جرد إن تغيّر الرصيد.`,
+  );
+}
+
+function InlineQty({
+  name,
+  value,
+  onCommit,
+}: {
+  name: string;
+  value: number;
+  onCommit: (v: number) => void;
+}) {
   return (
     <TextInput
-      className="w-24"
+      className="w-28 text-base"
       key={String(value)}
       defaultValue={String(value)}
       onBlur={(e) => {
         const v = parseFloat(String(e.target.value).replace(/,/g, ""));
         if (Number.isNaN(v)) return;
         if (Math.abs(v - value) < 0.0001) return;
+        if (!confirmQtyChange(name, value, v)) {
+          e.target.value = String(value);
+          return;
+        }
         onCommit(v);
       }}
     />
@@ -320,12 +339,12 @@ function ReportItemTable({
               <td className={tdClass}>{item.name}</td>
               <td className={tdClass}>{item.unit}</td>
               <td className={tdClass}>
-                <InlineQty value={qty} onCommit={(v) => void app.applyTruthStock(kind, item.id, v)} />
+                <InlineQty value={qty} name={item.name} onCommit={(v) => void app.applyTruthStock(kind, item.id, v)} />
               </td>
-              <td className={tdClass} dir="ltr">
+              <td className={`${tdClass} text-lg`} dir="ltr">
                 {fmt(item.costPerUnit)}
               </td>
-              <td className={tdClass} dir="ltr">
+              <td className={`${tdClass} text-lg`} dir="ltr">
                 {fmt(val)}
               </td>
             </tr>
@@ -366,7 +385,10 @@ function ItemCatalog({ type }: { type: ItemKind }) {
               type={type}
               item={item}
               onEdit={() => setModal(item)}
-              onDelete={() => app.removeItem(type, item.id)}
+              onDelete={() => {
+                if (!window.confirm(`حذف «${item.name}» من المخزون؟`)) return;
+                app.removeItem(type, item.id);
+              }}
             />
           ))}
         </ul>
@@ -409,17 +431,24 @@ function ItemRow({
           كمية
         </span>
         <TextInput
-          className="w-24"
+          className="w-28 text-base"
           key={`${item.id}-${qty}`}
           defaultValue={String(qty)}
           onBlur={(e) => {
             const v = parseFloat(String(e.target.value).replace(/,/g, ""));
             if (Number.isNaN(v)) return;
             if (Math.abs(v - qty) < 0.0001) return;
+            if (!confirmQtyChange(item.name, qty, v)) {
+              e.target.value = String(qty);
+              return;
+            }
             void app.applyTruthStock(type, item.id, v);
           }}
         />
       </label>
+      <span className="text-lg text-[var(--bb-title)]" dir="ltr">
+        {fmtQty(qty)} {item.unit}
+      </span>
       <ActionBtn tone="ghost" onClick={onEdit}>
         تعديل
       </ActionBtn>
@@ -453,7 +482,14 @@ function ProductCatalog() {
           <span key={c.id} className="bb-glass inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs">
             <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
             {c.name}
-            <button type="button" className="text-[var(--bb-bad)]" onClick={() => app.removeCategory(c.id)}>
+            <button
+              type="button"
+              className="text-[var(--bb-bad)]"
+              onClick={() => {
+                if (!window.confirm(`حذف التصنيف «${c.name}»؟`)) return;
+                app.removeCategory(c.id);
+              }}
+            >
               ✕
             </button>
           </span>
@@ -475,14 +511,20 @@ function ProductCatalog() {
                     {off ? " · غير نشط" : ""}
                   </span>
                 </button>
-                <span dir="ltr">{fmt(p.unitPrice)} EGP</span>
+                <span className="text-xl text-[var(--bb-title)]" dir="ltr">{fmt(p.unitPrice)} EGP</span>
                 <ActionBtn
                   tone="ghost"
                   onClick={() => app.saveProduct({ ...p, inactive: !off, active: off })}
                 >
                   {off ? "تفعيل" : "إيقاف"}
                 </ActionBtn>
-                <ActionBtn tone="danger" onClick={() => app.removeProduct(p.id)}>
+                <ActionBtn
+                  tone="danger"
+                  onClick={() => {
+                    if (!window.confirm(`حذف المنتج «${p.name}»؟`)) return;
+                    app.removeProduct(p.id);
+                  }}
+                >
                   حذف
                 </ActionBtn>
               </li>
@@ -620,40 +662,91 @@ function BomCards() {
   const cards = app.recipes.filter((r) => r.productId);
   if (!cards.length) return <Empty>اربط وصفة بمنتج لعرض بطاقة BOM</Empty>;
   return (
-    <ul className="grid gap-3 md:grid-cols-2">
+    <ul className="grid gap-4 xl:grid-cols-2">
       {cards.map((r) => {
         const cogs = calcCOGS(r, app.findItem);
+        const sell = recipeSellPrice(r, app.products);
         const fg = app.productSummary.find((p) => p.productId === r.productId);
+        const onHand = fg?.onHand ?? 0;
+        const stockVal = fg?.stockValue ?? Math.max(0, onHand) * cogs.total;
         return (
-          <li key={r.id} className="bb-glass p-4">
-            <p className="text-[var(--bb-title)]">{r.name}</p>
-            <p className="mt-1 text-xs text-[var(--bb-muted)]" dir="ltr">
-              COGS {fmt(cogs.total)}
+          <li key={r.id} className="bb-glass p-5">
+            <p className="text-lg text-[var(--bb-title)]">{r.name}</p>
+            <p className="mt-1 text-xs text-[var(--bb-muted)]">
+              دفعة {r.batchSize}
+              {r.productWeight ? ` · ${r.productWeight}` : ""}
             </p>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              جاهز
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <p>
+                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">جاهز</span>
+                <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
+                  {fmtQty(onHand)}
+                </span>
+              </p>
+              <p>
+                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">COGS</span>
+                <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
+                  {fmt(cogs.total)}
+                </span>
+              </p>
+              <p>
+                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">بيع</span>
+                <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
+                  {fmt(sell)}
+                </span>
+              </p>
+              <p>
+                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">قيمة</span>
+                <span className="text-2xl text-[var(--bb-gold)]" dir="ltr">
+                  {fmt(stockVal)}
+                </span>
+              </p>
+            </div>
+            <label className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              تعديل الجاهز
               <TextInput
-                className="w-24"
-                defaultValue={String(fg?.onHand ?? 0)}
-                key={`${r.productId}-${fg?.onHand ?? 0}`}
+                className="w-28 text-base"
+                defaultValue={String(onHand)}
+                key={`${r.productId}-${onHand}`}
                 onBlur={(e) => {
                   const v = parseFloat(e.target.value);
                   if (Number.isNaN(v) || !r.productId) return;
-                  if (Math.abs(v - (fg?.onHand || 0)) < 0.0001) return;
+                  if (Math.abs(v - onHand) < 0.0001) return;
+                  if (!confirmQtyChange(r.name, onHand, v)) {
+                    e.target.value = String(onHand);
+                    return;
+                  }
                   void app.applyProductStock(r.productId, r.id, v);
                 }}
               />
             </label>
-            <ul className="mt-3 space-y-1 text-sm">
+            <ul className="mt-4 space-y-3 border-t border-[var(--bb-line)]/50 pt-4">
               {(r.ingredients || []).map((ing) => {
                 const item = app.findItem(ing.itemType, ing.itemId);
                 const qty = item ? app.qtyOf(ing.itemType, ing.itemId, item) : 0;
+                const perUnit = r.batchSize > 0 ? ing.qty / r.batchSize : ing.qty;
+                const forOnHand = perUnit * Math.max(0, onHand);
+                const short = qty + 0.0001 < ing.qty;
                 return (
-                  <li key={`${ing.itemType}-${ing.itemId}`} className="flex justify-between gap-2">
-                    <span>{item?.name || "؟"}</span>
-                    <span dir="ltr">
-                      {fmtQty(ing.qty)} / رصيد {fmtQty(qty)}
-                    </span>
+                  <li key={`${ing.itemType}-${ing.itemId}`}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-[var(--bb-title)]">
+                        {item?.name || "؟"}
+                        <span className="ms-2 text-[10px] text-[var(--bb-muted)]">{typeLabel(ing.itemType)}</span>
+                      </span>
+                      <span className={`text-lg ${short ? "text-[var(--bb-bad)]" : "text-[var(--bb-title)]"}`} dir="ltr">
+                        {fmtQty(qty)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--bb-muted)]">
+                      للدفعة {fmtQty(ing.qty)} {item?.unit || ""} · للجاري {fmtQty(forOnHand)}
+                    </p>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
+                      <div
+                        className={`h-full ${short ? "bg-[var(--bb-bad)]" : "bg-[var(--bb-ok)]"}`}
+                        style={{ width: `${Math.min(100, ing.qty > 0 ? (Math.max(0, qty) / ing.qty) * 100 : 0)}%` }}
+                      />
+                    </div>
                   </li>
                 );
               })}

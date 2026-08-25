@@ -98,8 +98,14 @@ function InvoiceWorkspace() {
   const paid = rows.filter((r) => r.status === "paid").sort(byDateDesc);
   const partial = rows.filter((r) => r.status === "return-partial").sort(byDateDesc);
   const full = rows.filter((r) => r.status === "return-full").sort(byDateDesc);
-  const visibleIds = [...pending, ...paid, ...partial, ...full].map((r) => r.inv.id);
-  const allChecked = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
+
+  function selectIds(ids: string[], on: boolean) {
+    setSelected((cur) => {
+      if (on) return Array.from(new Set([...cur, ...ids]));
+      const drop = new Set(ids);
+      return cur.filter((id) => !drop.has(id));
+    });
+  }
 
   const cards = Object.values(led.byCustomer)
     .filter((c) => c.key !== "_none" || c.gross > 0 || c.remaining > 0)
@@ -143,23 +149,9 @@ function InvoiceWorkspace() {
 
   return (
     <>
-      <div className="bb-glass flex flex-wrap items-center gap-2 p-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={allChecked}
-            onChange={(e) => setSelected(e.target.checked ? visibleIds : [])}
-          />
-          تحديد الكل
-        </label>
-        <span className="text-xs text-[var(--bb-muted)]">{selected.length} محددة</span>
-        <ActionBtn tone="ghost" onClick={() => app.printSavedInvoices(selected, "original")}>
-          طباعة أصلية
-        </ActionBtn>
-        <ActionBtn tone="ghost" onClick={() => app.printSavedInvoices(selected, "net")}>
-          طباعة بعد المرتجع
-        </ActionBtn>
-      </div>
+      <p className="text-xs text-[var(--bb-muted)]">
+        التحديد والطباعة لكل قسم على حدة (معلقة / مدفوعة / مرتجع).
+      </p>
       <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="عميل" value={String(custCount)} />
         <StatCard label="مدفوعة" value={String(paid.length)} />
@@ -194,6 +186,8 @@ function InvoiceWorkspace() {
         empty="لا يوجد فواتير معلقة"
         selected={selected}
         onToggle={toggleId}
+        onSelectAll={selectIds}
+        onPrint={(ids, mode) => app.printSavedInvoices(ids, mode)}
         onCustomer={(key) => {
           if (!key) {
             window.alert("لا يوجد عميل على هذه الفاتورة");
@@ -209,6 +203,8 @@ function InvoiceWorkspace() {
         empty="لا يوجد فواتير مدفوعة"
         selected={selected}
         onToggle={toggleId}
+        onSelectAll={selectIds}
+        onPrint={(ids, mode) => app.printSavedInvoices(ids, mode)}
         onCustomer={(key) => {
           if (!key) {
             window.alert("لا يوجد عميل على هذه الفاتورة");
@@ -225,6 +221,8 @@ function InvoiceWorkspace() {
         empty="لا يوجد مرتجعات جزئية بمبلغ متبقي"
         selected={selected}
         onToggle={toggleId}
+        onSelectAll={selectIds}
+        onPrint={(ids, mode) => app.printSavedInvoices(ids, mode)}
         onCustomer={(key) => {
           if (!key) {
             window.alert("لا يوجد عميل على هذه الفاتورة");
@@ -241,6 +239,8 @@ function InvoiceWorkspace() {
         empty="لا يوجد فواتير مرتجعة بالكامل"
         selected={selected}
         onToggle={toggleId}
+        onSelectAll={selectIds}
+        onPrint={(ids, mode) => app.printSavedInvoices(ids, mode)}
         onCustomer={(key) => {
           if (!key) {
             window.alert("لا يوجد عميل على هذه الفاتورة");
@@ -433,6 +433,8 @@ function InvoiceSection({
   empty,
   selected,
   onToggle,
+  onSelectAll,
+  onPrint,
   onCustomer,
   defaultOpen = true,
 }: {
@@ -442,25 +444,49 @@ function InvoiceSection({
   empty: string;
   selected: string[];
   onToggle: (id: string, on: boolean) => void;
+  onSelectAll: (ids: string[], on: boolean) => void;
+  onPrint: (ids: string[], mode: "original" | "net") => void;
   onCustomer: (key: string) => void;
   defaultOpen?: boolean;
 }) {
+  const ids = rows.map((r) => r.inv.id);
+  const picked = ids.filter((id) => selected.includes(id));
+  const allOn = ids.length > 0 && picked.length === ids.length;
   return (
     <Accordion title={title} hint={hint} defaultOpen={defaultOpen}>
       {rows.length === 0 ? (
         <Empty>{empty}</Empty>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {rows.map((row) => (
-            <InvoiceCard
-              key={row.inv.id}
-              row={row}
-              checked={selected.includes(row.inv.id)}
-              onToggle={onToggle}
-              onCustomer={onCustomer}
-            />
-          ))}
-        </ul>
+        <>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={allOn}
+                onChange={(e) => onSelectAll(ids, e.target.checked)}
+              />
+              تحديد الكل في {title}
+            </label>
+            <span className="text-xs text-[var(--bb-muted)]">{picked.length} محددة</span>
+            <ActionBtn tone="ghost" onClick={() => onPrint(picked, "original")}>
+              طباعة أصلية
+            </ActionBtn>
+            <ActionBtn tone="ghost" onClick={() => onPrint(picked, "net")}>
+              طباعة بعد المرتجع
+            </ActionBtn>
+          </div>
+          <ul className="flex flex-col gap-3">
+            {rows.map((row) => (
+              <InvoiceCard
+                key={row.inv.id}
+                row={row}
+                checked={selected.includes(row.inv.id)}
+                onToggle={onToggle}
+                onCustomer={onCustomer}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </Accordion>
   );
@@ -666,25 +692,33 @@ function CustomerDetailModal({
             <ul className="flex flex-col gap-2">
               {c.payments
                 .slice()
-                .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                .sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.id.localeCompare(a.id))
                 .map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <span>
-                      {p.date || "—"} · {payModeLabel(p.mode)}
-                      {p.notes ? ` · ${p.notes}` : ""}
-                    </span>
-                    <span className="flex items-center gap-2" dir="ltr">
-                      {fmt(p.amount)} EGP
+                  <li key={p.id} className="bb-glass flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[var(--bb-title)]">{p.date || "—"}</p>
+                      <p className="mt-1 text-xs text-[var(--bb-muted)]">
+                        {payModeLabel(p.mode)}
+                        {p.notes ? ` · ${p.notes}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-lg text-[var(--bb-title)]" dir="ltr">
+                        {fmt(p.amount)} EGP
+                      </span>
                       <ActionBtn
                         tone="danger"
                         onClick={() => {
-                          if (!window.confirm("حذف هذه الدفعة وإرجاع حالة الفواتير كما كانت؟")) return;
+                          const ok = window.confirm(
+                            `تأكيد حذف هذه الدفعة؟\n${fmt(p.amount)} EGP · ${p.date || "—"}\n${payModeLabel(p.mode)}${p.notes ? ` · ${p.notes}` : ""}\nتُعاد حالة الفواتير كما كانت قبل هذه الدفعة.`,
+                          );
+                          if (!ok) return;
                           app.removeCustomerPayment(p.id);
                         }}
                       >
-                        حذف
+                        حذف الدفعة
                       </ActionBtn>
-                    </span>
+                    </div>
                   </li>
                 ))}
             </ul>

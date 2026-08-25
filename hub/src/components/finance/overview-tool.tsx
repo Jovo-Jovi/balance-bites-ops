@@ -1,16 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmt, monthIntersectsWindow, todayISO } from "@/lib/finance/helpers";
+import { fmt, fmtQty, monthIntersectsWindow, todayISO } from "@/lib/finance/helpers";
 import { buildPeriodProfit } from "@/lib/finance/analytics";
 import { periodRangeLabel, printPeriodProfit } from "@/lib/finance/print-period";
 import { unmatchedInvoiceLines } from "@/lib/finance/recipe-match";
 import { recipeSellPrice, calcCOGS } from "@/lib/finance/recipes";
 import { investorShareOf } from "@/lib/finance/reports";
 import { buildInvestorSnapshot } from "@/lib/finance/investors";
+import type { Recipe } from "@/lib/finance/types";
 import { ActionBtn, Empty, Field, Modal, Select, TextArea, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp } from "./finance-context";
 import {
+  ColumnChart,
   FinanceTable,
   MixBar,
   SectionChips,
@@ -65,20 +67,50 @@ function Dash() {
           value={`${fmt(L.spent)} EGP`}
           hint={`مشتريات ${fmt(L.purchases)} · تشغيل ${fmt(L.opex)}`}
           formula="المصروف = مشتريات + تشغيل"
+          brief={[
+            { label: "مشتريات", value: `${fmt(L.purchases)} EGP` },
+            { label: "تشغيل", value: `${fmt(L.opex)} EGP` },
+            { label: "المجموع", value: `${fmt(L.spent)} EGP` },
+          ]}
         />
         <StatCard
           label="إجمالي المبيعات"
           value={`${fmt(L.gross)} EGP`}
           hint={`مدفوع ${fmt(L.paid)} · معلق ${fmt(L.pending)}`}
           formula="المبيعات = مجموع الفواتير بعد المرتجع · مدفوع / معلق من حالة التحصيل"
+          brief={[
+            { label: "مدفوع", value: `${fmt(L.paid)} EGP` },
+            { label: "معلق", value: `${fmt(L.pending)} EGP` },
+            { label: "الإجمالي", value: `${fmt(L.gross)} EGP` },
+          ]}
         />
         <StatCard
           label="قيمة المخزون"
           value={`${fmt(L.stock)} EGP`}
           hint={`نشط ${fmt(L.stockActive)} · غير نشط ${fmt(L.stockInactive)}`}
           formula="المخزون أصل بسعر التكلفة = مواد + تغليف + ملصقات + جاهز"
+          brief={[
+            { label: "مواد", value: `${fmt(L.stockMat)} EGP` },
+            { label: "تغليف", value: `${fmt(L.stockPkg)} EGP` },
+            { label: "ملصقات", value: `${fmt(L.stockStk)} EGP` },
+            { label: "جاهز", value: `${fmt(L.stockFg)} EGP` },
+          ]}
         />
       </div>
+      <ColumnChart
+        label="مقارنة الأرقام"
+        items={[
+          { key: "spent", label: "مصروف", value: L.spent, fill: "var(--bb-muted)" },
+          { key: "sales", label: "مبيعات", value: L.gross, fill: "var(--bb-gold)" },
+          { key: "stock", label: "مخزون", value: L.stock, fill: "var(--bb-title)" },
+          {
+            key: "net",
+            label: "صافي",
+            value: L.netProfit,
+            fill: L.netProfit >= -0.009 ? "var(--bb-ok)" : "var(--bb-bad)",
+          },
+        ]}
+      />
       <div className="grid gap-3 lg:grid-cols-3">
         <MixBar
           label="المصروف"
@@ -187,27 +219,89 @@ function Cogs() {
   return (
     <>
       <UnmatchedLinesHint lines={unmatched} />
-      <ul className="flex flex-col gap-2">
-      {app.recipes.map((r) => {
-        const cogs = calcCOGS(r, app.findItem).total;
-        const sell = recipeSellPrice(r, app.products);
-        const margin = sell - cogs;
-        return (
-          <li key={r.id} className="bb-glass p-3">
-            <div className="flex flex-wrap justify-between gap-2">
-              <span className="text-[var(--bb-title)]">{r.name}</span>
-              <span dir="ltr" className="text-sm">
-                COGS {fmt(cogs)} · بيع {fmt(sell)}
-              </span>
-            </div>
-            <p className={`mt-1 text-xs ${plTone(margin) === "ok" ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"}`}>
-              هامش {fmt(margin)} EGP {sell ? `· ${fmt((margin / sell) * 100)}%` : ""}
-            </p>
-          </li>
-        );
-      })}
+      <p className="text-xs text-[var(--bb-muted)]">
+        اضغط البطاقة لرؤية مكوّنات الدفعة. التحويم يعرض المعادلة: مجموع (كمية × تكلفة) ÷ حجم الدفعة.
+      </p>
+      <ul className="grid gap-3 lg:grid-cols-2">
+        {app.recipes.map((r) => (
+          <CogsCard key={r.id} recipe={r} />
+        ))}
       </ul>
     </>
+  );
+}
+
+function CogsCard({ recipe: r }: { recipe: Recipe }) {
+  const app = useFinanceApp();
+  const [open, setOpen] = useState(false);
+  const detail = calcCOGS(r, app.findItem);
+  const sell = recipeSellPrice(r, app.products);
+  const cogs = detail.total;
+  const margin = sell - cogs;
+  const pct = sell > 0.009 ? (cogs / sell) * 100 : 0;
+  const fillPct = sell > 0.009 ? Math.min(100, Math.max(0, pct)) : 0;
+  const formula = `COGS للوحدة = تكلفة الدفعة ${fmt(detail.totalBatch)} ÷ ${r.batchSize} = ${fmt(cogs)} · البيع ${fmt(sell)}`;
+  return (
+    <li>
+      <button
+        type="button"
+        title={formula}
+        onClick={() => setOpen((v) => !v)}
+        className="bb-glass bb-pressable w-full p-4 text-start"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <span className="text-[var(--bb-title)]">{r.name}</span>
+          <span className={`text-sm ${plTone(margin) === "ok" ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"}`} dir="ltr">
+            هامش {fmt(margin)}
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <p>
+            <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">تكلفة الوحدة</span>
+            <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
+              {fmt(cogs)}
+            </span>
+          </p>
+          <p>
+            <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">سعر البيع</span>
+            <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
+              {fmt(sell)}
+            </span>
+          </p>
+        </div>
+        <div className="mt-3 h-3 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
+          <div className="h-full bg-[var(--bb-warn)]" style={{ width: `${fillPct}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-[var(--bb-muted)]">
+          COGS {fmt(pct)}% من سعر البيع · دفعة {r.batchSize} · {detail.lines.length} مكوّن
+        </p>
+        {open ? (
+          <ul className="mt-3 space-y-2 border-t border-[var(--bb-line)]/50 pt-3 text-sm">
+            {detail.lines.length === 0 ? (
+              <li className="text-[var(--bb-muted)]">لا مكوّنات على هذه الوصفة</li>
+            ) : (
+              detail.lines.map((line) => (
+                <li key={`${line.name}-${line.qty}`} className="flex justify-between gap-2">
+                  <span>
+                    {line.name}
+                    <span className="ms-2 text-xs text-[var(--bb-muted)]">
+                      {fmtQty(line.qty)} {line.unit}
+                    </span>
+                  </span>
+                  <span dir="ltr">{fmt(line.lineCost)}</span>
+                </li>
+              ))
+            )}
+            <li className="flex justify-between gap-2 text-[var(--bb-muted)]">
+              <span>تكلفة الدفعة</span>
+              <span dir="ltr">{fmt(detail.totalBatch)}</span>
+            </li>
+          </ul>
+        ) : (
+          <p className="mt-2 text-[10px] text-[var(--bb-gold)]">اضغط لتفصيل المكوّنات</p>
+        )}
+      </button>
+    </li>
   );
 }
 
@@ -242,6 +336,7 @@ function Profit() {
       app.findItem,
     ],
   );
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
   const months = Object.keys(app.monthly)
     .filter((m) => monthIntersectsWindow(m, from, to))
     .sort()
@@ -284,21 +379,38 @@ function Profit() {
           label="مبيعات"
           value={`${fmt(period.sales)} EGP`}
           formula="مجموع الفواتير في الفترة (بتاريخ الفاتورة) بعد مرتجعات الفترة"
+          brief={[
+            { label: "فواتير", value: String(period.invoiceCount) },
+            { label: "مبيعات", value: `${fmt(period.sales)} EGP` },
+            { label: "مدفوع", value: `${fmt(period.paid)} EGP` },
+            { label: "معلق", value: `${fmt(period.pending)} EGP` },
+          ]}
         />
         <StatCard
           label="مدفوع / معلق"
           value={`${fmt(period.paid)} / ${fmt(period.pending)}`}
           formula="حالة التحصيل الحالية للفواتير داخل الفترة"
+          brief={[
+            { label: "مدفوع", value: `${fmt(period.paid)} EGP` },
+            { label: "معلق", value: `${fmt(period.pending)} EGP` },
+            { label: "المجموع", value: `${fmt(period.paid + period.pending)} EGP` },
+          ]}
         />
         <StatCard
           label="تكلفة المباع"
           value={`${fmt(period.cogs)} EGP`}
           formula="COGS الوصفة × كمية المباع في فواتير الفترة"
+          brief={[{ label: "تكلفة المباع", value: `${fmt(period.cogs)} EGP` }]}
         />
         <StatCard
           label="تشغيل + حوالك"
           value={`${fmt(period.opex + period.hawalek)} EGP`}
           formula="تشغيل وحوالك بتاريخها داخل الفترة"
+          brief={[
+            { label: "تشغيل", value: `${fmt(period.opex)} EGP` },
+            { label: "حوالك", value: `${fmt(period.hawalek)} EGP` },
+            { label: "المجموع", value: `${fmt(period.opex + period.hawalek)} EGP` },
+          ]}
         />
         <StatCard
           label="صافي الربح"
@@ -306,13 +418,35 @@ function Profit() {
           tone={plTone(period.net)}
           hint="مبيعات − COGS المباع − تشغيل − حوالك. المخزون أصل."
           formula="صافي = مبيعات − تكلفة المباع − تشغيل − حوالك. المخزون المتبقي لا يُطرح"
+          brief={[
+            { label: "مبيعات", value: `${fmt(period.sales)} EGP` },
+            { label: "− تكلفة المباع", value: `${fmt(period.cogs)} EGP` },
+            { label: "− تشغيل", value: `${fmt(period.opex)} EGP` },
+            { label: "− حوالك", value: `${fmt(period.hawalek)} EGP` },
+            { label: "صافي", value: `${fmt(period.net)} EGP` },
+          ]}
         />
         <StatCard
           label="مشتريات الفترة"
           value={`${fmt(period.purchases)} EGP`}
           formula="مشتريات بتاريخها — أصل مخزون وليست في سطر الربح"
+          brief={[{ label: "مشتريات", value: `${fmt(period.purchases)} EGP` }]}
         />
       </div>
+      <ColumnChart
+        label="أرقام الفترة"
+        items={[
+          { key: "sales", label: "مبيعات", value: period.sales, fill: "var(--bb-gold)" },
+          { key: "cogs", label: "COGS", value: period.cogs, fill: "var(--bb-warn)" },
+          { key: "opex", label: "تشغيل", value: period.opex + period.hawalek, fill: "var(--bb-muted)" },
+          {
+            key: "net",
+            label: "صافي",
+            value: period.net,
+            fill: period.net >= -0.009 ? "var(--bb-ok)" : "var(--bb-bad)",
+          },
+        ]}
+      />
       {months.length === 0 ? (
         <Empty>لا أشهر في هذه الفترة</Empty>
       ) : (
@@ -324,7 +458,13 @@ function Profit() {
             const pendPct = maxRev > 0 ? (row.pending / maxRev) * 100 : 0;
             const hover = `مدفوع ${fmt(row.paid)} · معلق ${fmt(row.pending)} · صافي ${fmt(net)}`;
             return (
-              <li key={m} className="bb-glass bb-pressable p-3 text-sm" title={hover}>
+              <li key={m}>
+                <button
+                  type="button"
+                  className="bb-glass bb-pressable w-full p-3 text-start text-sm"
+                  title={hover}
+                  onClick={() => setOpenMonth((cur) => (cur === m ? null : m))}
+                >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span>{m}</span>
                   <span
@@ -335,7 +475,7 @@ function Profit() {
                     {fmt(net)} EGP
                   </span>
                 </div>
-                <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
+                <div className="relative mt-2 h-4 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
                   <div
                     className="absolute inset-y-0 start-0 rounded-full bg-[var(--bb-ok)]/85"
                     style={{ width: `${paidPct}%` }}
@@ -345,9 +485,41 @@ function Profit() {
                     style={{ insetInlineStart: `${paidPct}%`, width: `${pendPct}%` }}
                   />
                 </div>
-                <p className="mt-1 text-xs text-[var(--bb-muted)]" dir="ltr">
-                  {fmt(row.revenue)} − {fmt(row.cogs)} − {fmt(row.opcost)} − {fmt(row.hawalekCogs)}
-                </p>
+                {openMonth === m ? (
+                  <dl className="mt-3 space-y-1 border-t border-[var(--bb-line)]/50 pt-3 text-xs text-[var(--bb-muted)]">
+                    <div className="flex justify-between gap-2">
+                      <dt>مدفوع</dt>
+                      <dd dir="ltr">{fmt(row.paid)} EGP</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>معلق</dt>
+                      <dd dir="ltr">{fmt(row.pending)} EGP</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>مبيعات</dt>
+                      <dd dir="ltr">{fmt(row.revenue)} EGP</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>COGS</dt>
+                      <dd dir="ltr">{fmt(row.cogs)} EGP</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>تشغيل</dt>
+                      <dd dir="ltr">{fmt(row.opcost)} EGP</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>حوالك</dt>
+                      <dd dir="ltr">{fmt(row.hawalekCogs)} EGP</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt>صافي</dt>
+                      <dd dir="ltr">{fmt(net)} EGP</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p className="mt-1 text-xs text-[var(--bb-gold)]">اضغط لتفصيل الأرقام</p>
+                )}
+                </button>
               </li>
             );
           })}

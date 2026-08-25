@@ -59,6 +59,16 @@ export function ItemModal({
         <>
           <ActionBtn
             onClick={() => {
+              const nextQty = parseFloat(String(stock).replace(/,/g, "")) || 0;
+              if (Math.abs(nextQty - openedStock) > 0.0001) {
+                if (
+                  !window.confirm(
+                    `تأكيد تعديل رصيد «${name.trim() || label}»؟\nمن ${fmtQty(openedStock)} إلى ${fmtQty(nextQty)}\nيُسجَّل كتسوية جرد إن تغيّر الرصيد.`,
+                  )
+                ) {
+                  return;
+                }
+              }
               void app
                 .saveItem(
                   type,
@@ -74,7 +84,7 @@ export function ItemModal({
                     recipeId: type === "bb_stickers" ? recipeId : "",
                     templateKey: type === "bb_stickers" ? templateKey : "",
                   },
-                  parseFloat(String(stock).replace(/,/g, "")) || 0,
+                  nextQty,
                   openedStock,
                 )
                 .then((id) => {

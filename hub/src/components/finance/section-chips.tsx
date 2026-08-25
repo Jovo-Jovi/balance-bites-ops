@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { fmt, fmtQty } from "@/lib/finance/helpers";
 import type { UnmatchedInvoiceLine } from "@/lib/finance/recipe-match";
 
@@ -44,13 +44,18 @@ export function StatCard({
   hint,
   tone,
   formula,
+  brief,
+  size = "md",
 }: {
   label: string;
   value: string;
   hint?: string;
   tone?: "ok" | "bad" | "warn";
   formula?: string;
+  brief?: { label: string; value: string }[];
+  size?: "md" | "lg";
 }) {
+  const [open, setOpen] = useState(false);
   const color =
     tone === "ok"
       ? "text-[var(--bb-ok)]"
@@ -60,14 +65,38 @@ export function StatCard({
           ? "text-[var(--bb-warn)]"
           : "text-[var(--bb-title)]";
   const title = [formula, hint].filter(Boolean).join(" — ");
+  const expandable = !!(formula || (brief && brief.length));
   return (
-    <div className="bb-glass bb-pressable p-3" title={title || undefined}>
+    <button
+      type="button"
+      className="bb-glass bb-pressable w-full p-3 text-start"
+      title={title || undefined}
+      onClick={() => expandable && setOpen((v) => !v)}
+    >
       <p className="text-[10px] tracking-[0.14em] text-[var(--bb-muted)] uppercase">{label}</p>
-      <p className={`mt-1 text-lg ${color}`} dir="ltr">
+      <p className={`mt-1 ${size === "lg" ? "text-2xl sm:text-3xl" : "text-xl"} ${color}`} dir="ltr">
         {value}
       </p>
       {hint ? <p className="mt-1 text-xs text-[var(--bb-muted)]">{hint}</p> : null}
-    </div>
+      {expandable ? (
+        <p className="mt-1 text-[10px] text-[var(--bb-gold)]">{open ? "إخفاء التفصيل" : "اضغط للتفصيل"}</p>
+      ) : null}
+      {open ? (
+        <div className="mt-3 border-t border-[var(--bb-line)]/50 pt-3 text-xs text-[var(--bb-muted)]">
+          {formula ? <p className="mb-2">{formula}</p> : null}
+          {brief?.length ? (
+            <dl className="space-y-1">
+              {brief.map((row) => (
+                <div key={row.label} className="flex justify-between gap-3">
+                  <dt>{row.label}</dt>
+                  <dd dir="ltr">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+        </div>
+      ) : null}
+    </button>
   );
 }
 
@@ -83,7 +112,7 @@ export function MixBar({
   return (
     <div className="bb-glass bb-pressable p-3" title={title}>
       <p className="text-[10px] tracking-[0.14em] text-[var(--bb-muted)] uppercase">{label}</p>
-      <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
+      <div className="mt-2 flex h-4 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
         {segments.map((s) => {
           const pct = total > 0.009 ? (Math.max(0, s.value) / total) * 100 : 0;
           if (pct <= 0) return null;
@@ -105,6 +134,40 @@ export function MixBar({
           </span>
         ))}
       </p>
+    </div>
+  );
+}
+
+export function ColumnChart({
+  label,
+  items,
+}: {
+  label: string;
+  items: { key: string; label: string; value: number; fill: string }[];
+}) {
+  const max = Math.max(1, ...items.map((i) => Math.abs(i.value)));
+  return (
+    <div className="bb-glass p-4">
+      <p className="text-[10px] tracking-[0.14em] text-[var(--bb-muted)] uppercase">{label}</p>
+      <div className="mt-4 flex h-44 items-end gap-3">
+        {items.map((i) => {
+          const h = Math.max(4, (Math.abs(i.value) / max) * 100);
+          const negative = i.value < -0.009;
+          return (
+            <div key={i.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+              <span className={`text-[11px] ${negative ? "text-[var(--bb-bad)]" : "text-[var(--bb-title)]"}`} dir="ltr">
+                {fmt(i.value)}
+              </span>
+              <div
+                className="w-full max-w-14 rounded-t-md"
+                style={{ height: `${h}%`, background: i.fill, opacity: negative ? 0.7 : 1 }}
+                title={`${i.label} ${fmt(i.value)} EGP`}
+              />
+              <span className="text-center text-[10px] leading-tight text-[var(--bb-muted)]">{i.label}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

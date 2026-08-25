@@ -338,7 +338,7 @@ Waves A–E on `feat/finance` (not merged). Native eight tools under `hub/src/co
 
 UX polish vs live Stock Costs: purchases as a compact filtered table; stock report in accordion sections (summary / all SKUs / FG / materials / packaging); invoice cards with live fields + customer account modal + confirm on دفعة / سدّد الكل + multi-select print; investor peak / toward / join-date profit instead of splitting NAV equally.
 
-**Wave F1 (overview + period P&L):** اللوحة mix bars (spent / sales / stock) and formula hover on StatCard + shutdown columns; تنبيهات المخزون moved to المخزون → دفتر الكميات; الأرباح from/to window (invoices by invoice date, opex/hawalek/purchases by their date) + monthly CSS bars + print; unmatched-recipe hint on Overview / Recipes (same `findRecipeForItem` matcher). Invoices catalog hub copy is pick / print prices only.
+**Wave F1 (overview + period P&L):** اللوحة mix bars (spent / sales / stock) and formula hover on StatCard + shutdown columns; تنبيهات المخزون moved to المخزون → دفتر الكميات; الأرباح from/to window (invoices by invoice date, opex/hawalek/purchases by their date) + monthly CSS bars + print; unmatched-recipe hint on Overview / Recipes (same `findRecipeForItem` matcher). Invoices catalog hub copy is pick / print prices only. Follow-up: tap profit/COGS cards for a number brief; CSS column charts on اللوحة/الأرباح; per-section invoice print selection; confirm on payment delete and stock qty edits; larger BOM card numbers.
 
 ---
 
