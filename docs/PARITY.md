@@ -75,7 +75,7 @@ Native React workspace (not an HTML wrap). Merged `feat/invoices` + `fix/invoice
 
 ## Design (`balance-bites-sticker.html` + JS)
 
-Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`), Print house. Not an HTML wrap. Waves A–B on `main`. Waves C–D on `feat/design-c`.
+Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`), Print house. Not an HTML wrap. Waves A–D on `main` (PR #4 A–B, PR #5 C–D).
 
 - [x] Template library CRUD (`bb_label_templates`)
 - [x] Import/export template JSON (`bb_label_template_v2`); user-picked file
@@ -195,7 +195,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 ## Explicit gaps (this slice)
 
 - **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). Finance is still a **tool shell**.
-- Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are in test on `feat/design-c`; Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
+- Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are on `main`. Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
 - Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** Desktop `saved data` JSON keys were written to Firestore (zip on Desktop, not git). Use `--only=` for a subset; npm steals `--keys`.
@@ -208,5 +208,5 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. **Merge `feat/design-c` → `main` when Wave D is confirmed.** Then Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
+1. **Finance** (stock ledger, prep, P&L) from `bb-stock-costs.html`.
 2. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.

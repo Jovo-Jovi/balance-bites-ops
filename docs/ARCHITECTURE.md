@@ -22,7 +22,7 @@ Balance Bites is three products that must look like **one company system**: same
 ```
 
 **Phase 1** was the launcher + CloudStore.  
-**Invoices** and **Design** were rewritten as React in the hub (not HTML wraps). **Finance** still follows wrap-or-port from `costs/`. Maps: [INVOICES.md](INVOICES.md), [DESIGN.md](DESIGN.md). Studio Wave C in test: [DESIGN-STUDIO.md](DESIGN-STUDIO.md).
+**Invoices** and **Design** were rewritten as React in the hub (not HTML wraps). **Finance** still follows wrap-or-port from `costs/`. Maps: [INVOICES.md](INVOICES.md), [DESIGN.md](DESIGN.md). Studio waves A–D: [DESIGN-STUDIO.md](DESIGN-STUDIO.md).
 
 ## Why this split
 

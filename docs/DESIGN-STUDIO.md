@@ -1,6 +1,6 @@
 # Design Studio — plan
 
-**Status:** Waves A–B merged to `main` (PR #4, 25 Aug 2026). **Wave C confirmed.** **Wave D in test** on `feat/design-c`.
+**Status:** Waves A–D on `main`. PR **#4** (A–B), PR **#5** (C–D). Closed 25 Aug 2026.
 
 This is a Design-slice follow-up, not a fourth hub app and not Finance. Current map: [DESIGN.md](DESIGN.md). Live source: `costs/bb-composite-label.js`, `costs/bb-prepress.js`, `costs/balance-bites-sticker.html`.
 
@@ -215,7 +215,7 @@ Likely new hub files (Wave A–B): `hub/src/lib/design/boolean-cut.ts` (port uni
 - [x] **Wave A** — shapes + join / trim / cut / merge (live composite parity) — on `main`
 - [x] **Wave B** — Cut PNG + exact PNG + bleed PNG (one open label, not a zip) — on `main`
 - [x] **Wave C** — libraries rail inside Studio (Canva-shaped, label-scoped) — **confirmed**
-- [x] **Wave D** — user-named sections + blank-from-scratch — **in test** on `feat/design-c`
+- [x] **Wave D** — user-named sections + blank-from-scratch — **confirmed** on `main`
 - [x] Rename Atelier label to **Studio** (keep `?tab=atelier`)
 - [x] PNG pack = **one label** first (not a zip of all templates)
 - [x] Keep wrap/taper **starters** (Ingredients / Nutrition) as library blocks, not deleted
@@ -223,4 +223,4 @@ Likely new hub files (Wave A–B): `hub/src/lib/design/boolean-cut.ts` (port uni
 
 Wave C shipped behavior: left **Libraries** rail in Studio — Shapes / Blocks / Icons / Uploads / Brand / Characters. Tap-to-add (drag later if needed). Inspector Images / Icons tabs folded into the rail. Flavor packs live under Brand. Composite `addZone` (text, logo disc, exp, photo). Wrap recipes have **Remove** (turns `chkS*` off). Composite text / logo / exp / photo layers are removable from the rail, Layers, canvas ×, or Delete. Characters are a **DiceBear** people catalog (not popcorn / pretzels / china crackers). Fetched PNG is inlined, then Save strips to R2. Product preset SVGs stay on saved templates via `artref:`. Templates stay on the Library tab.
 
-**Wave D shipped behavior (in test):** New template is a **blank die** unless **Include starter recipes** is checked. Wrap/taper start with `chkS1–6` off (no forced Ingredients). Composite starts with a circle part and no logo/brand/flavor zones. **Named section** on wrap/taper stores `{ title, fields[], widthPct }` in `state._blocks` and appends the id to `eSecOrd` — paint + Layers + Copy (title, width, EN/AR fields). Remove deletes the block (recipes still only turn `chkS*` off). Legacy Custom column (`chkS6` / `eCusTitle` / `eCusBody`) still opens. Composite named section is a text zone. Saved wrap JSON without `_blocks` is unchanged. Inspector Copy / Nutrition / Layout tabs stay; selecting a named column still jumps Copy.
+**Wave D shipped behavior:** New template is a **blank die** unless **Include starter recipes** is checked. Wrap/taper start with `chkS1–6` off (no forced Ingredients). Composite starts with a circle part and no logo/brand/flavor zones. **Named section** on wrap/taper stores `{ title, fields[], widthPct }` in `state._blocks` and appends the id to `eSecOrd` — paint + Layers + Copy (title, width, EN/AR fields). Remove deletes the block (recipes still only turn `chkS*` off). Legacy Custom column (`chkS6` / `eCusTitle` / `eCusBody`) still opens. Composite named section is a text zone. Saved wrap JSON without `_blocks` is unchanged. Inspector Copy / Nutrition / Layout tabs stay; selecting a named column still jumps Copy.

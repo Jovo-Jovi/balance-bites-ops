@@ -24,4 +24,4 @@ Pending cards skip `kind: 'invoice_draft'`. Do not mix prep-approve with product
 
 # Design slice
 
-Native Library / Atelier / Print house. Do **not** copy sticker HTML into `public/` or iframe it. Do not add a Theme tab that duplicates Invoices Look. Do not seed templates or flavor packs into Firestore. Map: `docs/DESIGN.md`.
+Native Library / Studio / Print house. Waves A–D on `main`. Do **not** copy sticker HTML into `public/` or iframe it. Do not add a Theme tab that duplicates Invoices Look. Do not seed templates or flavor packs into Firestore. Map: `docs/DESIGN.md`.

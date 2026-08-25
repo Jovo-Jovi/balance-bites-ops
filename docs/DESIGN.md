@@ -7,9 +7,9 @@ This is **not** a paste of the sticker HTML and **not** an iframe. Tools are fil
 
 When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, studio, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
 
-**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Waves A–B are on `main` (PR #4). **Wave C confirmed.** **Wave D** (blank die + user-named wrap sections) is in test on `feat/design-c`.
+**Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Waves A–D are on `main` (PR #4 A–B; PR #5 C–D). Closed 25 Aug 2026.
 
-Branch while Wave C is open: `feat/design-c`. Live templates were seeded 2026-08-21 (Desktop `bb_label_templates.json` → Firestore; 73 files on R2). Do **not** re-seed or run `import:apply` unless asked.
+Live templates were seeded 2026-08-21 (Desktop `bb_label_templates.json` → Firestore; 73 files on R2). Do **not** re-seed or run `import:apply` unless asked.
 
 ## Tabs (`?tab=`)
 

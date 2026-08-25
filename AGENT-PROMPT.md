@@ -158,7 +158,7 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 ### Design (`balance-bites-sticker.html` + JS)
 
-Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md` and `docs/JOURNAL.md`. Do not wrap the sticker HTML. Do not start Finance until asked.
+Shipped as native React on `main` (Waves A–D, PR #4 + #5). See `docs/DESIGN.md` and `docs/JOURNAL.md`. Do not wrap the sticker HTML. Do not start Finance until asked.
 
 - [x] Template library CRUD (`bb_label_templates`)
 - [x] Import/export JSON (`bb_label_template_v2`)
@@ -173,7 +173,7 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 - [x] Composite Studio Wave A (add shape / merge / group / trim / preview+approve cut)
 - [x] PNG cut pack Wave B (Cut / Exact / Bleed PNG, one label) — [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md)
 - [x] Libraries rail (Wave C) — [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md)
-- [ ] User-named sections + blank-from-scratch (Wave D)
+- [x] User-named sections + blank-from-scratch (Wave D)
 - [ ] Dumping `assets/presets/` / Jelly Kids into Firestore (Characters rail applies `artref:` only)
 - [ ] Desktop folder scan of `bbLabel-*.json` (pick a file instead)
 
@@ -202,7 +202,7 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 
 1. ~~Scaffold Next.js + CloudStore + hub.~~ Done.
 2. ~~Port invoices as native React.~~ Done (`docs/INVOICES.md`).
-3. ~~Port Design as native React.~~ On `feat/design` (`docs/DESIGN.md`). Do not wrap the sticker HTML. Merge when asked.
+3. ~~Port Design as native React.~~ Done on `main` (`docs/DESIGN.md`). Do not wrap the sticker HTML.
 4. Finance (hardest formulas) from `bb-stock-costs.html`.
 5. **Import script** (`saved data` → Firestore) only when the user says; zip backup first.
 6. Production is live at https://balance-bites-ops.vercel.app — still staff-only Auth + Firestore rules. Do not dump empty catalogs.
@@ -215,4 +215,4 @@ Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub, invoices, and Design Waves A–B are on `main`. Wave C (libraries rail) is on `feat/design-c` (`docs/DESIGN-STUDIO.md`). Wave D waits. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub, invoices, and Design Waves A–D are on `main`. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.
