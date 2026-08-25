@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
-import { CUT_LAYER } from "@/lib/design/layers";
+import { CUT_LAYER, listLayers } from "@/lib/design/layers";
 import { familyTextField, n, previewFace } from "@/lib/design/layout";
 import { downloadLabelPng } from "@/lib/design/png-pack";
 import { printExcludeNote } from "@/lib/design/prepress";
@@ -22,11 +22,20 @@ export function StudioTool() {
   const t = app.current;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        app.undoStudio();
+        return;
+      }
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const id = app.selectedId;
+      if (!id || !app.current) return;
+      const layer = listLayers(app.current).find((l) => l.id === id);
+      if (!layer?.removable) return;
       e.preventDefault();
-      app.undoStudio();
+      app.removeArt(id);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -150,8 +159,9 @@ export function StudioTool() {
         <StudioRail />
         <div className="min-w-0 flex-1">
           <p className="mb-2 text-xs text-[var(--bb-muted)]">
-            Tap a section to type in it. Drag the gold border to move; round handle rotates; corner resizes. Taper QR and
-            weight are separate from the dates block. Shift-click to multi-select shapes.
+            Tap a section to type in it. Drag the gold border to move; round handle rotates; corner resizes; × or
+            Delete removes a dropped block. Taper QR and weight are separate from the dates block. Shift-click to
+            multi-select shapes.
           </p>
           <div className="overflow-auto">
             <div
@@ -172,6 +182,7 @@ export function StudioTool() {
                 onResize={app.resizeItem}
                 onRotate={app.rotateItem}
                 onDragEnd={app.syncCutPath}
+                onRemove={app.removeArt}
                 onEdit={(id, text) => {
                   const fam = familyTextField(id);
                   if (fam) app.setField(fam.field, text);

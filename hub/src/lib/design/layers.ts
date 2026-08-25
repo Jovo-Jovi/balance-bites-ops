@@ -92,7 +92,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         z: 40 - i,
         color: box.id === FAM.blogo ? s(state, "cLogoCircle", "#ffffff") : undefined,
         lock: box.lock,
-        removable: false,
+        removable: Boolean(wrapRecipeChkForLayer(box.id)),
       });
     });
   }
@@ -122,7 +122,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         text: zone.text,
         field: zone.field,
         lock: zone.lock,
-        removable: (zone.kind === "icon" || zone.kind === "image") && !zone.lock,
+        removable: !zone.lock,
         letterStyle: zone.letterStyle,
       });
     }
@@ -131,7 +131,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
     layers.push({
       id: stamp.id,
       kind: "stamp",
-      label: getIcon(stamp.iconId)?.label || stamp.iconId,
+      label: stamp.label || getIcon(stamp.iconId)?.label || (stamp.src ? "Character" : stamp.iconId),
       z: stamp.z || 0,
       color: stamp.color,
       iconId: stamp.iconId,
@@ -491,6 +491,15 @@ const FAMILY_SECTION: Record<string, string> = {
 
 export function familySectionKey(id: string) {
   return FAMILY_SECTION[id] || "";
+}
+
+const WRAP_RECIPE_PRIMARY = new Set<string>([FAM.ing, FAM.nut, FAM.blogo, FAM.tip, FAM.bdates, FAM.cus]);
+
+/** chkS* for a wrap recipe layer. QR / weight / brand-name share a column and are not removed alone. */
+export function wrapRecipeChkForLayer(id: string) {
+  if (!WRAP_RECIPE_PRIMARY.has(id)) return "";
+  const k = familySectionKey(id);
+  return k ? `chkS${k}` : "";
 }
 
 function secOn(state: LabelState, k: string) {

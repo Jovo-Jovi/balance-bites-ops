@@ -109,7 +109,7 @@ All **inside Studio**. Repo catalogs stay in git. Tenant uploads stay on R2. **N
 | Icons | `icon-catalog.json` + A–Z letters | Same as today’s Icons tab |
 | Uploads | R2 `label_assets/` + device | Photos, QR, paper — reuse `__r2__:` |
 | Brand | Flavor packs (code) + logos on R2 | Tint + drop BB disc |
-| Characters | `hub/public/design-presets/` | Apply art; respect print-pack exclude |
+| Characters | DiceBear PNG catalog (Open Peeps / Adventurer / Lorelei / Notionists) | Drop a general character; store inlined PNG → R2 on save. Not `design-presets/` product stickers |
 
 ### Custom sections (the “not Ingredients forever” rule)
 
@@ -221,6 +221,6 @@ Likely new hub files (Wave A–B): `hub/src/lib/design/boolean-cut.ts` (port uni
 - [x] Keep wrap/taper **starters** (Ingredients / Nutrition) as library blocks, not deleted
 - [x] Do **not** add Canva/Polotno/AI
 
-Wave C shipped behavior: left **Libraries** rail in Studio — Shapes / Blocks / Icons / Uploads / Brand / Characters. Tap-to-add (drag later if needed). Inspector Images / Icons tabs folded into the rail. Flavor packs live under Brand. Composite `addZone` (text, logo disc, exp, photo). Characters apply `artref:` + `artKey` to the selected (or first) shape; warn popcorn-blue / popcorn-red; never write preset SVG into Firestore. Templates stay on the Library tab.
+Wave C shipped behavior: left **Libraries** rail in Studio — Shapes / Blocks / Icons / Uploads / Brand / Characters. Tap-to-add (drag later if needed). Inspector Images / Icons tabs folded into the rail. Flavor packs live under Brand. Composite `addZone` (text, logo disc, exp, photo). Wrap recipes have **Remove** (turns `chkS*` off). Composite text / logo / exp / photo layers are removable from the rail, Layers, canvas ×, or Delete. Characters are a **DiceBear** people catalog (not popcorn / pretzels / china crackers). Fetched PNG is inlined, then Save strips to R2. Product preset SVGs stay on saved templates via `artref:`. Templates stay on the Library tab.
 
 **Wave D parked:** blank die with no forced Ingredients; user-named section title + fields; migrate wrap `eSecOrd` / `chkS*` to a generic block list; inspector Document / Selection model. Saved wrap/taper JSON must still open.

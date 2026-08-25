@@ -17,7 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
 import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState } from "@/lib/design/layers";
+import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -27,11 +27,10 @@ import {
   type FlavorSnapshot,
 } from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
-import { isPrintPackExcludedArt } from "@/lib/design/art-presets";
 import { attachLibraryThumb, stripLibraryThumb } from "@/lib/design/library-thumb";
 import { exportFileBase } from "@/lib/design/prepress";
 import { isStorageEnabled } from "@/lib/firebase-config";
-import { deleteLabelAssetFolder } from "@/lib/storage";
+import { deleteLabelAssetFolder, staffAuthHeader } from "@/lib/storage";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
   applyFlavorPack,
@@ -50,11 +49,12 @@ import {
   safeRemoveTemplate,
   toR2Ref,
 } from "@/lib/design/templates";
+import { fetchCharacterPng } from "@/lib/design/character-library";
 import type { CutPreview } from "@/lib/design/studio-ops";
 import {
+  addLibraryCharacter,
   addShape,
   addZone,
-  applyCharacterArt,
   applyClipJoin,
   approveCutPreview,
   cancelCutPreview,
@@ -133,7 +133,7 @@ type DesignContextValue = {
   setFillCut: (on: boolean) => void;
   addStudioShape: (type: string) => void;
   addStudioZone: (kind: ZoneKind) => void;
-  applyStudioCharacter: (artKey: string) => void;
+  applyStudioCharacter: (style: string, seed: string) => Promise<void>;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -642,6 +642,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       removeArt: (id) => {
         if (!current) return;
+        const chk = wrapRecipeChkForLayer(id);
+        if (chk) {
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: patchState(current.state, { [chk]: "false" }) });
+          setSelectedIds((prev) => prev.filter((x) => wrapRecipeChkForLayer(x) !== chk && x !== id));
+          toast.push("Block removed.", "ok");
+          return;
+        }
         if (current.state._composite?.parts?.some((p) => p.id === id)) {
           const op = removePart(current.state, id);
           if (!op.ok) {
@@ -654,7 +662,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(op.message, "ok");
           return;
         }
+        pushUndo(current.state);
         replaceCurrent({ ...current, state: removeArtItem(current.state, id) });
+        setSelectedIds((prev) => prev.filter((x) => x !== id));
+        toast.push("Removed.", "ok");
       },
       patchLayer: (id, patch) => {
         if (!current) return;
@@ -740,20 +751,28 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         setSelectedIds(op.selectIds);
         toast.push(op.message, "ok");
       },
-      applyStudioCharacter: (artKey) => {
+      applyStudioCharacter: async (style, seed) => {
         if (!current) return;
-        const partId = selectedIds.find((id) => current.state._composite?.parts?.some((p) => p.id === id));
-        const op = applyCharacterArt(current.state, artKey, partId);
-        if (!op.ok) {
-          toast.push(op.message, "warn");
-          return;
-        }
-        pushUndo(current.state);
-        replaceCurrent({ ...current, state: op.state });
-        setSelectedIds(op.selectIds);
-        toast.push(op.message, "ok");
-        if (isPrintPackExcludedArt(artKey)) {
-          toast.push("Licensed likeness — not for commercial print pack", "warn");
+        try {
+          let auth: { Authorization: string };
+          try {
+            auth = await staffAuthHeader();
+          } catch {
+            toast.push("Sign in to add characters.", "warn");
+            return;
+          }
+          const src = await fetchCharacterPng(style, seed, auth);
+          const op = addLibraryCharacter(current.state, src, seed, current.designType === "composite");
+          if (!op.ok) {
+            toast.push(op.message, "warn");
+            return;
+          }
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds(op.selectIds);
+          toast.push(op.message, "ok");
+        } catch (err) {
+          toast.push(err instanceof Error ? err.message : "Could not load that character.", "bad");
         }
       },
       mergeStudioParts: () => {

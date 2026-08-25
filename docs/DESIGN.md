@@ -91,12 +91,14 @@ hub/src/lib/design/
   layers.ts         layer list / move / rotate / recolor / drag; grouped parts move together
   part-types.ts     live PART_TYPES + add-shape factory
   boolean-cut.ts    live raster union / intersect / Moore contour
-  studio-ops.ts     merge / group / trim / cut / addZone / apply character art
+  studio-ops.ts     merge / group / trim / cut / addZone / library character drop
   studio-library.ts wrap recipe block ids (Wave C; not user-named Wave D)
+  character-library.ts DiceBear style/seed catalog (not product stickers)
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
   png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN); FO overlay; nested preset SVG→PNG
   library-thumb.ts  Raster Library snap (WebP/PNG on R2 `library_thumb.webp`)
+hub/src/app/api/design/character/route.ts  staff proxy for DiceBear PNG
 hub/src/app/api/storage/list/route.ts   list R2 prefix for Images → Storage
 hub/src/lib/storage.ts                  listLabelAssets
 hub/src/lib/storage-paths.ts            parseLabelAssetKey
@@ -146,7 +148,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image. Save still writes the 256 px WebP. Re-save a family card to replace a colour-only die.
-- **Libraries rail (Wave C)** sits left of the canvas: Shapes, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Characters store `artref:` + `artKey` only (color chips in the rail, not full preset SVGs).
+- **Libraries rail (Wave C)** sits left of the canvas: Shapes, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`.
 
 ## Print house
 

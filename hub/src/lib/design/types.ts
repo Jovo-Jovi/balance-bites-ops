@@ -100,6 +100,8 @@ export type LabelStamp = {
   strokeWidth?: number;
   sizeId?: string;
   letterStyle?: string;
+  src?: string;
+  label?: string;
 };
 
 export type CompositeBlob = {

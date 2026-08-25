@@ -16,7 +16,7 @@ import {
 } from "./boolean-cut";
 import { MAX_OUTLINE_PARTS, makePart } from "./part-types";
 import { presetSrcForKey } from "./art-presets";
-import type { CompositeBlob, CompositePart, CompositeZone, LabelState } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
 export type CutSnapshot = {
   cutSourceIds: string[] | null;
@@ -678,4 +678,49 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
   part.showImage = true;
   blob.presetId = key;
   return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
+}
+
+/** Drop a fetched library PNG as a removable image zone (composite) or stamp (wrap / circle / lid). */
+export function addLibraryCharacter(state: LabelState, src: string, name: string, ontoComposite: boolean): StudioOp {
+  if (!src) return fail(state, "Could not load that character.");
+  const label = `Character · ${name}`;
+  if (ontoComposite) {
+    const packed = withBlob(state);
+    if (!packed) return fail(state, "Switch family to Composite to drop this character.");
+    const { next, blob } = packed;
+    bumpZ(blob);
+    const zTop = Math.max(0, ...(blob.zones || []).map((z) => z.z || 0), ...(blob.parts || []).map((p) => p.z || 0));
+    const zone: CompositeZone = {
+      id: genId("z"),
+      kind: "image",
+      x: 50,
+      y: 48,
+      w: 36,
+      h: 36,
+      lockAspect: true,
+      label,
+      z: zTop + 1,
+      src,
+      shape: "character",
+      color: "#ffffff",
+      rot: 0,
+    };
+    blob.zones = [...(blob.zones || []), zone];
+    return { state: next, selectIds: [zone.id], message: "Character added — drag it. Remove when done.", ok: true };
+  }
+  const next = cloneState(state);
+  const stamp: LabelStamp = {
+    id: genId("ic"),
+    iconId: "",
+    src,
+    label,
+    x: 50,
+    y: 50,
+    w: 22,
+    h: 22,
+    z: 40,
+    sizeId: "l",
+  };
+  next._stamps = [...(next._stamps || []), stamp];
+  return { state: next, selectIds: [stamp.id], message: "Character added — drag it. Remove when done.", ok: true };
 }

@@ -265,7 +265,7 @@ export function applyFlavorPack(state: LabelState, pack: FlavorPack): LabelState
     };
   }
   if (next._stamps?.length) {
-    next._stamps = next._stamps.map((s) => ({ ...s, color: pack.txt }));
+    next._stamps = next._stamps.map((s) => (s.src ? s : { ...s, color: pack.txt }));
   }
   return next;
 }

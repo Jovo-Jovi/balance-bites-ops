@@ -1,5 +1,5 @@
 import { FAM, flag, type PreviewFace } from "./layout";
-import type { LabelState } from "./types";
+import type { CompositeZone, LabelState } from "./types";
 
 export const WRAP_RECIPE_BLOCKS = [
   { k: "1", chk: "chkS1", label: "Ingredients", famId: FAM.ing, fallbackOn: true, hint: "EN/AR ingredients recipe" },
@@ -23,4 +23,24 @@ export function wrapBlockOn(state: LabelState, chk: string, fallbackOn: boolean)
 
 export function isWrapFace(face: PreviewFace) {
   return face === "back" || face === "taper";
+}
+
+export function isCharacterZone(zone: CompositeZone) {
+  return zone.shape === "character" || String(zone.label || "").startsWith("Character");
+}
+
+export function placedCompositeBlocks(state: LabelState) {
+  return (state._composite?.zones || []).filter(
+    (z) => (z.kind === "text" || z.kind === "logo" || z.kind === "image") && !isCharacterZone(z) && !z.lock,
+  );
+}
+
+export function placedCharacters(state: LabelState) {
+  const zones = (state._composite?.zones || [])
+    .filter((z) => isCharacterZone(z) && !z.lock)
+    .map((z) => ({ id: z.id, label: z.label || "Character" }));
+  const stamps = (state._stamps || [])
+    .filter((s) => Boolean(s.src) || String(s.label || "").startsWith("Character"))
+    .map((s) => ({ id: s.id, label: s.label || "Character" }));
+  return [...zones, ...stamps];
 }

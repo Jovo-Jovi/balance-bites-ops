@@ -222,6 +222,29 @@ function qrLayer(state: LabelState, lite = false) {
   return `<image href="${esc(href)}" x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
+function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string) {
+  const href = usableImage(s.src);
+  if (href) {
+    const side = Math.max(2, Math.min(s.w, s.h));
+    const left = s.x - side / 2;
+    const top = s.y - side / 2;
+    const img = `<image href="${esc(href)}" x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />`;
+    if (!s.rot) return img;
+    return `<g transform="rotate(${s.rot} ${s.x} ${s.y})">${img}</g>`;
+  }
+  return iconMark(
+    s.iconId,
+    s.x,
+    s.y,
+    s.w,
+    s.h,
+    s.color || fallback,
+    s.strokeWidth ?? 2,
+    s.rot,
+    s.letterStyle,
+  );
+}
+
 function iconMark(
   iconId: string,
   x: number,
@@ -562,7 +585,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     for (const s of stamps) {
       stack.push({
         z: s.z || 0,
-        html: iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot, s.letterStyle),
+        html: stampMark(s, txt),
       });
     }
     const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);

@@ -10,7 +10,7 @@ import {
   r2KeyFromRef,
   toAssetRef,
 } from "./templates";
-import type { CompositeBlob, CompositePart, CompositeZone, LabelState } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
 type WithSrc = { id?: string; src?: string; srcUrl?: string };
 
@@ -117,6 +117,12 @@ export async function stripStateAssets(templateId: string, state: LabelState): P
   if (out._composite) {
     out._composite = await stripComposite(templateId, out._composite, upload);
   }
+  if (out._stamps?.length) {
+    for (const st of out._stamps) {
+      if (upload) await stripSrc(templateId, st, "stamp");
+      else placeholderizeSrc(st, "stamp");
+    }
+  }
   return out;
 }
 
@@ -170,6 +176,19 @@ export async function hydrateStateAssets(
     }
     out._composite = next;
   }
+  if (out._stamps?.length) {
+    const stamps = JSON.parse(JSON.stringify(out._stamps)) as LabelStamp[];
+    out._stamps = stamps;
+    for (const st of stamps) {
+      if (!isAssetRef(st.src)) continue;
+      jobs.push({
+        value: String(st.src),
+        assign: (data) => {
+          st.src = data;
+        },
+      });
+    }
+  }
   const objectKeys = [...new Set(jobs.map((j) => objectKeyForRef(templateId, j.value)).filter(Boolean))];
   if (!objectKeys.length) return out;
   let urls: Record<string, string> = {};
@@ -206,14 +225,22 @@ export function collectAssetRefs(state: LabelState) {
     if (isAssetRef(zone.src)) out[`zone:${zone.id}:src`] = String(zone.src);
     if (isAssetRef(zone.srcUrl)) out[`zone:${zone.id}:srcUrl`] = String(zone.srcUrl);
   }
+  for (const st of state._stamps || []) {
+    if (isAssetRef(st.src)) out[`stamp:${st.id}:src`] = String(st.src);
+  }
   return out;
 }
 
 export function applyAssetRefs(state: LabelState, refs: Record<string, string>) {
   const next = cloneState(state);
   for (const [path, ref] of Object.entries(refs)) {
-    if (path.startsWith("part:") || path.startsWith("zone:")) {
+    if (path.startsWith("part:") || path.startsWith("zone:") || path.startsWith("stamp:")) {
       const [, id, field] = path.split(":");
+      if (path.startsWith("stamp:")) {
+        if (!next._stamps || field !== "src") continue;
+        next._stamps = next._stamps.map((st) => (st.id === id ? { ...st, src: ref } : st));
+        continue;
+      }
       const list = path.startsWith("part:") ? next._composite?.parts : next._composite?.zones;
       if (!list || (field !== "src" && field !== "srcUrl")) continue;
       for (const item of list) {
@@ -240,7 +267,9 @@ export function hasUnresolvedAssets(state: LabelState) {
     if (isAssetRef(value)) return true;
   }
   const comp = state._composite;
-  if (!comp) return false;
-  const items = [...(comp.parts || []), ...(comp.zones || [])];
-  return items.some((item) => isAssetRef(item.src) || isAssetRef(item.srcUrl));
+  if (comp) {
+    const items = [...(comp.parts || []), ...(comp.zones || [])];
+    if (items.some((item) => isAssetRef(item.src) || isAssetRef(item.srcUrl))) return true;
+  }
+  return (state._stamps || []).some((s) => isAssetRef(s.src));
 }

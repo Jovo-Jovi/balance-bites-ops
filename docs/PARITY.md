@@ -109,9 +109,9 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
 - [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG
 - [x] Family print / SVG / PNG match Studio hit-boxes (top lid, circle, wrap). Delete template removes the R2 art folder
-- [x] Studio libraries rail (Wave C) — Shapes / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*`; composite `addZone`; character `artref:` (no SVG dump)
+- [x] Studio libraries rail (Wave C) — Shapes / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*` with Remove; composite `addZone` removable; Characters = DiceBear people library (not product stickers)
 - [ ] User-named sections + blank-from-scratch (Wave D)
-- [ ] Dumping `assets/presets/` / Jelly Kids catalogs into Firestore (Characters rail applies `artref:` only)
+- [ ] Dumping `assets/presets/` / Jelly Kids catalogs into Firestore (product art stays `artref:` on saved templates; Characters rail does not list them)
 
 ---
 

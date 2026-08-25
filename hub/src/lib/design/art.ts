@@ -180,7 +180,7 @@ export function placedArtItems(state: LabelState) {
   const stamps = (state._stamps || []).map((s) => ({
     id: s.id,
     iconId: s.iconId,
-    label: getIcon(s.iconId)?.label || s.iconId,
+    label: s.label || getIcon(s.iconId)?.label || (s.src ? "Character" : s.iconId),
   }));
   const zones = (state._composite?.zones || [])
     .filter((z) => z.kind === "icon" && z.iconId)
