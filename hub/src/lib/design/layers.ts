@@ -3,6 +3,7 @@ import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./ar
 import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys } from "./layout";
+import { stampOnFace } from "./studio-library";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
 import type { CompositeBlob, CompositePart, LabelState, LabelTemplate } from "./types";
@@ -134,6 +135,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
     }
   }
   for (const stamp of state._stamps || []) {
+    if (!stampOnFace(stamp, face)) continue;
     layers.push({
       id: stamp.id,
       kind: "stamp",
@@ -230,6 +232,7 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
   }
   }
   for (const stamp of state._stamps || []) {
+    if (!stampOnFace(stamp, face)) continue;
     items.push({
       id: stamp.id,
       kind: "stamp",
@@ -605,7 +608,13 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
   }
   const stamp = state._stamps?.find((st) => st.id === id);
   if (stamp) {
-    return { width: stamp.strokeWidth ?? 2, color: stamp.color || "#c9a84c", max: 8, showColor: false };
+    const png = Boolean(stamp.src);
+    return {
+      width: stamp.strokeWidth ?? (png ? 0 : 2),
+      color: stamp.borderColor || stamp.color || "#ffffff",
+      max: 8,
+      showColor: png,
+    };
   }
   return null;
 }
@@ -642,6 +651,7 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
           ? {
               ...st,
               color: patch.color ?? st.color,
+              borderColor: patch.borderColor ?? st.borderColor,
               strokeWidth: patch.borderWidth ?? st.strokeWidth,
             }
           : st,

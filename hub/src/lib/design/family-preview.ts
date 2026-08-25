@@ -1,5 +1,6 @@
 import { usableImage } from "./art";
 import { getDesignSpec } from "./specs";
+import { stampOnFace } from "./studio-library";
 import {
   PPC,
   artboardOf,
@@ -9,6 +10,7 @@ import {
   flag,
   n,
   previewFace,
+  type PreviewFace,
   s,
   taperSectors,
   topPx,
@@ -207,8 +209,8 @@ function htmlShapeStyle(kind: string, radiusPx = 0) {
   return `border-radius:50%;overflow:hidden`;
 }
 
-function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, vbH: number) {
-  const stamps = state._stamps || [];
+function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, vbH: number, face: PreviewFace) {
+  const stamps = (state._stamps || []).filter((st) => stampOnFace(st, face));
   if (!stamps.length || !(vbW > 0) || !(vbH > 0)) return "";
   return stamps
     .map((st) => {
@@ -218,7 +220,14 @@ function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, 
       const href = usableImage(st.src);
       let body = "";
       if (href) {
-        body = `<image href="${esc(href)}" x="${cx - side / 2}" y="${cy - side / 2}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />`;
+        const left = cx - side / 2;
+        const top = cy - side / 2;
+        const bw = Number(st.strokeWidth);
+        const ring =
+          Number.isFinite(bw) && bw > 0
+            ? `<circle cx="${cx}" cy="${cy}" r="${side / 2}" fill="none" stroke="${esc(st.borderColor || st.color || "#ffffff")}" stroke-width="${bw}" />`
+            : "";
+        body = `<image href="${esc(href)}" x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />${ring}`;
       } else {
         const inner = iconInner(st.iconId, st.color || "#c9a84c", st.strokeWidth ?? 2, st.letterStyle);
         if (!inner) return "";
@@ -397,7 +406,7 @@ function drawCircle(
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden">${body}</foreignObject>
-      ${stampLayer(state, 0, 0, W, H)}
+      ${stampLayer(state, 0, 0, W, H, "circle")}
     </g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
@@ -474,7 +483,7 @@ function drawTop(
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden">${body}</foreignObject>
-      ${stampLayer(state, 0, 0, W, H)}
+      ${stampLayer(state, 0, 0, W, H, "top")}
     </g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
@@ -517,7 +526,7 @@ function drawBack(
     .join("");
   const fo = `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:visible;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`;
   const geom = `<rect x="0" y="0" width="${W}" height="${H}" />`;
-  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}</g>${fo}<g clip-path="url(#${uid}die)">${stampLayer(state, 0, 0, W, H)}</g>`;
+  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}</g>${fo}<g clip-path="url(#${uid}die)">${stampLayer(state, 0, 0, W, H, "back")}</g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
 
@@ -584,7 +593,7 @@ function drawTaper(
     </g>`);
   }
   const dieId = `${uid}die`;
-  const painted = `<defs><clipPath id="${dieId}"><path d="${fan}" /></clipPath>${clips.join("")}</defs><g clip-path="url(#${dieId})">${parts.join("")}${stampLayer(state, g.minX, g.minY, g.vbW, g.vbH)}</g>`;
+  const painted = `<defs><clipPath id="${dieId}"><path d="${fan}" /></clipPath>${clips.join("")}</defs><g clip-path="url(#${dieId})">${parts.join("")}${stampLayer(state, g.minX, g.minY, g.vbW, g.vbH, "taper")}</g>`;
   return framed(state, showCut, g.minX, g.minY, g.vbW, g.vbH, `<path d="${fan}" />`, painted, svgOpts);
 }
 

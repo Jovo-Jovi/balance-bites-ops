@@ -16,6 +16,8 @@ import {
 } from "./boolean-cut";
 import { MAX_OUTLINE_PARTS, makePart } from "./part-types";
 import { presetSrcForKey } from "./art-presets";
+import type { PreviewFace } from "./layout";
+import { stampFaceOf } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
 export type CutSnapshot = {
@@ -706,7 +708,13 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
 }
 
 /** Drop a fetched library PNG as a removable image zone (composite) or stamp (wrap / circle / lid). */
-export function addLibraryCharacter(state: LabelState, src: string, name: string, ontoComposite: boolean): StudioOp {
+export function addLibraryCharacter(
+  state: LabelState,
+  src: string,
+  name: string,
+  ontoComposite: boolean,
+  face?: PreviewFace,
+): StudioOp {
   if (!src) return fail(state, "Could not load that character.");
   const label = `Character · ${name}`;
   if (ontoComposite) {
@@ -728,6 +736,8 @@ export function addLibraryCharacter(state: LabelState, src: string, name: string
       src,
       shape: "character",
       color: "#ffffff",
+      borderColor: "#ffffff",
+      borderWidth: 0,
       rot: 0,
     };
     blob.zones = [...(blob.zones || []), zone];
@@ -745,6 +755,10 @@ export function addLibraryCharacter(state: LabelState, src: string, name: string
     h: 22,
     z: 40,
     sizeId: "l",
+    color: "#ffffff",
+    borderColor: "#ffffff",
+    strokeWidth: 0,
+    face: stampFaceOf(face || "back") || "back",
   };
   next._stamps = [...(next._stamps || []), stamp];
   return { state: next, selectIds: [stamp.id], message: "Character added — drag it. Remove when done.", ok: true };

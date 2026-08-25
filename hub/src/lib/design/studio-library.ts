@@ -1,5 +1,5 @@
 import { FAM, flag, type PreviewFace } from "./layout";
-import type { CompositeZone, LabelState } from "./types";
+import type { CompositeZone, LabelStamp, LabelState } from "./types";
 
 export const WRAP_RECIPE_BLOCKS = [
   { k: "1", chk: "chkS1", label: "Ingredients", famId: FAM.ing, fallbackOn: true, hint: "EN/AR ingredients recipe" },
@@ -25,6 +25,22 @@ export function isWrapFace(face: PreviewFace) {
   return face === "back" || face === "taper";
 }
 
+export function stampFaceOf(face: PreviewFace): LabelStamp["face"] {
+  if (face === "back" || face === "taper" || face === "top" || face === "circle") return face;
+  return undefined;
+}
+
+/** Wrap/lid/circle stamps stay on the face they were dropped on. Wrap and taper share art. */
+export function stampOnFace(stamp: LabelStamp, face: PreviewFace) {
+  if (face === "composite") return false;
+  const stored = stamp.face;
+  if (stored === "back" || stored === "taper") return face === "back" || face === "taper";
+  if (stored === "top" || stored === "circle") return stored === face;
+  const character = Boolean(stamp.src) || String(stamp.label || "").startsWith("Character");
+  if (character) return face !== "top";
+  return true;
+}
+
 export function isCharacterZone(zone: CompositeZone) {
   return zone.shape === "character" || String(zone.label || "").startsWith("Character");
 }
@@ -35,12 +51,15 @@ export function placedCompositeBlocks(state: LabelState) {
   );
 }
 
-export function placedCharacters(state: LabelState) {
-  const zones = (state._composite?.zones || [])
-    .filter((z) => isCharacterZone(z) && !z.lock)
-    .map((z) => ({ id: z.id, label: z.label || "Character" }));
+export function placedCharacters(state: LabelState, face: PreviewFace) {
+  const zones =
+    face === "composite"
+      ? (state._composite?.zones || [])
+          .filter((z) => isCharacterZone(z) && !z.lock)
+          .map((z) => ({ id: z.id, label: z.label || "Character" }))
+      : [];
   const stamps = (state._stamps || [])
-    .filter((s) => Boolean(s.src) || String(s.label || "").startsWith("Character"))
+    .filter((s) => stampOnFace(s, face) && (Boolean(s.src) || String(s.label || "").startsWith("Character")))
     .map((s) => ({ id: s.id, label: s.label || "Character" }));
   return [...zones, ...stamps];
 }

@@ -658,6 +658,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             sizeId,
             color || String(current.state.cTxtMain || "#ffffff"),
             letterStyle,
+            previewFace(current),
           ),
         });
       },
@@ -838,7 +839,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             return;
           }
           const src = await fetchCharacterPng(style, seed, auth);
-          const op = addLibraryCharacter(current.state, src, seed, current.designType === "composite");
+          const face = previewFace(current);
+          const op = addLibraryCharacter(current.state, src, seed, face === "composite", face);
           if (!op.ok) {
             toast.push(op.message, "warn");
             return;

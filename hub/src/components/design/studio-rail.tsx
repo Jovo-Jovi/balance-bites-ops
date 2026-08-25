@@ -55,7 +55,7 @@ export function StudioRail() {
   const wrap = isWrapFace(face);
   const placedBlocks = composite ? placedCompositeBlocks(t.state) : [];
   const namedWrap = wrap ? listBlocks(t.state) : [];
-  const charsOnCanvas = placedCharacters(t.state);
+  const charsOnCanvas = placedCharacters(t.state, face);
 
   return (
     <aside className="w-full shrink-0 xl:sticky xl:top-24 xl:w-[17.5rem]">

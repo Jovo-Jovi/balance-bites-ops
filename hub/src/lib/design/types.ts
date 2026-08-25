@@ -97,11 +97,14 @@ export type LabelStamp = {
   rot?: number;
   z?: number;
   color?: string;
+  borderColor?: string;
   strokeWidth?: number;
   sizeId?: string;
   letterStyle?: string;
   src?: string;
   label?: string;
+  /** Which family face this stamp sits on. Missing = legacy (icons all faces; characters skip the lid). */
+  face?: "back" | "taper" | "top" | "circle";
 };
 
 export type CompositeBlob = {
