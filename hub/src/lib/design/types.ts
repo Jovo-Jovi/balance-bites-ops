@@ -138,6 +138,8 @@ export type LabelTemplate = {
   syncTargets: SyncTargets;
   schemaVersion: number;
   updatedAt: string;
+  /** Raster Library icon (WebP/PNG data URL or `__r2__:` / `__asset__:`). Never SVG. */
+  libraryThumb?: string;
 };
 
 export type LabelOpen = {

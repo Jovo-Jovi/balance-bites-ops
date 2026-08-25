@@ -98,9 +98,11 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Rect + top uses live back wrap (`buildLabel` sections + `getSectionHTML`) and top lid (`buildTopLabel`) in pixel boxes
 - [x] Taper + top uses live `calcTaper` fan: pixel viewBox, rotate around apex, section HTML — **not** remapped to `0 0 100 100` / `preserveAspectRatio="none"`
 - [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
+- [x] Inspector Layers / Layout / Type / Size / Color / Images / Icons stay open when a wrap column is selected; Nutrition does not trap Layers
 - [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
-- [x] Compact Library thumbs (cheap die silhouette for every family; no `/design-presets` files in the grid; no live FO). Design scroll uses a solid sheet, not glass blur
+- [x] Compact Library thumbs (raster WebP/PNG snap per template; no SVG / no `/design-presets` in the grid; no live FO). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
+- [x] Composite Size / resize keeps Print cut (`unionPath`) aligned with the silhouette, including seeded characters without `cutSourceIds`
 - [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
@@ -180,7 +182,7 @@ Do not commit these files. Field names to preserve:
 | `bb_operation_costs` | array | `date`, `name`, `category`, `amount` (compensation may be negative) |
 | `bb_investors` | array | (live file currently empty `[]`) |
 | `bb_investor_target` | object | `needed`, `split`, `projectStart` |
-| `bb_label_templates` | array | `id`, `name`, `designType`, `labelMode`, large `state` |
+| `bb_label_templates` | array | `id`, `name`, `designType`, `labelMode`, `libraryThumb` (R2 WebP/PNG ref), large `state` |
 | `bb_label_open` | object | `stickerId`, `templateId`, `productId`, `ts` |
 | `bb_color_presets` | array | `id`, `name`, `bg`, `gold`, `txt`, `mut`, `row`, `tot`, `grand` |
 | `bb_backup_index` | array | `id`, `createdAt`, `label` |

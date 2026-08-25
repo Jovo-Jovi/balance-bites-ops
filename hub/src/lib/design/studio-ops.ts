@@ -557,6 +557,6 @@ export function syncCutPath(state: LabelState): LabelState {
   const packed = withBlob(state);
   if (!packed) return state;
   const { next, blob } = packed;
-  if (blob.cutGroupId || blob.cutZoneId || blob.cutSourceIds?.length) recomputeUnion(blob);
+  if (blob.parts?.length || blob.cutGroupId || blob.cutZoneId || blob.unionPath) recomputeUnion(blob);
   return next;
 }

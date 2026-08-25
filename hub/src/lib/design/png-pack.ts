@@ -519,14 +519,14 @@ function triggerDownload(dataUrl: string, filename: string) {
   a.click();
 }
 
-export async function downloadLabelPng(
+export async function rasterizeLabelCanvas(
   template: LabelTemplate,
   state: LabelState,
-  kind: PngKind,
-): Promise<PngExportInfo> {
+  wPx: number,
+  hPx: number,
+  kind: "exact" | "cut" = "exact",
+): Promise<HTMLCanvasElement> {
   if (typeof document === "undefined") throw new Error("PNG export runs in the browser.");
-  const { wCm, hCm } = artboardCm({ ...template, state });
-  const { wPx, hPx } = printPx(wCm, hCm);
   try {
     await document.fonts.ready;
   } catch {
@@ -541,7 +541,18 @@ export async function downloadLabelPng(
   } catch {
     /* SVG raster still has fills / composite art */
   }
-  if (kind === "cut" || kind === "bleed") applyCutMask(canvas, template, state);
+  if (kind === "cut") applyCutMask(canvas, template, state);
+  return canvas;
+}
+
+export async function downloadLabelPng(
+  template: LabelTemplate,
+  state: LabelState,
+  kind: PngKind,
+): Promise<PngExportInfo> {
+  const { wCm, hCm } = artboardCm({ ...template, state });
+  const { wPx, hPx } = printPx(wCm, hCm);
+  const canvas = await rasterizeLabelCanvas(template, state, wPx, hPx, kind === "exact" ? "exact" : "cut");
   const out = kind === "bleed" ? applyBleed(canvas) : canvas;
   const physW = kind === "bleed" ? wCm + (2 * BLEED_MM) / 10 : wCm;
   const physH = kind === "bleed" ? hCm + (2 * BLEED_MM) / 10 : hCm;

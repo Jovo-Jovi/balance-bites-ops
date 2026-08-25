@@ -1,9 +1,10 @@
 import { BG_MORE, BG_SLOTS, usableImage } from "./art";
+import { layersInLayerGroup, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys } from "./layout";
-import { bgPanKeys, isCutBlack, productPhotoBox } from "./preview";
+import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
-import type { CompositePart, LabelState, LabelTemplate } from "./types";
+import type { CompositeBlob, CompositePart, LabelState, LabelTemplate } from "./types";
 
 export const PHOTO_LAYER = "__photo__";
 export const QR_LAYER = "__qr__";
@@ -368,6 +369,73 @@ function scaleBox<T extends { w: number; h: number }>(item: T, size: number): T 
   return { ...item, w: item.w * f, h: item.h * f };
 }
 
+type CutBox = { x: number; y: number; w: number; h: number };
+
+function itemAffectsCut(blob: CompositeBlob, id: string) {
+  if (blob.cutGroupId) {
+    const g = layersInLayerGroup(blob, blob.cutGroupId);
+    return g.parts.some((p) => p.id === id) || g.zones.some((z) => z.id === id);
+  }
+  if (blob.cutZoneId) return blob.cutZoneId === id;
+  if (blob.cutSourceIds?.length) return blob.cutSourceIds.includes(id);
+  return (blob.parts || []).some((p) => p.id === id);
+}
+
+function isSoleCutItem(blob: CompositeBlob, id: string) {
+  if (blob.cutGroupId) {
+    const g = layersInLayerGroup(blob, blob.cutGroupId);
+    return g.parts.length + g.zones.length === 1 && itemAffectsCut(blob, id);
+  }
+  if (blob.cutZoneId) return blob.cutZoneId === id;
+  if (blob.cutSourceIds?.length) return blob.cutSourceIds.length === 1 && blob.cutSourceIds[0] === id;
+  return (blob.parts || []).length === 1 && blob.parts![0].id === id;
+}
+
+function groupIsEntireCut(blob: CompositeBlob, gid: string) {
+  if (!gid) return false;
+  if (blob.cutGroupId) return blob.cutGroupId === gid;
+  const g = layersInLayerGroup(blob, gid);
+  if (blob.cutZoneId) return g.zones.some((z) => z.id === blob.cutZoneId);
+  const sources = blob.cutSourceIds?.length ? blob.cutSourceIds : (blob.parts || []).map((p) => p.id);
+  return sources.length > 0 && sources.every((id) => g.parts.some((p) => p.id === id));
+}
+
+function refreshCutToBox(blob: CompositeBlob, id: string, oldBox: CutBox, newBox: CutBox): CompositeBlob {
+  const next: CompositeBlob = { ...blob };
+  if (!itemAffectsCut(next, id)) return next;
+  if (isSoleCutItem(next, id) && next.unionPath) {
+    const sx = newBox.w / Math.max(oldBox.w, 0.01);
+    const sy = newBox.h / Math.max(oldBox.h, 0.01);
+    const dx = newBox.x - oldBox.x;
+    const dy = newBox.y - oldBox.y;
+    let d = next.unionPath;
+    if (Math.abs(sx - 1) > 1e-6 || Math.abs(sy - 1) > 1e-6) {
+      d = scalePathAbout(d, oldBox.x, oldBox.y, sx, sy);
+    }
+    if (dx || dy) d = translatePathD(d, dx, dy);
+    return { ...next, unionPath: d };
+  }
+  recomputeUnion(next);
+  return next;
+}
+
+function refreshCutTranslate(blob: CompositeBlob, id: string, dx: number, dy: number, gid?: string): CompositeBlob {
+  const next: CompositeBlob = { ...blob };
+  if (!dx && !dy) return next;
+  const whole = (gid && groupIsEntireCut(next, gid)) || isSoleCutItem(next, id);
+  if (whole && next.unionPath && (itemAffectsCut(next, id) || (gid && groupIsEntireCut(next, gid)))) {
+    return { ...next, unionPath: translatePathD(next.unionPath, dx, dy) };
+  }
+  return next;
+}
+
+function refreshCutRotate(blob: CompositeBlob, id: string): CompositeBlob {
+  const next: CompositeBlob = { ...blob };
+  if (!itemAffectsCut(next, id) || !next.unionPath) return next;
+  recomputeUnion(next);
+  return next;
+}
+
 function applyLayerSize(state: LabelState, id: string, size: number): LabelState {
   const spec = SIZE_BY_ID[id];
   if (spec && !(state._composite && id === QR_LAYER)) {
@@ -385,16 +453,19 @@ function applyLayerSize(state: LabelState, id: string, size: number): LabelState
     if (!slot?.zoom) return state;
     return { ...state, [slot.zoom]: String(Math.round(clamp(size, 20, 400))) };
   }
+  const stamps = (state._stamps || []).map((st) => (st.id === id ? scaleBox(st, size) : st));
+  if (!state._composite) return { ...state, _stamps: stamps };
+  const oldPart = (state._composite.parts || []).find((p) => p.id === id);
+  const oldZone = (state._composite.zones || []).find((z) => z.id === id);
+  const parts = (state._composite.parts || []).map((p) => (p.id === id ? scaleBox(p, size) : p));
+  const zones = (state._composite.zones || []).map((z) => (z.id === id ? scaleBox(z, size) : z));
+  const oldBox = oldPart || oldZone;
+  const newBox = parts.find((p) => p.id === id) || zones.find((z) => z.id === id);
+  const blob: CompositeBlob = { ...state._composite, parts, zones };
   return {
     ...state,
-    _stamps: (state._stamps || []).map((st) => (st.id === id ? scaleBox(st, size) : st)),
-    _composite: state._composite
-      ? {
-          ...state._composite,
-          parts: (state._composite.parts || []).map((p) => (p.id === id ? scaleBox(p, size) : p)),
-          zones: (state._composite.zones || []).map((z) => (z.id === id ? scaleBox(z, size) : z)),
-        }
-      : state._composite,
+    _stamps: stamps,
+    _composite: oldBox && newBox ? refreshCutToBox(blob, id, oldBox, newBox) : blob,
   };
 }
 
@@ -653,16 +724,14 @@ export function rotateItem(template: LabelTemplate, id: string, rot: number): La
   if (a < -180) a += 360;
   a = Math.round(a);
   if (familyBoxByIdSafe(template, id)) return rotateFamilyItem(template, id, a);
+  const stamps = (state._stamps || []).map((s) => (s.id === id ? { ...s, rot: a } : s));
+  if (!state._composite) return { ...state, _stamps: stamps };
+  const parts = (state._composite.parts || []).map((p) => (p.id === id ? { ...p, rot: a } : p));
+  const zones = (state._composite.zones || []).map((z) => (z.id === id ? { ...z, rot: a } : z));
   return {
     ...state,
-    _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, rot: a } : s)),
-    _composite: state._composite
-      ? {
-          ...state._composite,
-          parts: (state._composite.parts || []).map((p) => (p.id === id ? { ...p, rot: a } : p)),
-          zones: (state._composite.zones || []).map((z) => (z.id === id ? { ...z, rot: a } : z)),
-        }
-      : state._composite,
+    _stamps: stamps,
+    _composite: refreshCutRotate({ ...state._composite, parts, zones }, id),
   };
 }
 
@@ -689,30 +758,30 @@ export function moveItem(template: LabelTemplate, id: string, x: number, y: numb
     const src = part || zone;
     const dx = nx - (src?.x || 0);
     const dy = ny - (src?.y || 0);
+    const parts = (state._composite.parts || []).map((p) =>
+      p.layerGroup === gid ? { ...p, x: p.x + dx, y: p.y + dy } : p,
+    );
+    const zones = (state._composite.zones || []).map((z) =>
+      z.layerGroup === gid ? { ...z, x: z.x + dx, y: z.y + dy } : z,
+    );
     return {
       ...state,
       _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, x: nx, y: ny } : s)),
-      _composite: {
-        ...state._composite,
-        parts: (state._composite.parts || []).map((p) =>
-          p.layerGroup === gid ? { ...p, x: p.x + dx, y: p.y + dy } : p,
-        ),
-        zones: (state._composite.zones || []).map((z) =>
-          z.layerGroup === gid ? { ...z, x: z.x + dx, y: z.y + dy } : z,
-        ),
-      },
+      _composite: refreshCutTranslate({ ...state._composite, parts, zones }, id, dx, dy, gid),
     };
   }
+  const stamps = (state._stamps || []).map((s) => (s.id === id ? { ...s, x: nx, y: ny } : s));
+  if (!state._composite) return { ...state, _stamps: stamps };
+  const oldPart = (state._composite.parts || []).find((p) => p.id === id);
+  const oldZone = (state._composite.zones || []).find((z) => z.id === id);
+  const parts = (state._composite.parts || []).map((p) => (p.id === id ? { ...p, x: nx, y: ny } : p));
+  const zones = (state._composite.zones || []).map((z) => (z.id === id ? { ...z, x: nx, y: ny } : z));
+  const dx = nx - ((oldPart || oldZone)?.x ?? nx);
+  const dy = ny - ((oldPart || oldZone)?.y ?? ny);
   return {
     ...state,
-    _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, x: nx, y: ny } : s)),
-    _composite: state._composite
-      ? {
-          ...state._composite,
-          parts: (state._composite.parts || []).map((p) => (p.id === id ? { ...p, x: nx, y: ny } : p)),
-          zones: (state._composite.zones || []).map((z) => (z.id === id ? { ...z, x: nx, y: ny } : z)),
-        }
-      : state._composite,
+    _stamps: stamps,
+    _composite: refreshCutTranslate({ ...state._composite, parts, zones }, id, dx, dy),
   };
 }
 
@@ -733,20 +802,23 @@ export function resizeItem(template: LabelTemplate, id: string, w: number, h: nu
     if (!slot?.zoom) return state;
     return { ...state, [slot.zoom]: String(Math.round(nw)) };
   }
+  const stamps = (state._stamps || []).map((s) => (s.id === id ? { ...s, w: nw, h: nh } : s));
+  if (!state._composite) return { ...state, _stamps: stamps };
+  const oldPart = (state._composite.parts || []).find((p) => p.id === id);
+  const oldZone = (state._composite.zones || []).find((z) => z.id === id);
+  const parts = (state._composite.parts || []).map((p) =>
+    p.id === id ? (p.lockAspect ? scaleBox(p, Math.max(nw, nh)) : { ...p, w: nw, h: nh }) : p,
+  );
+  const zones = (state._composite.zones || []).map((z) =>
+    z.id === id ? (z.lockAspect ? scaleBox(z, Math.max(nw, nh)) : { ...z, w: nw, h: nh }) : z,
+  );
+  const oldBox = oldPart || oldZone;
+  const newBox = parts.find((p) => p.id === id) || zones.find((z) => z.id === id);
+  const blob: CompositeBlob = { ...state._composite, parts, zones };
   return {
     ...state,
-    _stamps: (state._stamps || []).map((s) => (s.id === id ? { ...s, w: nw, h: nh } : s)),
-    _composite: state._composite
-      ? {
-          ...state._composite,
-          parts: (state._composite.parts || []).map((p) =>
-            p.id === id ? (p.lockAspect ? scaleBox(p, Math.max(nw, nh)) : { ...p, w: nw, h: nh }) : p,
-          ),
-          zones: (state._composite.zones || []).map((z) =>
-            z.id === id ? (z.lockAspect ? scaleBox(z, Math.max(nw, nh)) : { ...z, w: nw, h: nh }) : z,
-          ),
-        }
-      : state._composite,
+    _stamps: stamps,
+    _composite: oldBox && newBox ? refreshCutToBox(blob, id, oldBox, newBox) : blob,
   };
 }
 

@@ -23,6 +23,8 @@ function str(state: Record<string, unknown>, key: string) {
 
 type TabId = "copy" | "nutrition" | "layout" | "type" | "size" | "color" | "images" | "icons" | "layers";
 
+const STICKY_TABS: TabId[] = ["type", "size", "color", "images", "icons", "layers", "layout"];
+
 function tabsFor(face: PreviewFace): { id: TabId; label: string }[] {
   if (face === "composite") {
     return [
@@ -131,7 +133,7 @@ export function FaceInspector({ face }: { face: PreviewFace }) {
   const app = useDesignApp();
   const tabs = tabsFor(face);
   const [panel, setPanel] = useState<TabId>(tabs[0].id);
-  const focus = familyFocus(app.selectedId);
+  const focusTab = familyFocus(app.selectedId)?.tab ?? null;
 
   useEffect(() => {
     const ids = tabsFor(face).map((tab) => tab.id);
@@ -139,15 +141,12 @@ export function FaceInspector({ face }: { face: PreviewFace }) {
   }, [face, panel]);
 
   useEffect(() => {
-    if (!focus) return;
+    if (!focusTab) return;
     setPanel((prev) => {
-      if (focus.tab === "nutrition") return "nutrition";
-      if (prev === "type" || prev === "size" || prev === "color" || prev === "images" || prev === "icons" || prev === "layers") {
-        return prev;
-      }
-      return "copy";
+      if (STICKY_TABS.includes(prev)) return prev;
+      return focusTab === "nutrition" ? "nutrition" : "copy";
     });
-  }, [app.selectedId, focus]);
+  }, [app.selectedId, focusTab]);
 
   return (
     <div>

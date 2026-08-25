@@ -22,6 +22,17 @@ export function isAssetRef(value: unknown): boolean {
   );
 }
 
+/** Accept raster Library snaps only. SVG (including data-URL SVG) is dropped. */
+export function asLibraryThumb(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const v = raw.trim();
+  if (!v || v.startsWith("blob:") || /^data:image\/svg/i.test(v)) return undefined;
+  if (/^data:image\/(png|jpe?g|webp|gif|avif)/i.test(v)) return v;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith(ASSET_PREFIX) || v.startsWith(R2_PREFIX)) return v;
+  return undefined;
+}
+
 export function toR2Ref(objectKey: string) {
   return `${R2_PREFIX}${objectKey}`;
 }
@@ -137,6 +148,7 @@ export function normalizeTemplate(raw: unknown): LabelTemplate | null {
   const mode = String(t.labelMode || spec.defaultMode);
   const labelMode =
     mode === "back" || mode === "top" || mode === "circle" ? mode : spec.defaultMode;
+  const libraryThumb = asLibraryThumb(t.libraryThumb);
   return {
     id,
     name,
@@ -151,6 +163,7 @@ export function normalizeTemplate(raw: unknown): LabelTemplate | null {
     syncTargets: asSyncTargets(t.syncTargets, designType),
     schemaVersion: Number(t.schemaVersion) || 2,
     updatedAt: String(t.updatedAt || new Date().toISOString()),
+    ...(libraryThumb ? { libraryThumb } : {}),
   };
 }
 
@@ -342,7 +355,7 @@ export function createTemplate(opts: {
 }
 
 export function duplicateTemplate(src: LabelTemplate): LabelTemplate {
-  return {
+  const copy: LabelTemplate = {
     ...src,
     id: genId("lbl"),
     name: `${src.name} copy`,
@@ -351,6 +364,8 @@ export function duplicateTemplate(src: LabelTemplate): LabelTemplate {
     syncTargets: { ...src.syncTargets },
     updatedAt: new Date().toISOString(),
   };
+  delete copy.libraryThumb;
+  return copy;
 }
 
 export function assetFieldName(value: string) {
@@ -393,6 +408,7 @@ export function parseImportedJson(raw: unknown): LabelTemplate[] {
 }
 
 export function exportPayload(t: LabelTemplate) {
+  const libraryThumb = asLibraryThumb(t.libraryThumb);
   return {
     template: "bb_label_template_v2",
     schemaVersion: 2,
@@ -408,6 +424,7 @@ export function exportPayload(t: LabelTemplate) {
     productIdentity: t.productIdentity,
     syncTargets: t.syncTargets,
     state: t.state,
+    ...(libraryThumb && isAssetRef(libraryThumb) ? { libraryThumb } : {}),
   };
 }
 

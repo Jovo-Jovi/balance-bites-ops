@@ -93,6 +93,7 @@ hub/src/lib/design/
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
   png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN)
+  library-thumb.ts  Raster Library snap (WebP/PNG on R2 `library_thumb.webp`)
 hub/src/app/api/storage/list/route.ts   list R2 prefix for Images → Storage
 hub/src/lib/storage.ts                  listLabelAssets
 hub/src/lib/storage-paths.ts            parseLabelAssetKey
@@ -124,7 +125,7 @@ Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a tem
 | `data:` / blob | Device upload; strip to `__asset__:` on save when storage is on |
 | `artref:` / `assets/presets/…` | Repo file under `hub/public/design-presets/`. Not a tenant dump |
 
-`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards never hydrate R2 and never load `/design-presets/*.svg` (those files are 0.3–3.5 MB and stall the grid). Character cards use a cheap `pathLocal` silhouette with a visible fill (popcorn-yellow → `#FECE00` when the saved fill is white). Other families use an artboard-shaped silhouette. No live foreignObject in the Library grid. Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
+`NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards are a **raster snap** (`libraryThumb`: WebP/PNG, max 256 px, stored as `__r2__:…/library_thumb.webp` on save/create). Never `data:image/svg+xml` and never `/design-presets/*.svg` in the grid. Studio keeps the full live SVG/FO preview. Existing templates without a snap are rasterized once when the card is on screen (memory only; the next Save writes R2). Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
 
 Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from the commercial print pack (`PRINT_PACK_EXCLUDE`) because of licensed likeness.
 
@@ -136,6 +137,8 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Composite: `rot` on parts, zones, stamps. Family faces: live offset keys (`sCLogoX` / `sCBrandX` / …) plus `sC*Rot` / `sT*Rot` / `sSec*Rot`. Composite Studio maps 0–100 onto the artboard rectangle (`preserveAspectRatio="none"`), matching live percent boxes, so Layers Size scales a part about its center without sliding on portrait dies.
 - **Print cut** (`__cut__`) is listed and can show the overlay; it is not draggable. The black rim on character art (popcorn) is this die, not a decorative part stroke. Each layer has a **size** control plus an **outward** border (wrap Dates / QR / Weight are separate; not the whole column).
 - Wrap / taper Layers **Up / Down** reorder `eSecOrd` columns. Composite Up / Down still restack z-order.
+- Inspector Copy / Nutrition follow the selected wrap column only while you are already on a content tab. **Layers / Layout / Type / Size / Color / Images / Icons stay put** until you click another inspector tab (selecting Nutrition must not trap Layers).
+- Composite Size / resize / move of the silhouette **updates Print cut** (`unionPath` scales about the part center). Seeded characters without `cutSourceIds` still rebuild the die on drag-end.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. The previous sticker’s photos must not stay on screen.
 
 ## Print house
@@ -178,7 +181,7 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 3. Delete refuses to wipe a multi-template library if one id would empty the array (live `LabelTemplateMgr.remove` guard).
 4. Hub chrome stays linen. Flavor packs tint the label, not the workspace.
 5. Family preview uses live formulas in **pixel** artboard space (see table). Taper uses the padded SVG viewBox, not a stretched print bbox.
-6. Library cards are compact thumbs (lazy die silhouette; no preset SVG files). Full preview lives in Studio.
+6. Library cards are compact **raster** thumbs (WebP/PNG snap; no SVG in the grid). Full preview lives in Studio.
 7. Images tab is not a fourth workspace tool. Device or `__r2__:`; do not store the same PNG twice.
 8. A–Z letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block).
 9. Flavor pack **Loaded** is the colors already on this template. Listed packs only highlight after you apply one.

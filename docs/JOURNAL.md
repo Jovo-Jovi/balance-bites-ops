@@ -266,6 +266,16 @@ Loading full popcorn / china / jelly preset SVGs as Library `<img>` src made the
 
 ---
 
+## 2026-08-25 — Raster Library snaps, cut follows Size, Layers stays open
+
+Library cards are no longer SVG silhouettes. Save / New / Duplicate / Save as new rasterize a small WebP (PNG fallback) of that one sticker, upload `label_assets/{id}/library_thumb.webp`, and store `libraryThumb` on the template. Studio still paints the full live SVG. Existing templates without a snap generate a blob URL when the card is on screen; the next Save writes R2. No `/design-presets` files and no `data:image/svg+xml` in the grid.
+
+Popcorn (and other composites) Size / resize now scales `unionPath` about the part centre so Print cut matches the art. `syncCutPath` also rebuilds when the saved JSON has a union but empty `cutSourceIds`.
+
+Rect wrap inspector no longer jumps to Nutrition and traps Layers: auto-focus only runs from Copy/Nutrition, and the effect depends on the selected layer id, not a new `focus` object every render. Layout / Type / Size / Color / Images / Icons / Layers stay until the designer clicks another inspector tab.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates

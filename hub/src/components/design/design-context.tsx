@@ -27,6 +27,7 @@ import {
   type FlavorSnapshot,
 } from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
+import { attachLibraryThumb, stripLibraryThumb } from "@/lib/design/library-thumb";
 import { exportFileBase } from "@/lib/design/prepress";
 import { isStorageEnabled } from "@/lib/firebase-config";
 import { deleteLabelAssetFolder } from "@/lib/storage";
@@ -66,6 +67,14 @@ import type { DesignType, LabelMode, LabelState, LabelTemplate, StickerSku } fro
 import { removeDesignKey, writeDesignKey } from "@/lib/design/write";
 
 type ClipPick = { step: "main" | "inner"; mainId?: string };
+
+async function withLibrarySnap(t: LabelTemplate): Promise<LabelTemplate> {
+  try {
+    return await attachLibraryThumb(t);
+  } catch {
+    return t;
+  }
+}
 
 type DesignContextValue = {
   templates: LabelTemplate[];
@@ -196,13 +205,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     async (list: LabelTemplate[]) => {
       const stripped: LabelTemplate[] = [];
       for (const t of list) {
-        stripped.push({
+        const thumb = await stripLibraryThumb(t.id, t.libraryThumb);
+        const row: LabelTemplate = {
           ...t,
           state: await stripStateAssets(t.id, applyAssetRefs(t.state, assetOrigins.current[t.id] || {})),
           flavorKey: flavorKeyFromState(t.state),
           productIdentity: identityFromState(t.state),
           updatedAt: t.updatedAt,
-        });
+        };
+        if (thumb) row.libraryThumb = thumb;
+        else delete row.libraryThumb;
+        stripped.push(row);
       }
       await writeDesignKey("bb_label_templates", stripped);
       if (stripped.some((t) => hasUnresolvedAssets(t.state)) && !isStorageEnabled()) {
@@ -395,14 +408,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         });
         setBusy(true);
         try {
-          await persist([...templates, t]);
-          wantedId.current = t.id;
-          assetOrigins.current[t.id] = collectAssetRefs(t.state);
-          setLoadedFlavor(flavorSnapshot(t.state));
-          setCurrent(t);
-          go("atelier", t.id);
+          const saved = await withLibrarySnap(t);
+          await persist([...templates, saved]);
+          wantedId.current = saved.id;
+          assetOrigins.current[saved.id] = collectAssetRefs(saved.state);
+          setLoadedFlavor(flavorSnapshot(saved.state));
+          setCurrent(saved);
+          go("atelier", saved.id);
           toast.push("Template created.", "ok");
-          return t;
+          return saved;
         } catch (err) {
           toast.push(err instanceof Error ? err.message : "Could not save the template.", "bad");
           return null;
@@ -417,10 +431,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         const copy = duplicateTemplate(src);
         setBusy(true);
         try {
-          await persist([...templates, copy]);
+          const saved = await withLibrarySnap(copy);
+          await persist([...templates, saved]);
           toast.push("Duplicated.", "ok");
-          await loadIntoCurrent(copy);
-          go("atelier", copy.id);
+          await loadIntoCurrent(saved);
+          go("atelier", saved.id);
         } catch (err) {
           toast.push(err instanceof Error ? err.message : "Could not duplicate.", "bad");
         } finally {
@@ -803,13 +818,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           productIdentity: identityFromState(current.state),
           updatedAt: new Date().toISOString(),
         };
-        const list = templates.some((t) => t.id === next.id)
-          ? templates.map((t) => (t.id === next.id ? next : t))
-          : [...templates, next];
         setBusy(true);
         try {
+          const saved = await withLibrarySnap(next);
+          const list = templates.some((t) => t.id === saved.id)
+            ? templates.map((t) => (t.id === saved.id ? saved : t))
+            : [...templates, saved];
           await persist(list);
-          setCurrent(next);
+          setCurrent({ ...next, libraryThumb: saved.libraryThumb });
           toast.push("Saved.", "ok");
           return true;
         } catch (err) {
@@ -825,11 +841,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         copy.name = `${current.name.trim() || "Label"} copy`;
         setBusy(true);
         try {
-          await persist([...templates, copy]);
-          wantedId.current = copy.id;
-          setLoadedFlavor(flavorSnapshot(copy.state));
-          setCurrent(copy);
-          go("atelier", copy.id);
+          const saved = await withLibrarySnap(copy);
+          await persist([...templates, saved]);
+          wantedId.current = saved.id;
+          setLoadedFlavor(flavorSnapshot(saved.state));
+          setCurrent({ ...copy, libraryThumb: saved.libraryThumb });
+          go("atelier", saved.id);
           toast.push("Saved as a new template.", "ok");
           return true;
         } catch (err) {
