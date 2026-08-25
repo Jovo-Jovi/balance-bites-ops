@@ -370,6 +370,13 @@ body {
     0 10px 28px color-mix(in srgb, var(--bb-title) 8%, transparent);
 }
 
+/** Solid desk panel — use on long Design lists so scroll is not blurring glass. */
+.bb-sheet {
+  background: var(--bb-panel);
+  border: 1px solid var(--bb-line);
+  border-radius: var(--bb-radius);
+}
+
 .bb-pay-chip {
   display: inline-flex;
   align-items: center;
@@ -404,5 +411,35 @@ body {
     background: var(--bb-panel);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+@keyframes bb-busy-pulse {
+  0%,
+  100% {
+    transform: scaleX(0.16);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.bb-busy-bar {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+  background: var(--bb-gold);
+  animation: bb-busy-pulse 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-busy-bar {
+    width: 42%;
+    margin-inline: auto;
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 }

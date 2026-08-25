@@ -78,7 +78,7 @@ Rules file: `firestore.rules` (staff-only; no public read). Review them before a
 
 10. Optional: enable Google sign-in in Console and add `localhost` (and later the Vercel domain) under Authentication → Settings → Authorized domains. Without the Vercel host, login on the live URL fails with `auth/unauthorized-domain`.
 
-Do **not** run `hub` import (`npm run import:apply`) until you zip `saved data` and explicitly ask. Dry-run: `cd hub && npm run import:dry`.
+Do **not** run a full `hub` import of every `bb_*` key until you zip `saved data` and explicitly ask. **2026-08-22:** Desktop JSON keys were applied (zip `C:\Users\Marco\Desktop\bb-saved-data-2026-08-22.zip`, not git). npm steals `--keys`; use `node scripts/import-saved-data.mjs --apply --only=bb_invoices,bb_customers`. Dry-run: `cd hub && npm run import:dry`.
 
 ## 4. Cloudflare R2 (label art + backups)
 
@@ -88,7 +88,7 @@ Cloudflare may ask you to add a payment method to *enable* R2 even if you stay i
 
 1. Log in at [dash.cloudflare.com](https://dash.cloudflare.com/) → **R2 Object Storage**.
 2. Purchase / enable R2 if the dashboard asks (free-tier usage still applies).
-3. **Create bucket** named `balance-bites-ops`. If the S3 endpoint is `https://<account>.r2.cloudflarestorage.com` (no `.eu.`), set `R2_JURISDICTION=default`. Use `eu` only when the endpoint host is `.eu.r2.cloudflarestorage.com`.
+3. **Create bucket** named `balance-bites-ops`. If the S3 endpoint is `https://<account>.r2.cloudflarestorage.com` (no `.eu.`), set `R2_JURISDICTION=default`. Use `eu` only when the endpoint host is `.eu.r2.cloudflarestorage.com`. Hub serverless is **Frankfurt (`fra1`)** to sit next to Firestore `europe-west3`. Default R2 is not EU; Library cards do not fetch R2. To colocate art with the hub, create an EU-jurisdiction bucket and set `R2_JURISDICTION=eu` (data move in Cloudflare, then re-import assets).
 4. **Manage R2 API Tokens** → Create token with **Object Read & Write** on that bucket only.
 5. Copy **Account ID**, **Access Key ID**, and **Secret Access Key** into `hub/.env.local` (`R2_*` keys in `.env.example`). Set `NEXT_PUBLIC_BB_USE_STORAGE=true`.
 6. Same values in Vercel → Project → Settings → Environment Variables (Preview + Production). Never prefix R2 secrets with `NEXT_PUBLIC_`.
@@ -110,7 +110,6 @@ Uploads go through `/api/storage/object` (staff Firebase token required). The bu
 
 ## 6. After the hub is built
 
-1. Wrap the three HTML apps into `hub/public/apps/` (see [docs/PARITY.md](docs/PARITY.md)).
-2. Point them at CloudStore (`hub/public/bb-cloud-store.js`) instead of the Desktop folder.
-3. Run a one-time import of `saved data` JSON **only when you say so**.
-4. Keep `costs` as a rollback copy until you trust the cloud.
+1. Invoices and Design are **native** hub workspaces. Do not wrap their HTML into `hub/public/apps/`. Maps: [docs/INVOICES.md](docs/INVOICES.md), [docs/DESIGN.md](docs/DESIGN.md). What shipped: [docs/JOURNAL.md](docs/JOURNAL.md). Finance is still a shell until that slice.
+2. Run a one-time import of `saved data` JSON **only when you say so**.
+3. Keep `costs` as a rollback copy until you trust the cloud.

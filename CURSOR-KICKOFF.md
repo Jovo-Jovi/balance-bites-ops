@@ -43,6 +43,10 @@ You now have:
    - `@docs/ARCHITECTURE.md`
    - `@docs/CLOUD-PLAN.md`
    - `@docs/BRAND-UI.md`
+   - `@docs/INVOICES.md`
+   - `@docs/DESIGN.md`
+   - `@docs/DESIGN-STUDIO.md` (Studio waves; Wave A in test)
+   - `@docs/JOURNAL.md`
    - `@SETUP.md`
 3. Also attach from `costs` (after step 2):
    - `@bb-stock-costs.html`

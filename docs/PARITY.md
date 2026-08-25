@@ -36,7 +36,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] Prep / print keys that were localStorage-only now listed as Firestore keys
 - [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
 - [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
-- [ ] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
+- [x] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
 - [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; invoices were rebuilt as React instead)
 
 ### Keys imported from disk today
@@ -75,14 +75,43 @@ Native React workspace (not an HTML wrap). Merged `feat/invoices` + `fix/invoice
 
 ## Design (`balance-bites-sticker.html` + JS)
 
-- [ ] Template library CRUD (`bb_label_templates`)
-- [ ] Legacy `bbLabel-*.json` import (files still present in `saved data`)
-- [ ] `label_assets/{templateId}/` → Cloudflare R2
-- [ ] Prepress (`bb-prepress.js`)
-- [ ] Composite (`bb-composite-label.js`)
-- [ ] Icon library, Jelly Kids, art presets in `assets/presets/` (repo, not tenant)
-- [ ] Deep link `bb_label_open` from finance stickers
-- [ ] Product select from `bb_products` / `bb_stickers`
+Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`), Print house. Not an HTML wrap. Branch `feat/design`.
+
+- [x] Template library CRUD (`bb_label_templates`)
+- [x] Import/export template JSON (`bb_label_template_v2`); user-picked file
+- [x] `label_assets/{templateId}/` strip/hydrate on Cloudflare R2 (`__asset__:` / reuse `__r2__:`)
+- [x] Deep link `bb_label_open` from finance stickers (120s TTL, then clear)
+- [x] Product select from `bb_products`; linked SKUs from `bb_stickers` (read-only)
+- [x] Print house constants (1.5 mm bleed, 300 DPI) + SVG preview/download
+- [x] Print / PDF / SVG at exact artboard cm (no A4 scale, `print-color-adjust`, print fonts). File name `{Name}_{w}x{h}cm`
+- [x] Print house cut stroke as an editable border around the die-cut (size mm + colour; grows **outside** the die)
+- [x] Studio Layers Up / Down restack composite shapes, logo, and text in one z-order (live interact list)
+- [x] Studio background uploads (`hxBg*` / `hxCProd`) on any family — Studio **Images** tab
+- [x] Composite extra photos as image zones (live `addProductPhotos`); pick from R2 or the device
+- [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
+- [x] Flavor pack **Loaded** chip for the colors already on the open template
+- [x] Icon library in Studio (repo catalog + live A–Z letter fonts; wrap / taper / circle / lid / composite)
+- [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path). Preset files letterbox a square viewBox in a tall canvas — hub slices that into the part so Print cut hugs the kernels
+- [x] Studio select + drag of parts, zones, stamps, and uploaded images
+- [x] Studio rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)
+- [x] Circular / outline families use live front layout (logo, brand, flavor, photo, weight, dates) in **pixel** `cW`×`cH` (ellipse clip, not a stretched 0–100 square)
+- [x] Rect + top uses live back wrap (`buildLabel` sections + `getSectionHTML`) and top lid (`buildTopLabel`) in pixel boxes
+- [x] Taper + top uses live `calcTaper` fan: pixel viewBox, rotate around apex, section HTML — **not** remapped to `0 0 100 100` / `preserveAspectRatio="none"`
+- [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
+- [x] Inspector Layers / Layout / Type / Size / Color / Images / Icons stay open when a wrap column is selected; Nutrition does not trap Layers
+- [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
+- [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy and character kernels; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
+- [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
+- [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
+- [x] Design Save / Delete / New / Duplicate show an indeterminate progress bar (snap + cloud wait)
+- [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
+- [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
+- [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
+- [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG
+- [x] Family print / SVG / PNG match Studio hit-boxes (top lid, circle, wrap). Delete template removes the R2 art folder
+- [ ] Studio libraries rail (Wave C)
+- [ ] User-named sections + blank-from-scratch (Wave D)
+- [ ] Applying `assets/presets/` folders into tenant templates (repo, not tenant dump)
 
 ---
 
@@ -154,7 +183,7 @@ Do not commit these files. Field names to preserve:
 | `bb_operation_costs` | array | `date`, `name`, `category`, `amount` (compensation may be negative) |
 | `bb_investors` | array | (live file currently empty `[]`) |
 | `bb_investor_target` | object | `needed`, `split`, `projectStart` |
-| `bb_label_templates` | array | `id`, `name`, `designType`, `labelMode`, large `state` |
+| `bb_label_templates` | array | `id`, `name`, `designType`, `labelMode`, `libraryThumb` (R2 WebP/PNG ref), large `state` |
 | `bb_label_open` | object | `stickerId`, `templateId`, `productId`, `ts` |
 | `bb_color_presets` | array | `id`, `name`, `bg`, `gold`, `txt`, `mut`, `row`, `tot`, `grand` |
 | `bb_backup_index` | array | `id`, `createdAt`, `label` |
@@ -165,10 +194,13 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- **Invoices is done** (native React on the same keys). Design and Finance are still **tool shells**.
-- Import script is dry-run by default and was **not executed**.
+- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). Finance is still a **tool shell**.
+- Design does **not** wrap `balance-bites-sticker.html`. Wave B PNG cut pack is in test; libraries rail, generic sections, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
+- Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
+- Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
+- Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** Desktop `saved data` JSON keys were written to Firestore (zip on Desktop, not git). Use `--only=` for a subset; npm steals `--keys`.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
-- Cloud Storage is **not used** (Spark / free tier). R2 client is wired; do not `import:assets` until asked. Designer art still on Desktop until then.
+- Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 
@@ -176,6 +208,6 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. **Design** (`feat/design`) — port `balance-bites-sticker.html` + prepress JS. Reuse hub chrome. Do not duplicate invoice modules.
-2. Import `saved data` only after a zip backup, when you say so.
-3. Finance (stock ledger, prep, P&L) or wrap `bb-stock-costs.html`.
+1. **Wave C after Wave B is tested:** libraries rail in [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Then D (generic sections). Do not start the next wave until the current one is confirmed.
+2. Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
+3. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.

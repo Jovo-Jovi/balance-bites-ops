@@ -1,6 +1,6 @@
 # Modules
 
-Three entry HTML files share `Store` + `FileStore` and a common JSON tenant. This map is what you wrap behind the hub cards.
+Three entry HTML files share `Store` + `FileStore` and a common JSON tenant. Invoices and Design are native hub apps; this map is still the live-behavior source for remaining gaps and for Finance.
 
 ---
 
@@ -41,19 +41,18 @@ Hub card: **Invoices** — **ported** to native React. Do not wrap this HTML aga
 
 ## B. Label Designer — `balance-bites-sticker.html` + JS
 
-Hub card: **Design**
+Hub card: **Design** — **ported** to native React (filtered tools). Do not wrap this HTML. Map: [DESIGN.md](DESIGN.md).
 
-| File | Role |
-|---|---|
-| `balance-bites-sticker.html` | Shell, left panel, artboard, FileStore for templates |
-| `bb-prepress.js` | Print-house export (bleed, crop, color) |
-| `bb-composite-label.js` | Composite label layout |
-| `bb-icon-library.js` | Icon stamps on labels |
-| `bb-jelly-kids.js` | Jelly Kids preset behavior |
-| `assets/presets/bb-art-preset-data.js` | Art preset payloads |
-| `assets/presets/templates/` | Saved preset JSON (repo, not live tenant) |
+| File | Role in live HTML | Hub |
+|---|---|---|
+| `balance-bites-sticker.html` | Shell, left panel, artboard, FileStore | Native Library + Studio + Print house ([DESIGN.md](DESIGN.md)) |
+| `bb-prepress.js` | Print-house export (bleed, crop, color) | Constants + SVG + Cut / Exact / Bleed PNG (`png-pack.ts`) |
+| `bb-composite-label.js` | Composite label layout | Wave A die-cut + Wave B PNG clip from `unionPath` |
+| `bb-icon-library.js` | Icon stamps on labels | Studio **Icons** tab (repo catalog + live A–Z letters). Not dumped into Firestore |
+| `bb-jelly-kids.js` | Jelly Kids preset behavior | Gap — do not dump into Firestore |
+| `assets/presets/` | Art preset payloads (repo, not tenant) | Preview via `hub/public/design-presets/`. Do not dump folders into Firestore |
 
-Designer **writes** `bb_label_templates`, color/theme keys, and `label_assets/` files. Stock Costs **links** a sticker SKU to a template and can deep-link via `bb_label_open`.
+Designer **writes** `bb_label_templates` and clears `bb_label_open`. Stock Costs **links** a sticker SKU to a template and can deep-link via `bb_label_open`. Design **reads** `bb_products` / `bb_stickers`. Hub Design does **not** write `bb_color_presets` (Invoices → Look).
 
 ---
 

@@ -18,17 +18,32 @@ export function normalizeStorageKey(key: string) {
     .replace(/\/{2,}/g, "/");
 }
 
+export function labelAssetFolder(templateId: string) {
+  return `${LABEL_ASSETS_PREFIX}${sanitizeSegment(templateId)}/`;
+}
+
 export function labelAssetKey(templateId: string, fileName: string) {
-  const id = sanitizeSegment(templateId);
-  const name = sanitizeSegment(fileName);
-  return `${LABEL_ASSETS_PREFIX}${id}/${name}`;
+  return `${labelAssetFolder(templateId)}${sanitizeSegment(fileName)}`;
+}
+
+export function parseLabelAssetKey(key: string) {
+  const n = normalizeStorageKey(key);
+  if (!n.startsWith(LABEL_ASSETS_PREFIX)) return null;
+  const rest = n.slice(LABEL_ASSETS_PREFIX.length);
+  const slash = rest.indexOf("/");
+  if (slash < 1) return null;
+  return { templateId: rest.slice(0, slash), fileName: rest.slice(slash + 1) };
+}
+
+export function isBinaryImageKey(key: string) {
+  return /\.(png|jpe?g|webp|gif|svg|bmp|avif)$/i.test(normalizeStorageKey(key));
 }
 
 export function backupKey(fileName: string) {
   return `${BACKUPS_PREFIX}${sanitizeSegment(fileName)}`;
 }
 
-function sanitizeSegment(value: string) {
+export function sanitizeSegment(value: string) {
   const n = String(value || "")
     .replaceAll("\\", "/")
     .split("/")

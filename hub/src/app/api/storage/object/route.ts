@@ -3,12 +3,15 @@ import { MAX_OBJECT_BYTES } from "@/lib/storage-paths";
 import { requireStaff, StaffAuthError } from "@/lib/server/require-staff";
 import {
   deleteR2Object,
+  deleteR2Prefix,
   isR2Configured,
   putR2Object,
   requireObjectKey,
 } from "@/lib/server/r2";
+import { labelAssetFolder } from "@/lib/storage-paths";
 
 export const runtime = "nodejs";
+export const preferredRegion = "fra1";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
@@ -58,6 +61,12 @@ export async function DELETE(req: Request) {
       );
     }
     const url = new URL(req.url);
+    const folderId = url.searchParams.get("templateId");
+    if (folderId) {
+      const prefix = labelAssetFolder(folderId);
+      const removed = await deleteR2Prefix(prefix);
+      return NextResponse.json({ ok: true, removed });
+    }
     const key = requireObjectKey(url.searchParams.get("key") || "");
     await deleteR2Object(key);
     return NextResponse.json({ ok: true });

@@ -79,5 +79,6 @@ export function guessContentType(name) {
   if (n.endsWith(".woff2")) return "font/woff2";
   if (n.endsWith(".woff")) return "font/woff";
   if (n.endsWith(".ttf")) return "font/ttf";
+  if (n.endsWith(".txt")) return "text/plain";
   return "application/octet-stream";
 }

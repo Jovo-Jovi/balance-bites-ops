@@ -13,7 +13,7 @@ This is a **behavior-accurate rebuild**, not a redesign of the business rules. R
 - One URL, Arabic RTL hub, linen-desk brand (ink on paper, teal actions).
 - After login, three equal cards only (no KPIs on the hub).
 - Same JSON keys as today, stored in Firestore (`tenants/balance-bites/keys/{key}`).
-- Label art in Firebase Storage (`label_assets/`).
+- Label art in Cloudflare R2 (`label_assets/`). Not Firebase Storage (Spark).
 - GitHub is code only. Live invoices stay on Desktop until a one-shot import.
 
 ## Repo and accounts (already decided)
@@ -38,6 +38,8 @@ Treat these as the specification. Search inside them; do not guess modules.
 | `C:\Users\Marco\Desktop\balance-bites-ops\docs\DATA.md` | Who writes which `bb_*` key; derived vs stored |
 | `C:\Users\Marco\Desktop\balance-bites-ops\docs\BRAND-UI.md` | Hub UX, fonts, colors, language |
 | `C:\Users\Marco\Desktop\balance-bites-ops\README.md` | Product summary |
+| `C:\Users\Marco\Desktop\balance-bites-ops\docs\DESIGN.md` | Design app map (library / studio / print) |
+| `C:\Users\Marco\Desktop\balance-bites-ops\docs\DESIGN-STUDIO.md` | Proposed studio waves — **confirm before coding** |
 | `C:\Users\Marco\Desktop\balance-bites-ops\SETUP.md` | Firebase/Vercel human steps |
 | `C:\Users\Marco\Desktop\balance-bites-ops\.env.example` | Env var names |
 
@@ -156,13 +158,23 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 ### Design (`balance-bites-sticker.html` + JS)
 
-- [ ] Template library CRUD (`bb_label_templates`)
-- [ ] Legacy `bbLabel-*.json` import if still present
-- [ ] `label_assets/{templateId}/` binary/text assets → Cloudflare R2 (not Firebase Storage)
-- [ ] Prepress (`bb-prepress.js`), composite (`bb-composite-label.js`)
-- [ ] Icon library, Jelly Kids, art presets in `assets/presets/`
-- [ ] Deep link `bb_label_open` from finance stickers
-- [ ] Product select from `bb_products` / `bb_stickers`
+Shipped as native React on `feat/design` (21–22 Aug 2026). See `docs/DESIGN.md` and `docs/JOURNAL.md`. Do not wrap the sticker HTML. Do not start Finance until asked.
+
+- [x] Template library CRUD (`bb_label_templates`)
+- [x] Import/export JSON (`bb_label_template_v2`)
+- [x] `label_assets/{templateId}/` strip/hydrate → Cloudflare R2 (not Firebase Storage); reuse `__r2__:`
+- [x] Deep link `bb_label_open` from finance stickers
+- [x] Product select from `bb_products`; sticker SKUs read-only
+- [x] Print house bleed/DPI + SVG preview + editable cut stroke
+- [x] Studio Copy / Images / Icons / Layers; drag, rotate, resize
+- [x] Live faces: composite `_composite`; circular `buildCircleLabel`; rect wrap / top lid; taper `calcTaper`
+- [x] Icon picker in Studio (repo catalog + live A–Z letters; not a Firestore dump)
+- [x] Character art from repo `public/design-presets/` (`artref:`)
+- [x] Composite Studio Wave A (add shape / merge / group / trim / preview+approve cut)
+- [x] PNG cut pack Wave B (Cut / Exact / Bleed PNG, one label) — [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md)
+- [ ] Libraries rail (Wave C) / user-named sections (Wave D)
+- [ ] Applying `assets/presets/` folders into tenant templates / Jelly Kids dump
+- [ ] Desktop folder scan of `bbLabel-*.json` (pick a file instead)
 
 ### Finance (`bb-stock-costs.html` tabs — all of them)
 
@@ -189,7 +201,7 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 1. ~~Scaffold Next.js + CloudStore + hub.~~ Done.
 2. ~~Port invoices as native React.~~ Done (`docs/INVOICES.md`).
-3. **Design next** (`feat/design`) from `balance-bites-sticker.html` + JS. Reuse hub chrome; do not duplicate invoice modules.
+3. ~~Port Design as native React.~~ On `feat/design` (`docs/DESIGN.md`). Do not wrap the sticker HTML. Merge when asked.
 4. Finance (hardest formulas) from `bb-stock-costs.html`.
 5. **Import script** (`saved data` → Firestore) only when the user says; zip backup first.
 6. Production is live at https://balance-bites-ops.vercel.app — still staff-only Auth + Firestore rules. Do not dump empty catalogs.
@@ -202,4 +214,4 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md`. Hub and invoices are shipped. Next is Design on `feat/design` — grep `costs/balance-bites-sticker.html`, do not duplicate invoice modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub and invoices are on `main`. Design is native on `feat/design`. Studio Wave B (PNG cut pack) is in test (`docs/DESIGN-STUDIO.md`) — do not start Wave C until confirmed. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.

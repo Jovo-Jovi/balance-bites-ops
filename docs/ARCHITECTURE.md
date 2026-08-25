@@ -22,7 +22,7 @@ Balance Bites is three products that must look like **one company system**: same
 ```
 
 **Phase 1** was the launcher + CloudStore.  
-**Invoices** was rewritten as React in the hub (not an HTML wrap). Design and Finance still follow wrap-or-port from `costs/`.
+**Invoices** and **Design** were rewritten as React in the hub (not HTML wraps). **Finance** still follows wrap-or-port from `costs/`. Maps: [INVOICES.md](INVOICES.md), [DESIGN.md](DESIGN.md). Studio Wave B in test: [DESIGN-STUDIO.md](DESIGN-STUDIO.md).
 
 ## Why this split
 
@@ -63,7 +63,7 @@ Binary art:
 ```
 Designer save PNG / SVG / font snippet
     → Cloudflare R2  tenants/{tenant}/label_assets/{templateId}/…
-    → Firestore template record stores object keys, not huge base64
+    → Firestore template record stores `__asset__:` / `__r2__:` refs, not huge base64
 ```
 
 ## Firebase vs Supabase
@@ -98,8 +98,8 @@ Do not run both databases in v1.
 |---|---|---|
 | Local HTML | `file://` | Desktop `saved data` |
 | Hub local | `localhost:3000` | same Firebase tenant as production |
-| Preview | `*.vercel.app` | Firebase project `balance-bites-ops` |
-| Production | https://balance-bites-ops.vercel.app | same Firebase project (staff Auth) |
+| Preview | `*.vercel.app` (functions `fra1`) | Firebase project `balance-bites-ops` (Firestore `europe-west3`) |
+| Production | https://balance-bites-ops.vercel.app (functions `fra1`) | same Firebase project (staff Auth) |
 
 Never point production HTML at the Desktop folder.
 

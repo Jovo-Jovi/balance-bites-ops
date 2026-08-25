@@ -8,7 +8,7 @@ alwaysApply: true
 | Concern | Where |
 |---|---|
 | Invoices, customers, invoice print, payments flags | `hub/src/components/invoices/` — **done** |
-| Labels, templates, prepress, `label_assets/` | `hub/src/components/design/` (create here) |
+| Labels, templates, prepress, `label_assets/` | `hub/src/components/design/` — **native, three tools** (see `docs/DESIGN.md`) |
 | Stock, prep, P&L, catalog **writes**, returns **writes** | `hub/src/components/finance/` (later) |
 | Auth, CloudStore, brand, workspace shell | existing hub files — import, do not copy |
 
@@ -24,4 +24,4 @@ Pending cards skip `kind: 'invoice_draft'`. Do not mix prep-approve with product
 
 # Design slice
 
-Port `balance-bites-sticker.html` + listed JS. English chrome. R2 for binaries. Read `docs/INVOICES.md` so you do not rebuild invoice UI.
+Native Library / Atelier / Print house. Do **not** copy sticker HTML into `public/` or iframe it. Do not add a Theme tab that duplicates Invoices Look. Do not seed templates or flavor packs into Firestore. Map: `docs/DESIGN.md`.
