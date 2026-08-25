@@ -2,7 +2,7 @@
 
 import { useRef, type PointerEvent } from "react";
 import { artboardCm, labelPreviewSvg } from "@/lib/design/preview";
-import { canvasEditText, listCanvasItems } from "@/lib/design/layers";
+import { canvasEditText, listCanvasItems, listLayers } from "@/lib/design/layers";
 import type { LabelTemplate } from "@/lib/design/types";
 
 export function LabelPreview({
@@ -18,6 +18,7 @@ export function LabelPreview({
   onRotate,
   onDragEnd,
   onEdit,
+  onRemove,
 }: {
   template: LabelTemplate;
   className?: string;
@@ -31,6 +32,7 @@ export function LabelPreview({
   onRotate?: (id: string, rot: number) => void;
   onDragEnd?: (id?: string) => void;
   onEdit?: (id: string, text: string) => void;
+  onRemove?: (id: string) => void;
 }) {
   const svg = labelPreviewSvg(template, template.state, { showCut });
   const { wCm, hCm } = artboardCm(template);
@@ -49,6 +51,9 @@ export function LabelPreview({
     armed: boolean;
   } | null>(null);
   const items = interactive ? listCanvasItems(template) : [];
+  const removableIds = interactive
+    ? new Set(listLayers(template).filter((l) => l.removable).map((l) => l.id))
+    : new Set<string>();
 
   function applyPointer(e: PointerEvent) {
     const d = drag.current;
@@ -233,6 +238,21 @@ export function LabelPreview({
                           };
                         }}
                       />
+                      {onRemove && removableIds.has(item.id) ? (
+                        <button
+                          type="button"
+                          title="Remove"
+                          aria-label="Remove"
+                          className="absolute -right-1.5 -top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-[var(--bb-gold)] bg-[var(--bb-panel)] text-[11px] leading-none text-[var(--bb-text)]"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove(item.id);
+                          }}
+                        >
+                          ×
+                        </button>
+                      ) : null}
                     </>
                   ) : null}
                 </div>

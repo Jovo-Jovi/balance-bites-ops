@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { ActionBtn, Empty, Field, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
-import { CUT_LAYER } from "@/lib/design/layers";
+import { CUT_LAYER, listLayers } from "@/lib/design/layers";
+import { parseBlockLayerId } from "@/lib/design/blocks";
 import { familyTextField, n, previewFace } from "@/lib/design/layout";
 import { downloadLabelPng } from "@/lib/design/png-pack";
 import { printExcludeNote } from "@/lib/design/prepress";
@@ -13,6 +14,7 @@ import { productOptions, specOf, useDesignApp } from "./design-context";
 import { FaceInspector } from "./inspector-panel";
 import { LabelPreview } from "./label-preview";
 import { StudioCutBar } from "./studio-cut-bar";
+import { StudioRail } from "./studio-rail";
 
 export function StudioTool() {
   const app = useDesignApp();
@@ -21,11 +23,20 @@ export function StudioTool() {
   const t = app.current;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        app.undoStudio();
+        return;
+      }
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const id = app.selectedId;
+      if (!id || !app.current) return;
+      const layer = listLayers(app.current).find((l) => l.id === id);
+      if (!layer?.removable) return;
       e.preventDefault();
-      app.undoStudio();
+      app.removeArt(id);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -145,11 +156,13 @@ export function StudioTool() {
 
       <StudioCutBar />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+        <StudioRail />
         <div className="min-w-0 flex-1">
           <p className="mb-2 text-xs text-[var(--bb-muted)]">
-            Tap a section to type in it. Drag the gold border to move; round handle rotates; corner resizes. Taper QR and
-            weight are separate from the dates block. Shift-click to multi-select shapes.
+            Tap a section to type in it. Drag the gold border to move; round handle rotates; corner resizes; × or
+            Delete removes a dropped block. Taper QR and weight are separate from the dates block. Shift-click to
+            multi-select shapes.
           </p>
           <div className="overflow-auto">
             <div
@@ -170,7 +183,13 @@ export function StudioTool() {
                 onResize={app.resizeItem}
                 onRotate={app.rotateItem}
                 onDragEnd={app.syncCutPath}
+                onRemove={app.removeArt}
                 onEdit={(id, text) => {
+                  const named = parseBlockLayerId(id);
+                  if (named) {
+                    app.setNamedBlockFirstEn(named, text);
+                    return;
+                  }
                   const fam = familyTextField(id);
                   if (fam) app.setField(fam.field, text);
                   else app.patchLayer(id, { text });
@@ -181,7 +200,7 @@ export function StudioTool() {
           </div>
         </div>
 
-        <aside className="w-full shrink-0 lg:sticky lg:top-24 lg:w-[26rem]">
+        <aside className="w-full shrink-0 xl:sticky xl:top-24 xl:w-[26rem]">
           <FaceInspector face={face} />
         </aside>
       </div>

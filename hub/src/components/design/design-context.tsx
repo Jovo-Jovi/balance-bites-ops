@@ -17,7 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
 import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState } from "@/lib/design/layers";
+import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -30,7 +30,7 @@ import { productForTemplate } from "@/lib/design/product-match";
 import { attachLibraryThumb, stripLibraryThumb } from "@/lib/design/library-thumb";
 import { exportFileBase } from "@/lib/design/prepress";
 import { isStorageEnabled } from "@/lib/firebase-config";
-import { deleteLabelAssetFolder } from "@/lib/storage";
+import { deleteLabelAssetFolder, staffAuthHeader } from "@/lib/storage";
 import { getDesignSpec, type DesignSpec } from "@/lib/design/specs";
 import {
   applyFlavorPack,
@@ -49,9 +49,25 @@ import {
   safeRemoveTemplate,
   toR2Ref,
 } from "@/lib/design/templates";
+import {
+  addBlockField,
+  addNamedBlock,
+  parseBlockLayerId,
+  patchBlockField,
+  patchNamedBlock,
+  removeBlockField,
+  removeNamedBlock,
+  setBlockFirstEn,
+  type DesignBlockField,
+} from "@/lib/design/blocks";
+import { fetchCharacterPng } from "@/lib/design/character-library";
+import { previewFace } from "@/lib/design/layout";
 import type { CutPreview } from "@/lib/design/studio-ops";
 import {
+  addLibraryCharacter,
+  addNamedTextZone,
   addShape,
+  addZone,
   applyClipJoin,
   approveCutPreview,
   cancelCutPreview,
@@ -62,6 +78,7 @@ import {
   setCutToSelected,
   syncCutPath as syncCutPathInState,
   ungroupSelected,
+  type ZoneKind,
 } from "@/lib/design/studio-ops";
 import type { DesignType, LabelMode, LabelState, LabelTemplate, StickerSku } from "@/lib/design/types";
 import { removeDesignKey, writeDesignKey } from "@/lib/design/write";
@@ -104,6 +121,7 @@ type DesignContextValue = {
     designType: DesignType;
     packId: string;
     productId?: string;
+    blank?: boolean;
   }) => Promise<LabelTemplate | null>;
   openTemplate: (id: string) => Promise<void>;
   duplicate: (id: string) => Promise<void>;
@@ -128,6 +146,14 @@ type DesignContextValue = {
   rotateItem: (id: string, rot: number) => void;
   setFillCut: (on: boolean) => void;
   addStudioShape: (type: string) => void;
+  addStudioZone: (kind: ZoneKind) => void;
+  addNamedSection: () => void;
+  patchNamedSection: (id: string, patch: { title?: string; widthPct?: number }) => void;
+  addNamedField: (blockId: string) => void;
+  removeNamedField: (blockId: string, fieldId: string) => void;
+  patchNamedField: (blockId: string, fieldId: string, patch: Partial<Pick<DesignBlockField, "label" | "en" | "ar">>) => void;
+  setNamedBlockFirstEn: (blockId: string, en: string) => void;
+  applyStudioCharacter: (style: string, seed: string) => Promise<void>;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -415,7 +441,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         else go("atelier", current?.id || null);
       },
       openPrint: () => go("print", current?.id || null),
-      newTemplate: async ({ name, designType, packId, productId }) => {
+      newTemplate: async ({ name, designType, packId, productId, blank }) => {
         const pack = flavorPackById(packId) || FLAVOR_PACKS[0];
         const product = products.find((p) => p.id === productId);
         const t = createTemplate({
@@ -424,6 +450,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           pack,
           productId: product?.id,
           weight: product?.weight,
+          blank: blank !== false,
         });
         beginBusy("Creating sticker…");
         try {
@@ -631,11 +658,28 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             sizeId,
             color || String(current.state.cTxtMain || "#ffffff"),
             letterStyle,
+            previewFace(current),
           ),
         });
       },
       removeArt: (id) => {
         if (!current) return;
+        const namedId = parseBlockLayerId(id);
+        if (namedId) {
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: removeNamedBlock(current.state, namedId) });
+          setSelectedIds((prev) => prev.filter((x) => parseBlockLayerId(x) !== namedId && x !== id));
+          toast.push("Section removed.", "ok");
+          return;
+        }
+        const chk = wrapRecipeChkForLayer(id);
+        if (chk) {
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: patchState(current.state, { [chk]: "false" }) });
+          setSelectedIds((prev) => prev.filter((x) => wrapRecipeChkForLayer(x) !== chk && x !== id));
+          toast.push("Block removed.", "ok");
+          return;
+        }
         if (current.state._composite?.parts?.some((p) => p.id === id)) {
           const op = removePart(current.state, id);
           if (!op.ok) {
@@ -648,7 +692,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           toast.push(op.message, "ok");
           return;
         }
+        pushUndo(current.state);
         replaceCurrent({ ...current, state: removeArtItem(current.state, id) });
+        setSelectedIds((prev) => prev.filter((x) => x !== id));
+        toast.push("Removed.", "ok");
       },
       patchLayer: (id, patch) => {
         if (!current) return;
@@ -721,6 +768,90 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         replaceCurrent({ ...current, state: op.state });
         setSelectedIds(op.selectIds);
         toast.push(op.message, "ok");
+      },
+      addStudioZone: (kind) => {
+        if (!current) return;
+        const op = addZone(current.state, kind);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
+      },
+      addNamedSection: () => {
+        if (!current) return;
+        const face = previewFace(current);
+        if (face === "back" || face === "taper") {
+          const op = addNamedBlock(current.state);
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds([op.selectId]);
+          toast.push("Section added — name it in Copy.", "ok");
+          return;
+        }
+        if (face === "composite") {
+          const op = addNamedTextZone(current.state);
+          if (!op.ok) {
+            toast.push(op.message, "warn");
+            return;
+          }
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds(op.selectIds);
+          toast.push(op.message, "ok");
+          return;
+        }
+        toast.push("Named sections sit on wrap, taper, or Composite.", "warn");
+      },
+      patchNamedSection: (id, patch) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: patchNamedBlock(current.state, id, patch) });
+      },
+      addNamedField: (blockId) => {
+        if (!current) return;
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: addBlockField(current.state, blockId) });
+      },
+      removeNamedField: (blockId, fieldId) => {
+        if (!current) return;
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: removeBlockField(current.state, blockId, fieldId) });
+      },
+      patchNamedField: (blockId, fieldId, patch) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: patchBlockField(current.state, blockId, fieldId, patch) });
+      },
+      setNamedBlockFirstEn: (blockId, en) => {
+        if (!current) return;
+        replaceCurrent({ ...current, state: setBlockFirstEn(current.state, blockId, en) });
+      },
+      applyStudioCharacter: async (style, seed) => {
+        if (!current) return;
+        try {
+          let auth: { Authorization: string };
+          try {
+            auth = await staffAuthHeader();
+          } catch {
+            toast.push("Sign in to add characters.", "warn");
+            return;
+          }
+          const src = await fetchCharacterPng(style, seed, auth);
+          const face = previewFace(current);
+          const op = addLibraryCharacter(current.state, src, seed, face === "composite", face);
+          if (!op.ok) {
+            toast.push(op.message, "warn");
+            return;
+          }
+          pushUndo(current.state);
+          replaceCurrent({ ...current, state: op.state });
+          setSelectedIds(op.selectIds);
+          toast.push(op.message, "ok");
+        } catch (err) {
+          toast.push(err instanceof Error ? err.message : "Could not load that character.", "bad");
+        }
       },
       mergeStudioParts: () => {
         if (!current) return;

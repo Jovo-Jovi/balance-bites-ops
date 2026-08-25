@@ -75,7 +75,7 @@ Native React workspace (not an HTML wrap). Merged `feat/invoices` + `fix/invoice
 
 ## Design (`balance-bites-sticker.html` + JS)
 
-Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`), Print house. Not an HTML wrap. Branch `feat/design`.
+Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`), Print house. Not an HTML wrap. Waves A–B on `main`. Waves C–D on `feat/design-c`.
 
 - [x] Template library CRUD (`bb_label_templates`)
 - [x] Import/export template JSON (`bb_label_template_v2`); user-picked file
@@ -98,7 +98,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Rect + top uses live back wrap (`buildLabel` sections + `getSectionHTML`) and top lid (`buildTopLabel`) in pixel boxes
 - [x] Taper + top uses live `calcTaper` fan: pixel viewBox, rotate around apex, section HTML — **not** remapped to `0 0 100 100` / `preserveAspectRatio="none"`
 - [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
-- [x] Inspector Layers / Layout / Type / Size / Color / Images / Icons stay open when a wrap column is selected; Nutrition does not trap Layers
+- [x] Inspector Layers / Layout / Type / Size / Color stay open when a wrap column is selected; Nutrition does not trap Layers. Images / Icons live in the Libraries rail
 - [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
 - [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy and character kernels; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
@@ -109,9 +109,9 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
 - [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG
 - [x] Family print / SVG / PNG match Studio hit-boxes (top lid, circle, wrap). Delete template removes the R2 art folder
-- [ ] Studio libraries rail (Wave C)
-- [ ] User-named sections + blank-from-scratch (Wave D)
-- [ ] Applying `assets/presets/` folders into tenant templates (repo, not tenant dump)
+- [x] Studio libraries rail (Wave C) — Shapes / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*` with Remove; composite `addZone` removable; Characters = DiceBear people library (not product stickers)
+- [x] User-named sections + blank-from-scratch (Wave D) — new template die-only unless starter recipes; wrap `_blocks` + `eSecOrd`; legacy `chkS*` / Custom column still open
+- [ ] Dumping `assets/presets/` / Jelly Kids catalogs into Firestore (product art stays `artref:` on saved templates; Characters rail does not list them)
 
 ---
 
@@ -195,7 +195,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 ## Explicit gaps (this slice)
 
 - **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). Finance is still a **tool shell**.
-- Design does **not** wrap `balance-bites-sticker.html`. Wave B PNG cut pack is in test; libraries rail, generic sections, icon/Jelly Kids/art-preset application, and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
+- Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are in test on `feat/design-c`; Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
 - Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** Desktop `saved data` JSON keys were written to Firestore (zip on Desktop, not git). Use `--only=` for a subset; npm steals `--keys`.
@@ -208,6 +208,5 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. **Wave C after Wave B is tested:** libraries rail in [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Then D (generic sections). Do not start the next wave until the current one is confirmed.
-2. Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
-3. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.
+1. **Merge `feat/design-c` → `main` when Wave D is confirmed.** Then Finance (stock ledger, prep, P&L) from `bb-stock-costs.html`.
+2. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.

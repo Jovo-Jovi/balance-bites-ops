@@ -13,6 +13,10 @@ async function authHeader() {
   return { Authorization: `Bearer ${token}` };
 }
 
+export async function staffAuthHeader() {
+  return authHeader();
+}
+
 async function readError(res: Response) {
   try {
     const body = (await res.json()) as { error?: string };

@@ -1,8 +1,8 @@
 # Design Studio — plan
 
-**Status:** confirmed 22 Aug 2026. **Wave B in test** on `feat/design` (stop for user test before C). Waves C–D not started.
+**Status:** Waves A–B merged to `main` (PR #4, 25 Aug 2026). **Wave C confirmed.** **Wave D in test** on `feat/design-c`.
 
-This is a Design-slice follow-up on `feat/design`, not a fourth hub app and not Finance. Current map: [DESIGN.md](DESIGN.md). Live source: `costs/bb-composite-label.js`, `costs/bb-prepress.js`, `costs/balance-bites-sticker.html`.
+This is a Design-slice follow-up, not a fourth hub app and not Finance. Current map: [DESIGN.md](DESIGN.md). Live source: `costs/bb-composite-label.js`, `costs/bb-prepress.js`, `costs/balance-bites-sticker.html`.
 
 ---
 
@@ -109,7 +109,7 @@ All **inside Studio**. Repo catalogs stay in git. Tenant uploads stay on R2. **N
 | Icons | `icon-catalog.json` + A–Z letters | Same as today’s Icons tab |
 | Uploads | R2 `label_assets/` + device | Photos, QR, paper — reuse `__r2__:` |
 | Brand | Flavor packs (code) + logos on R2 | Tint + drop BB disc |
-| Characters | `hub/public/design-presets/` | Apply art; respect print-pack exclude |
+| Characters | DiceBear PNG catalog (Open Peeps / Adventurer / Lorelei / Notionists) | Drop a general character; store inlined PNG → R2 on save. Not `design-presets/` product stickers |
 
 ### Custom sections (the “not Ingredients forever” rule)
 
@@ -212,13 +212,15 @@ Likely new hub files (Wave A–B): `hub/src/lib/design/boolean-cut.ts` (port uni
 
 ## Confirm checklist
 
-- [x] **Wave A** — shapes + join / trim / cut / merge (live composite parity) — **in test**
-- [x] **Wave B** — Cut PNG + exact PNG + bleed PNG (one open label, not a zip)
-- [ ] **Wave C** — libraries rail inside Studio (Canva-shaped, label-scoped)
-- [ ] **Wave D** — user-named sections + blank-from-scratch
+- [x] **Wave A** — shapes + join / trim / cut / merge (live composite parity) — on `main`
+- [x] **Wave B** — Cut PNG + exact PNG + bleed PNG (one open label, not a zip) — on `main`
+- [x] **Wave C** — libraries rail inside Studio (Canva-shaped, label-scoped) — **confirmed**
+- [x] **Wave D** — user-named sections + blank-from-scratch — **in test** on `feat/design-c`
 - [x] Rename Atelier label to **Studio** (keep `?tab=atelier`)
-- [x] PNG pack = **one label** first (not a zip of all templates) — agreed; **Wave B in test**
+- [x] PNG pack = **one label** first (not a zip of all templates)
 - [x] Keep wrap/taper **starters** (Ingredients / Nutrition) as library blocks, not deleted
 - [x] Do **not** add Canva/Polotno/AI
 
-Wave B shipped behavior: Print house Cut PNG / Exact PNG / Bleed PNG; Studio Cut PNG. Raster of the print SVG at 300 DPI, die clip (`unionPath` / wrap rect / taper fan / circle outline), pHYs, live `extendBleedNN`. Warn on print-pack exclude; do not refuse. Do not start Wave C until this is tested.
+Wave C shipped behavior: left **Libraries** rail in Studio — Shapes / Blocks / Icons / Uploads / Brand / Characters. Tap-to-add (drag later if needed). Inspector Images / Icons tabs folded into the rail. Flavor packs live under Brand. Composite `addZone` (text, logo disc, exp, photo). Wrap recipes have **Remove** (turns `chkS*` off). Composite text / logo / exp / photo layers are removable from the rail, Layers, canvas ×, or Delete. Characters are a **DiceBear** people catalog (not popcorn / pretzels / china crackers). Fetched PNG is inlined, then Save strips to R2. Product preset SVGs stay on saved templates via `artref:`. Templates stay on the Library tab.
+
+**Wave D shipped behavior (in test):** New template is a **blank die** unless **Include starter recipes** is checked. Wrap/taper start with `chkS1–6` off (no forced Ingredients). Composite starts with a circle part and no logo/brand/flavor zones. **Named section** on wrap/taper stores `{ title, fields[], widthPct }` in `state._blocks` and appends the id to `eSecOrd` — paint + Layers + Copy (title, width, EN/AR fields). Remove deletes the block (recipes still only turn `chkS*` off). Legacy Custom column (`chkS6` / `eCusTitle` / `eCusBody`) still opens. Composite named section is a text zone. Saved wrap JSON without `_blocks` is unchanged. Inspector Copy / Nutrition / Layout tabs stay; selecting a named column still jumps Copy.

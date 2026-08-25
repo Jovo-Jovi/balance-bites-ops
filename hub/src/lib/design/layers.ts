@@ -1,7 +1,9 @@
+import { findBlock, parseBlockLayerId, sectionOrder } from "./blocks";
 import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./art";
 import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys } from "./layout";
+import { stampOnFace } from "./studio-library";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
 import type { CompositeBlob, CompositePart, LabelState, LabelTemplate } from "./types";
@@ -59,6 +61,11 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
 }
 
 export function canvasEditText(template: LabelTemplate, id: string): { value: string; multiline: boolean } | null {
+  const named = parseBlockLayerId(id);
+  if (named) {
+    const block = findBlock(template.state, named);
+    return { value: block?.fields[0]?.en || "", multiline: true };
+  }
   const fam = familyTextField(id);
   if (fam) return { value: s(template.state, fam.field), multiline: fam.multiline };
   const zone = template.state._composite?.zones?.find((z) => z.id === id);
@@ -92,7 +99,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         z: 40 - i,
         color: box.id === FAM.blogo ? s(state, "cLogoCircle", "#ffffff") : undefined,
         lock: box.lock,
-        removable: false,
+        removable: Boolean(wrapRecipeChkForLayer(box.id) || parseBlockLayerId(box.id)),
       });
     });
   }
@@ -122,16 +129,17 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         text: zone.text,
         field: zone.field,
         lock: zone.lock,
-        removable: (zone.kind === "icon" || zone.kind === "image") && !zone.lock,
+        removable: !zone.lock,
         letterStyle: zone.letterStyle,
       });
     }
   }
   for (const stamp of state._stamps || []) {
+    if (!stampOnFace(stamp, face)) continue;
     layers.push({
       id: stamp.id,
       kind: "stamp",
-      label: getIcon(stamp.iconId)?.label || stamp.iconId,
+      label: stamp.label || getIcon(stamp.iconId)?.label || (stamp.src ? "Character" : stamp.iconId),
       z: stamp.z || 0,
       color: stamp.color,
       iconId: stamp.iconId,
@@ -224,6 +232,7 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
   }
   }
   for (const stamp of state._stamps || []) {
+    if (!stampOnFace(stamp, face)) continue;
     items.push({
       id: stamp.id,
       kind: "stamp",
@@ -490,30 +499,26 @@ const FAMILY_SECTION: Record<string, string> = {
 };
 
 export function familySectionKey(id: string) {
-  return FAMILY_SECTION[id] || "";
+  return FAMILY_SECTION[id] || parseBlockLayerId(id) || "";
+}
+
+const WRAP_RECIPE_PRIMARY = new Set<string>([FAM.ing, FAM.nut, FAM.blogo, FAM.tip, FAM.bdates, FAM.cus]);
+
+/** chkS* for a wrap recipe layer. QR / weight / brand-name share a column and are not removed alone. */
+export function wrapRecipeChkForLayer(id: string) {
+  if (!WRAP_RECIPE_PRIMARY.has(id)) return "";
+  const k = familySectionKey(id);
+  return k ? `chkS${k}` : "";
 }
 
 function secOn(state: LabelState, k: string) {
-  return flag(state, `chkS${k}`, k === "6" ? false : true);
+  if (/^[1-5]$/.test(k)) return flag(state, `chkS${k}`, true);
+  if (k === "6") return flag(state, "chkS6", false);
+  return Boolean(findBlock(state, k));
 }
 
 function parseSecOrd(state: LabelState) {
-  const raw = s(state, "eSecOrd", "1,2,3,4,5,6")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
-  const seen = new Set<string>();
-  const order: string[] = [];
-  for (const k of raw) {
-    if (!seen.has(k)) {
-      seen.add(k);
-      order.push(k);
-    }
-  }
-  for (const k of ["1", "2", "3", "4", "5", "6"]) {
-    if (!seen.has(k)) order.push(k);
-  }
-  return order;
+  return sectionOrder(state);
 }
 
 function moveFamilySection(state: LabelState, sec: string, listDir: -1 | 1): LabelState {
@@ -603,7 +608,13 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
   }
   const stamp = state._stamps?.find((st) => st.id === id);
   if (stamp) {
-    return { width: stamp.strokeWidth ?? 2, color: stamp.color || "#c9a84c", max: 8, showColor: false };
+    const png = Boolean(stamp.src);
+    return {
+      width: stamp.strokeWidth ?? (png ? 0 : 2),
+      color: stamp.borderColor || stamp.color || "#ffffff",
+      max: 8,
+      showColor: png,
+    };
   }
   return null;
 }
@@ -640,6 +651,7 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
           ? {
               ...st,
               color: patch.color ?? st.color,
+              borderColor: patch.borderColor ?? st.borderColor,
               strokeWidth: patch.borderWidth ?? st.strokeWidth,
             }
           : st,

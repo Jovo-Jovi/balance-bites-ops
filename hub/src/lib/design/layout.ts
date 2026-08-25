@@ -1,3 +1,4 @@
+import { blockLayerId, findBlock, listBlocks, parseBlockLayerId, sectionOrder } from "./blocks";
 import { getDesignSpec } from "./specs";
 import type { LabelMode, LabelState, LabelTemplate } from "./types";
 
@@ -443,10 +444,10 @@ export function backSections(state: LabelState, W: number): BackSection[] {
     "5": { on: flag(state, "chkS5", true), p: Math.max(0, 100 - sw1 - sw2 - sw3 - sw4) },
     "6": { on: flag(state, "chkS6", false), p: 20 },
   };
-  const order = s(state, "eSecOrd", "1,2,3,4,5,6")
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
+  for (const b of listBlocks(state)) {
+    raw[b.id] = { on: true, p: Math.max(4, b.widthPct || 20) };
+  }
+  const order = sectionOrder(state);
   let active = 0;
   for (const k of order) if (raw[k]?.on) active += raw[k].p;
   if (active === 0) active = 1;
@@ -528,10 +529,19 @@ const WRAP_META: Record<string, { id: string; label: string; ox: string; oy: str
   "6": { id: FAM.cus, label: "Custom", ox: "", oy: "" },
 };
 
+export function wrapSectionMeta(state: LabelState, k: string) {
+  if (WRAP_META[k]) return WRAP_META[k];
+  const b = findBlock(state, k);
+  if (b) return { id: blockLayerId(b.id), label: b.title || "Section", ox: "", oy: "" };
+  return { id: `__fam:sec${k}`, label: `Section ${k}`, ox: "", oy: "" };
+}
+
 export type FamilyFocusTab = "copy" | "nutrition" | "type";
 
 export function familyFocus(id: string | null | undefined): { tab: FamilyFocusTab; block: string } | null {
   if (!id) return null;
+  const named = parseBlockLayerId(id);
+  if (named) return { tab: "copy", block: `blk:${named}` };
   const map: Record<string, { tab: FamilyFocusTab; block: string }> = {
     [FAM.ing]: { tab: "copy", block: "ing" },
     [FAM.nut]: { tab: "nutrition", block: "nut" },
@@ -581,7 +591,7 @@ export function backBoxes(state: LabelState): FamilyBox[] {
   const { W, H } = backPx(state);
   const boxes: FamilyBox[] = [];
   for (const sec of backSections(state, W)) {
-    const meta = WRAP_META[sec.k] || { id: `__fam:sec${sec.k}`, label: `Section ${sec.k}`, ox: "", oy: "" };
+    const meta = wrapSectionMeta(state, sec.k);
     const restX = pct(sec.l + sec.w / 2, W);
     const cw = pct(Math.max(24, sec.w * 0.88), W);
     const rot = n(state, `sSec${sec.k}Rot`, 0);
@@ -733,7 +743,7 @@ export function taperBoxes(state: LabelState): FamilyBox[] {
   const { g, secs } = taperSectors(state);
   const boxes: FamilyBox[] = [];
   for (const sec of secs) {
-    const meta = WRAP_META[sec.k] || { id: `__fam:sec${sec.k}`, label: `Section ${sec.k}`, ox: "", oy: "" };
+    const meta = wrapSectionMeta(state, sec.k);
     const userRot = n(state, `sSec${sec.k}Rot`, 0);
     const rot = sec.mid + userRot;
     const midR = (g.R1 + g.R2) / 2;
@@ -924,7 +934,8 @@ const ROT_KEYS: Record<string, string> = {
 };
 
 export function rotateFamilyItem(template: LabelTemplate, id: string, rot: number): LabelState {
-  const key = ROT_KEYS[id];
+  const named = parseBlockLayerId(id);
+  const key = named ? `sSec${named}Rot` : ROT_KEYS[id];
   if (!key) return template.state;
   const box = familyBoxById(template, id);
   let a = (rot - (box?.fan || 0)) % 360;
@@ -935,5 +946,6 @@ export function rotateFamilyItem(template: LabelTemplate, id: string, rot: numbe
 }
 
 export function familyRotKey(id: string) {
-  return ROT_KEYS[id] || "";
+  const named = parseBlockLayerId(id);
+  return named ? `sSec${named}Rot` : ROT_KEYS[id] || "";
 }

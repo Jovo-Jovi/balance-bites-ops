@@ -310,8 +310,22 @@ Popcorn (and other character stickers) saved a white card with only the exp plat
 
 ---
 
+## 2026-08-25 — `feat/design` merged; Wave C libraries rail
+
+PR **#4** merged `feat/design` → `main` (`e4471fa`). Production Design is Waves A–B plus Library snaps.
+
+**Wave C** on `feat/design-c` (**confirmed**): Studio left rail Shapes / Blocks / Icons / Uploads / Brand / Characters. Inspector Images / Icons tabs folded into the rail. Composite `addZone` (text, logo disc, expiry, photo). Wrap taps turn on existing `chkS*` recipes (Custom column stays a starter). **Remove** turns wrap recipes off and deletes composite text/logo/exp/photo layers (rail, Layers, canvas ×, Delete). Characters are a DiceBear people catalog (Open Peeps / Adventurer / Lorelei / Notionists) — not popcorn / pretzels / china crackers. PNG is fetched via `/api/design/character` (staff) and inlined; Save still strips to R2. Flavor packs under Brand. Merge / Trim / Cut stay on the composite bar.
+
+---
+
+## 2026-08-25 — Wave D blank die + named sections
+
+On `feat/design-c` (not merged). New template is a blank die unless Library **Include starter recipes** is on. Wrap/taper start with all `chkS*` off. Composite starts with a circle part and no default logo/brand/flavor zones. **Named section** stores `{ title, fields[], widthPct }` on `state._blocks` and appends the id to `eSecOrd`. Paint, Layers, Copy (title / EN / AR / width), rail Remove, canvas ×, Delete. Recipes stay Ingredients / Nutrition / Dates+QR+weight / Logo / Tips. Legacy Custom column still opens. Composite named section is a text zone. No new Firestore key. Saved wrap JSON without `_blocks` is unchanged.
+
+---
+
 ## Still not done (do not tick as shipped)
 
-- Design Waves C–D: libraries rail / user-named sections; zip of every commercial character; writing preset folders into tenant templates
+- Zip of every commercial character; Jelly Kids Firestore dump
 - Finance tabs and ledger formulas
-- Merge `feat/design` → `main` when asked
+- Merge `feat/design-c` → `main` when Wave D is confirmed

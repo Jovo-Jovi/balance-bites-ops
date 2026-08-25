@@ -97,9 +97,14 @@ export type LabelStamp = {
   rot?: number;
   z?: number;
   color?: string;
+  borderColor?: string;
   strokeWidth?: number;
   sizeId?: string;
   letterStyle?: string;
+  src?: string;
+  label?: string;
+  /** Which family face this stamp sits on. Missing = legacy (icons all faces; characters skip the lid). */
+  face?: "back" | "taper" | "top" | "circle";
 };
 
 export type CompositeBlob = {
@@ -116,9 +121,24 @@ export type CompositeBlob = {
   cutGroupId?: string | null;
 };
 
+export type DesignBlockField = {
+  id: string;
+  label: string;
+  en: string;
+  ar: string;
+};
+
+export type DesignBlock = {
+  id: string;
+  title: string;
+  fields: DesignBlockField[];
+  widthPct?: number;
+};
+
 export type LabelState = Record<string, unknown> & {
   _composite?: CompositeBlob;
   _stamps?: LabelStamp[];
+  _blocks?: DesignBlock[];
   _fillCutWithPaper?: boolean;
   _isTapered?: boolean;
   _designType?: string;

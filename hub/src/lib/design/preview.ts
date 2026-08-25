@@ -5,6 +5,7 @@ import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
 import { artboardOf, circlePx, previewFace } from "./layout";
 import { getDesignSpec } from "./specs";
+import { stampOnFace } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
 
 function str(state: LabelState, key: string, fallback = "") {
@@ -222,6 +223,34 @@ function qrLayer(state: LabelState, lite = false) {
   return `<image href="${esc(href)}" x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
+function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; borderColor?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string) {
+  const href = usableImage(s.src);
+  if (href) {
+    const side = Math.max(2, Math.min(s.w, s.h));
+    const left = s.x - side / 2;
+    const top = s.y - side / 2;
+    const bw = Number(s.strokeWidth);
+    const ring =
+      Number.isFinite(bw) && bw > 0
+        ? `<circle cx="${s.x}" cy="${s.y}" r="${side / 2}" fill="none" stroke="${esc(s.borderColor || s.color || "#ffffff")}" stroke-width="${bw}" />`
+        : "";
+    const img = `<image href="${esc(href)}" x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />${ring}`;
+    if (!s.rot) return img;
+    return `<g transform="rotate(${s.rot} ${s.x} ${s.y})">${img}</g>`;
+  }
+  return iconMark(
+    s.iconId,
+    s.x,
+    s.y,
+    s.w,
+    s.h,
+    s.color || fallback,
+    s.strokeWidth ?? 2,
+    s.rot,
+    s.letterStyle,
+  );
+}
+
 function iconMark(
   iconId: string,
   x: number,
@@ -279,9 +308,12 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
     const bw = Number(z.borderWidth);
+    const isChar = z.shape === "character" || String(z.label || "").startsWith("Character");
     const stroke =
       Number.isFinite(bw) && bw > 0
-        ? `<rect x="${left}" y="${top}" width="${z.w}" height="${z.h}" fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" />`
+        ? isChar
+          ? `<circle cx="${z.x}" cy="${z.y}" r="${Math.min(z.w, z.h) / 2}" fill="none" stroke="${esc(z.borderColor || z.color || "#1a1a1a")}" stroke-width="${bw}" />`
+          : `<rect x="${left}" y="${top}" width="${z.w}" height="${z.h}" fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" />`
         : "";
     const img = `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />${stroke}`;
     if (!z.rot) return img;
@@ -548,7 +580,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
   const txt = str(state, "cTxtMain", "#ffffff");
   const comp = state._composite;
   const clipId = clipIdOf(template);
-  const stamps = [...(state._stamps || [])];
+  const stamps = [...(state._stamps || [])].filter((s) => stampOnFace(s, "composite"));
 
   if (spec.composite && comp) {
     const parts = [...(comp.parts || [])];
@@ -562,7 +594,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     for (const s of stamps) {
       stack.push({
         z: s.z || 0,
-        html: iconMark(s.iconId, s.x, s.y, s.w, s.h, s.color || txt, s.strokeWidth ?? 2, s.rot, s.letterStyle),
+        html: stampMark(s, txt),
       });
     }
     const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);

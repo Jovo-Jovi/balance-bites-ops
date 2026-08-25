@@ -1,7 +1,6 @@
 "use client";
 
 import { ActionBtn } from "@/components/invoices/ui";
-import { PART_TYPES } from "@/lib/design/part-types";
 import { previewFace } from "@/lib/design/layout";
 import { useDesignApp } from "./design-context";
 
@@ -14,8 +13,8 @@ export function StudioCutBar() {
   if (!composite) {
     return (
       <p className="text-xs text-[var(--bb-muted)]">
-        Die-cut tools (add shape, merge, trim, cut) are on the Composite family. Wrap and taper stay starters — switch
-        Family to Composite to draw a freeform cut.
+        Die-cut tools (merge, trim, cut) are on the Composite family. Add shapes from Libraries → Shapes after you switch
+        Family.
       </p>
     );
   }
@@ -23,8 +22,8 @@ export function StudioCutBar() {
   return (
     <div className="flex flex-col gap-2 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-3">
       <p className="text-xs text-[var(--bb-muted)]">
-        Shift-click two or more shapes. Merge joins them into one silhouette. Group moves them together. Trim clips an
-        inner shape to the main. Preview cut, then Approve.
+        Add a shape from Libraries → Shapes. Shift-click two or more. Merge joins them into one silhouette. Group moves
+        them together. Trim clips an inner shape to the main. Preview cut, then Approve.
       </p>
       {app.clipPick ? (
         <p className="text-xs text-[var(--bb-gold)]">
@@ -36,18 +35,6 @@ export function StudioCutBar() {
       {app.cutPreview ? (
         <p className="text-xs text-[var(--bb-gold)]">Previewing cut — Approve to keep it, or Cancel.</p>
       ) : null}
-      <div className="flex flex-wrap gap-1.5">
-        {PART_TYPES.map((shape) => (
-          <button
-            key={shape.id}
-            type="button"
-            className="rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-2 py-1 text-[11px] text-[var(--bb-text)] hover:border-[var(--bb-gold)]"
-            onClick={() => app.addStudioShape(shape.id)}
-          >
-            {shape.label}
-          </button>
-        ))}
-      </div>
       <div className="flex flex-wrap gap-2">
         <ActionBtn tone="ghost" onClick={app.mergeStudioParts}>
           Merge

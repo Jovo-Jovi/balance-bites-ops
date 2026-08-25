@@ -1,6 +1,8 @@
 import { genId } from "@/lib/invoices/helpers";
 import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
+import type { PreviewFace } from "./layout";
+import { stampFaceOf } from "./studio-library";
 import { isAssetRef } from "./templates";
 import type { CompositeZone, LabelStamp, LabelState } from "./types";
 
@@ -114,6 +116,7 @@ export function applyIconToState(
   sizeId: string,
   color: string,
   letterStyle?: string,
+  face?: PreviewFace,
 ): LabelState {
   const icon = getIcon(iconId);
   if (!icon) return state;
@@ -133,6 +136,7 @@ export function applyIconToState(
     sizeId: size.id,
     letterStyle: style,
     z: 40,
+    face: stampFaceOf(face || "back"),
   };
 
   if (state._composite) {
@@ -180,7 +184,7 @@ export function placedArtItems(state: LabelState) {
   const stamps = (state._stamps || []).map((s) => ({
     id: s.id,
     iconId: s.iconId,
-    label: getIcon(s.iconId)?.label || s.iconId,
+    label: s.label || getIcon(s.iconId)?.label || (s.src ? "Character" : s.iconId),
   }));
   const zones = (state._composite?.zones || [])
     .filter((z) => z.kind === "icon" && z.iconId)
