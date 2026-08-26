@@ -27,6 +27,7 @@ service cloud.firestore {
     //   - updatedAt: timestamp (required)
     //   - updatedBy: string uid (required, must equal request.auth.uid)
     //   - clientWriteId: string 8–80 chars (required, conflict token)
+    //   - prevWriteId: optional in this deploy; becomes required in a follow-up
     // `data` is not deeply validated: live files are heterogeneous blobs
     // (invoice arrays, label template state). Firestore's 1 MiB doc limit
     // is the size cap. Split keys if that limit is hit.
@@ -86,7 +87,8 @@ service cloud.firestore {
           'data',
           'updatedAt',
           'updatedBy',
-          'clientWriteId'
+          'clientWriteId',
+          'prevWriteId'
         ])
         && request.resource.data.keys().hasAll([
           'data',
