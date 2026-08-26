@@ -26,8 +26,9 @@ service cloud.firestore {
     //   - data: opaque JSON value (list, map, string, number, bool, or null)
     //   - updatedAt: timestamp (required)
     //   - updatedBy: string uid (required, must equal request.auth.uid)
-    //   - clientWriteId: string 8–80 chars (required, conflict token)
-    //   - prevWriteId: optional in this deploy; becomes required in a follow-up
+    //   - clientWriteId: string 8–80 chars (required, new version of this write)
+    //   - prevWriteId: string, required compare-and-swap token. A write must
+    //     carry the clientWriteId its local copy was built from. Empty on create.
     // `data` is not deeply validated: live files are heterogeneous blobs
     // (invoice arrays, label template state). Firestore's 1 MiB doc limit
     // is the size cap. Split keys if that limit is hit.
@@ -94,7 +95,8 @@ service cloud.firestore {
           'data',
           'updatedAt',
           'updatedBy',
-          'clientWriteId'
+          'clientWriteId',
+          'prevWriteId'
         ])
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.updatedBy is string
@@ -103,7 +105,9 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.clientWriteId is string
         && request.resource.data.clientWriteId.size() >= 8
-        && request.resource.data.clientWriteId.size() <= 80;
+        && request.resource.data.clientWriteId.size() <= 80
+        && request.resource.data.prevWriteId is string
+        && request.resource.data.prevWriteId.size() <= 80;
     }
 
     match /staff/{uid} {
@@ -118,10 +122,16 @@ service cloud.firestore {
 
       match /keys/{key} {
         allow read: if isStaff() && tid == 'balance-bites' && isKnownKey(key);
-        allow create, update: if isStaff()
+        allow create: if isStaff()
           && tid == 'balance-bites'
           && isKnownKey(key)
-          && isValidKeyDoc();
+          && isValidKeyDoc()
+          && request.resource.data.prevWriteId == '';
+        allow update: if isStaff()
+          && tid == 'balance-bites'
+          && isKnownKey(key)
+          && isValidKeyDoc()
+          && request.resource.data.prevWriteId == resource.data.clientWriteId;
         allow delete: if isStaff() && tid == 'balance-bites' && isKnownKey(key);
       }
     }
