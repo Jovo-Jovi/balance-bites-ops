@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="docs/brand/mark.svg" width="56" alt="Balance Bites diamond mark" />
+<img src="docs/brand/mark.png" width="56" alt="Balance Bites diamond mark" />
 
 # Balance Bites Ops
 
 **Private staff hub** for invoices, label design, and finance & inventory.
 
-<img src="docs/brand/readme-hero.svg" alt="Balance Bites Ops — invoices, design, finance" width="100%" />
+<img src="docs/brand/readme-hero.png" alt="Balance Bites Ops — invoices, design, finance" width="100%" />
 
 <br />
 
@@ -32,7 +32,7 @@ One URL. Three cards after login. **No KPIs on the hub.** Live data is Firebase 
 <tr>
 <td width="33%" valign="top">
 
-### <img src="docs/brand/mark.svg" width="14" alt="" /> الفواتير · Invoices
+### <img src="docs/brand/mark.png" width="14" alt="" /> الفواتير · Invoices
 
 **Live on `main`**
 
@@ -46,7 +46,7 @@ Customers, invoice editor, catalog pick, prep queue, history, reports, and **Loo
 </td>
 <td width="33%" valign="top">
 
-### <img src="docs/brand/mark.svg" width="14" alt="" /> التصميم · Design
+### <img src="docs/brand/mark.png" width="14" alt="" /> التصميم · Design
 
 **Live on `main`**
 
@@ -60,7 +60,7 @@ Native library, studio, and print house. Not an HTML wrap.
 </td>
 <td width="33%" valign="top">
 
-### <img src="docs/brand/mark.svg" width="14" alt="" /> المالية · Finance
+### <img src="docs/brand/mark.png" width="14" alt="" /> المالية · Finance
 
 **Live on `main`**
 
@@ -86,7 +86,18 @@ Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
 | ![](https://img.shields.io/badge/-Finance-b76e32?style=flat-square) | Stock & P&amp;L | Ledger, recipes, prep → production, returns, opex, investor diary |
 | ![](https://img.shields.io/badge/-Data-3f7d4e?style=flat-square) | Cloud | Firestore `bb_*` keys · R2 art · staff zip backup · locked rules |
 
-<img src="docs/brand/architecture.svg" alt="Login to three cards, then Firestore and R2" width="100%" />
+```mermaid
+flowchart LR
+  Login --> Cards[Three cards]
+  Cards --> Invoices
+  Cards --> Design
+  Cards --> Finance
+  Invoices --> Firestore
+  Design --> Firestore
+  Finance --> Firestore
+  Design --> Assets[R2 assets]
+  Finance --> Backups[R2 backups]
+```
 
 ---
 
@@ -94,7 +105,7 @@ Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
 
 Ink diamond on linen. Teal only on actions. One mark for all three apps.
 
-<img src="docs/brand/palette.svg" alt="Linen, panel, teal, ink, OK, bad" width="100%" />
+<img src="docs/brand/palette.png" alt="Linen, panel, teal, ink, OK, bad" width="100%" />
 
 | Token | Hex | Use |
 |---|---|---|
