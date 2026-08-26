@@ -117,6 +117,13 @@ export function resolvePrintTheme(
   return invoiceTheme;
 }
 
+export function printLookLabel(id: PrintLookId, presets: ColorPreset[] = []) {
+  if (id === "__inv2__") return "Invoice Pro";
+  if (id === "__hub__") return "مظهر التطبيق";
+  const preset = presets.find((p) => p.id === id);
+  return preset?.name || "Invoice Pro";
+}
+
 export function parsePrintLookId(
   value: unknown,
   presets: ColorPreset[] = [],

@@ -20,7 +20,7 @@ When building later slices, reuse hub chrome and CloudStore. Do **not** duplicat
 | `returns` | المرتجعات | `returns-tool.tsx` | returns |
 | `ops` | التشغيل | `ops-tool.tsx` | op costs, R2 backups |
 
-Inner chips are sections, not extra workspace tools. Print a saved invoice with Invoices `printInvoiceDocument` (same looks). No Theme tab.
+Inner chips are sections, not extra workspace tools. Print a saved invoice (and a prep draft preview) with Invoices `printInvoiceDocument` (same Look keys). Prep board / combined sheet / BOM print in `print-prep.ts`. No Theme tab.
 
 ## Files
 
@@ -38,7 +38,7 @@ hub/src/components/finance/
   recipes-tool.tsx
   returns-tool.tsx
   ops-tool.tsx
-hub/src/lib/finance/       write, types, helpers, ledger, recipes, analytics, reports, prep, customer-ledger, backups
+hub/src/lib/finance/       write, types, helpers, ledger, recipes, analytics, reports, prep, print-period, print-prep, customer-ledger, backups
 hub/src/lib/keys.ts        FINANCE_WRITE_KEYS (templates + color presets stripped)
 ```
 
@@ -48,7 +48,7 @@ Shared hub (do not fork): `app-workspace.tsx`, `brand-lockup.tsx`, `auth-provide
 
 Finance **writes:** materials, packages, stickers, recipes, purchases, production, products, categories, returns, operation costs, investors / target, customer payments, invoice payments, pending (including `invoice_draft`), `bb_label_open`, prep UI keys, `bb_backup_index`.
 
-Finance **reads only:** `bb_invoices` / `bb_inv2` / `bb_customers` (except prep **approve**), `bb_label_templates`.
+Finance **reads only:** `bb_invoices` / `bb_inv2` / `bb_customers` (except prep **approve**), `bb_label_templates`, Look print keys (`bb_inv_print_preset_id`, `bb_inv_print_page_size`, `bb_inv_print_margins`). Finance invoices show those as a read-only strip; Invoices → Look writes them.
 
 **Narrow exception:** `commitPrepInvoice` appends `#INV-` then marks the draft completed. Not a second invoice editor. Invoice Pro queue already skips `kind: 'invoice_draft'`.
 

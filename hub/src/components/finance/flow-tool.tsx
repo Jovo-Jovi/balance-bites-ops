@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ActionBtn, Empty, Field, Select, TextInput } from "@/components/invoices/ui";
 import { fmt, fmtQty, num, roundQty } from "@/lib/finance/helpers";
+import { PREP_PRINT_MODES } from "@/lib/finance/print-prep";
 import { calcPrepAggregate, recipeSellPrice } from "@/lib/finance/recipes";
 import { prepBuyQty } from "@/lib/finance/reports";
 import type { Customer } from "@/lib/invoices/types";
@@ -120,7 +121,22 @@ function PrepSection() {
           </ActionBtn>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-56">
+          <Field label="طباعة اللوحة">
+            <Select
+              value={app.prepPrintMode}
+              onChange={(e) => app.setPrepPrintMode(e.target.value as (typeof PREP_PRINT_MODES)[number]["id"])}
+            >
+              {PREP_PRINT_MODES.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <ActionBtn onClick={() => app.printPrepBoard()}>طباعة</ActionBtn>
         <ActionBtn
           tone="ghost"
           onClick={() => app.setPrepProdMode(app.prepProdMode === "all" ? "net" : "all")}
@@ -131,6 +147,15 @@ function PrepSection() {
       </div>
 
       <h2 className="text-sm text-[var(--bb-muted)]">مسودات الفواتير</h2>
+      <div className="flex flex-wrap gap-2">
+        <ActionBtn tone="ghost" onClick={() => app.downloadPrepDraftSheet()}>
+          تحميل الشيت المجموع
+        </ActionBtn>
+        <ActionBtn onClick={() => app.printPrepDraftSheet()}>طباعة الشيت</ActionBtn>
+        <ActionBtn tone="ghost" onClick={() => app.printPrepDraftComponents()}>
+          طباعة المكونات
+        </ActionBtn>
+      </div>
       {app.invoiceDrafts.length === 0 ? (
         <Empty>لا مسودات — اختر عميلاً وأضف صنفاً</Empty>
       ) : (
@@ -153,6 +178,9 @@ function PrepSection() {
               </ul>
               <div className="mt-3 flex flex-wrap gap-2">
                 <ActionBtn onClick={() => void app.approveDraft(d.id)}>اعتماد وإضافة للفواتير</ActionBtn>
+                <ActionBtn tone="ghost" onClick={() => app.printPrepDraft(d.id)}>
+                  طباعة
+                </ActionBtn>
                 <ActionBtn tone="danger" onClick={() => app.removePending(d.id)}>
                   حذف المسودة
                 </ActionBtn>

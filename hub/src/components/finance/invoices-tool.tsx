@@ -12,6 +12,7 @@ import {
   TextInput,
 } from "@/components/invoices/ui";
 import { fmt, todayISO } from "@/lib/finance/helpers";
+import { PRINT_PAGE_SIZES } from "@/lib/invoices/print-layout";
 import {
   custKey,
   lastDueInvoice,
@@ -78,7 +79,32 @@ export function InvoicesTool() {
       <p className="text-sm text-[var(--bb-muted)]">
         الفواتير تُنشأ في تطبيق الفواتير أو باعتماد التحضير. هنا التحصيل وكشف العميل والطباعة.
       </p>
+      <LookReadout />
       <InvoiceWorkspace />
+    </div>
+  );
+}
+
+function LookReadout() {
+  const app = useFinanceApp();
+  const sizeLabel = PRINT_PAGE_SIZES.find((p) => p.id === app.pageSize)?.label || app.pageSize;
+  const m = app.margins;
+  return (
+    <div className="bb-glass flex flex-col gap-2 p-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="المظهر">
+          <TextInput value={app.printLookName} readOnly />
+        </Field>
+        <Field label="المقاس">
+          <TextInput value={sizeLabel} readOnly />
+        </Field>
+        <Field label="الهوامش مم (أعلى / يمين / أسفل / يسار)">
+          <TextInput readOnly dir="ltr" value={`${m.t} / ${m.r} / ${m.b} / ${m.l}`} />
+        </Field>
+      </div>
+      <p className="text-xs text-[var(--bb-muted)]">
+        للعرض فقط — غيّر المظهر والمقاس والهوامش من الفواتير → المظهر. الطباعة هنا تستخدم نفس المفاتيح.
+      </p>
     </div>
   );
 }

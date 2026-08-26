@@ -81,8 +81,16 @@ import {
 import { normalizeDisposition } from "@/lib/finance/returns-live";
 import { nextInvoiceNumber, draftFromInvoice } from "@/lib/invoices/helpers";
 import { printInvoiceDocument, printInvoiceDocuments } from "@/lib/invoices/print";
-import { parseInv2, parsePrintLookId, resolvePrintTheme } from "@/lib/invoices/look";
-import { parseMargins, parsePageSize } from "@/lib/invoices/print-layout";
+import { parseInv2, parsePrintLookId, printLookLabel, resolvePrintTheme, type PrintLookId } from "@/lib/invoices/look";
+import { parseMargins, parsePageSize, type PrintMargins, type PrintPageSize } from "@/lib/invoices/print-layout";
+import {
+  downloadPrepInvoiceSheet,
+  parsePrepPrintMode,
+  printPrepBoard as openPrepBoardPrint,
+  printPrepInvoiceComponents,
+  printPrepInvoiceSheet,
+  type PrepPrintMode,
+} from "@/lib/finance/print-prep";
 import type {
   Category,
   ColorPreset,
@@ -120,6 +128,11 @@ type FinanceContextValue = {
   templates: LabelTemplate[];
   prepLines: PrepLine[];
   prepProdMode: "all" | "net";
+  prepPrintMode: PrepPrintMode;
+  printLook: PrintLookId;
+  printLookName: string;
+  pageSize: PrintPageSize;
+  margins: PrintMargins;
   backupIndex: BackupMeta[];
   lastCustomerId: string;
   setLastCustomer: (id: string) => void;
@@ -170,6 +183,7 @@ type FinanceContextValue = {
   saveInvestorTarget: (patch: Partial<InvestorTarget>) => void;
   setPrepLines: (lines: PrepLine[]) => void;
   setPrepProdMode: (mode: "all" | "net") => void;
+  setPrepPrintMode: (mode: PrepPrintMode) => void;
   addToCustomerDraft: (customer: Customer, item: InvoiceLine) => void;
   updateDraft: (id: string, patch: Partial<FinancePending>) => void;
   removePending: (id: string) => void;
@@ -181,6 +195,11 @@ type FinanceContextValue = {
   prepareLabelOpen: (stickerId: string) => void;
   printSavedInvoice: (invoiceId: string, mode?: "original" | "net") => void;
   printSavedInvoices: (invoiceIds: string[], mode?: "original" | "net") => void;
+  printPrepBoard: () => void;
+  printPrepDraftSheet: () => void;
+  printPrepDraftComponents: () => void;
+  downloadPrepDraftSheet: () => void;
+  printPrepDraft: (id: string) => void;
   createNamedBackup: (label: string) => Promise<boolean>;
   restoreNamedBackup: (id: string, load: (id: string) => Promise<unknown>) => Promise<boolean>;
   itemStatus: (item: StockItem, type: ItemKind) => "ok" | "low" | "crit";
@@ -220,11 +239,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const prepProdMode = (String(useCloudKey("bb_prep_prod_mode") || "all") === "net" ? "net" : "all") as
     | "all"
     | "net";
+  const prepPrintMode = parsePrepPrintMode(useCloudKey("bb_prep_print_mode"));
   const backupIndex = asArray<BackupMeta>(useCloudKey("bb_backup_index"));
   const lastCustomerId = String(useCloudKey("bb_ret_last_customer") || "");
   const presets = asArray<ColorPreset>(useCloudKey("bb_color_presets"));
   const activePresetId = String(useCloudKey("bb_active_color_preset_id") || "");
   const printLook = parsePrintLookId(useCloudKey("bb_inv_print_preset_id"), presets, activePresetId);
+  const printLookName = printLookLabel(printLook, presets);
   const fitOne = Boolean(useCloudKey("bb_print_fit_one"));
   const pageSize = parsePageSize(useCloudKey("bb_inv_print_page_size"));
   const margins = parseMargins(useCloudKey("bb_inv_print_margins"));
@@ -910,6 +931,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     void writeFinanceKey("bb_prep_prod_mode", mode);
   }, []);
 
+  const setPrepPrintMode = useCallback((mode: PrepPrintMode) => {
+    void writeFinanceKey("bb_prep_print_mode", mode);
+  }, []);
+
   const addToCustomerDraft = useCallback((customer: Customer, item: InvoiceLine) => {
     const all = readArr<FinancePending>("bb_pending_invoices");
     let draft = findDraftByCustomer(all, customer.id);
@@ -1159,6 +1184,97 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [fitOne, invoices, margins, pageSize, presets, printLook, returns, toast],
   );
 
+  const prepAggOpts = useCallback(
+    () => {
+      const onHandByRecipe: Record<string, number> = {};
+      productSummary.forEach((r) => {
+        if (r.recipeId) onHandByRecipe[r.recipeId] = r.onHand;
+      });
+      return {
+        prodMode: prepProdMode,
+        onHandByRecipe,
+        findItem,
+        ledger,
+      };
+    },
+    [findItem, ledger, prepProdMode, productSummary],
+  );
+
+  const printPrepBoard = useCallback(() => {
+    if (!prepLines.length) {
+      toast.push("أضف منتجات في التحضير أولاً", "warn");
+      return;
+    }
+    const ok = openPrepBoardPrint({
+      prepLines,
+      recipes,
+      mode: prepPrintMode,
+      aggOpts: prepAggOpts(),
+    });
+    if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+  }, [prepAggOpts, prepLines, prepPrintMode, recipes, toast]);
+
+  const printPrepDraftSheet = useCallback(() => {
+    const drafts = getInvoiceDrafts(pending);
+    if (!drafts.length) {
+      toast.push("لا مسودات لطباعة الشيت", "warn");
+      return;
+    }
+    const ok = printPrepInvoiceSheet(drafts, recipes, prepAggOpts());
+    if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+  }, [pending, prepAggOpts, recipes, toast]);
+
+  const printPrepDraftComponents = useCallback(() => {
+    const drafts = getInvoiceDrafts(pending);
+    if (!drafts.length) {
+      toast.push("لا مسودات لطباعة المكونات", "warn");
+      return;
+    }
+    const ok = printPrepInvoiceComponents(drafts, recipes, prepAggOpts());
+    if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+  }, [pending, prepAggOpts, recipes, toast]);
+
+  const downloadPrepDraftSheet = useCallback(() => {
+    const drafts = getInvoiceDrafts(pending);
+    if (!drafts.length) {
+      toast.push("لا مسودات لتحميل الشيت", "warn");
+      return;
+    }
+    if (downloadPrepInvoiceSheet(drafts, recipes, prepAggOpts())) {
+      toast.push("تم تحميل الشيت المجموع", "ok");
+    }
+  }, [pending, prepAggOpts, recipes, toast]);
+
+  const printPrepDraft = useCallback(
+    (id: string) => {
+      const pend = pending.find((p) => p.id === id);
+      if (!pend || !isInvoiceDraft(pend)) {
+        toast.push("لم يتم إيجاد المسودة", "warn");
+        return;
+      }
+      const items = (pend.items || []).filter((it) => num(it.qty) > 0);
+      if (!items.length) {
+        toast.push("لا أصناف في هذه الفاتورة", "warn");
+        return;
+      }
+      const inv = draftToInvoice({ ...pend, items }, nextInvoiceNumber(invoices, pend.customerId));
+      const snap = parseInv2(CloudStore.get("bb_inv2", {}));
+      const ok = printInvoiceDocument({
+        draft: draftFromInvoice(inv),
+        theme: resolvePrintTheme(printLook, snap.C, presets),
+        strings: snap.S,
+        mode: "original",
+        returns,
+        invoices,
+        fitOne,
+        pageSize,
+        margins,
+      });
+      if (!ok) toast.push("اسمح بالنوافذ المنبثقة للطباعة", "warn");
+    },
+    [fitOne, invoices, margins, pageSize, pending, presets, printLook, returns, toast],
+  );
+
   const createNamedBackup = useCallback(
     async (label: string) => {
       try {
@@ -1248,6 +1364,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     templates,
     prepLines,
     prepProdMode,
+    prepPrintMode,
+    printLook,
+    printLookName,
+    pageSize,
+    margins,
     backupIndex,
     lastCustomerId,
     setLastCustomer,
@@ -1286,6 +1407,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     assignInvestorAmounts,
     setPrepLines,
     setPrepProdMode,
+    setPrepPrintMode,
     addToCustomerDraft,
     updateDraft,
     removePending,
@@ -1297,6 +1419,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     prepareLabelOpen,
     printSavedInvoice,
     printSavedInvoices,
+    printPrepBoard,
+    printPrepDraftSheet,
+    printPrepDraftComponents,
+    downloadPrepDraftSheet,
+    printPrepDraft,
     createNamedBackup,
     restoreNamedBackup,
     itemStatus,
