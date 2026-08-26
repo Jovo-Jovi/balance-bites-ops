@@ -62,7 +62,7 @@ Native library, studio, and print house. Not an HTML wrap.
 
 ### <img src="docs/brand/mark.svg" width="14" alt="" /> المالية · Finance
 
-**Native on `feat/finance`**
+**Live on `main`**
 
 Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
 
@@ -86,22 +86,7 @@ Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
 | ![](https://img.shields.io/badge/-Finance-b76e32?style=flat-square) | Stock & P&amp;L | Ledger, recipes, prep → production, returns, opex, investor diary |
 | ![](https://img.shields.io/badge/-Data-3f7d4e?style=flat-square) | Cloud | Firestore `bb_*` keys · R2 art · staff zip backup · locked rules |
 
-```mermaid
-flowchart LR
-  subgraph HUB["linen hub"]
-    L[Login]
-    C[Three cards]
-  end
-  L --> C
-  C --> I[Invoices]
-  C --> D[Design]
-  C --> F[Finance]
-  I --- FS[(Firestore bb_*)]
-  D --- FS
-  F --- FS
-  D --- R2[(R2 label_assets)]
-  F --- BK[(R2 bb_backups)]
-```
+<img src="docs/brand/architecture.svg" alt="Login to three cards, then Firestore and R2" width="100%" />
 
 ---
 
@@ -175,7 +160,7 @@ balance-bites-ops/
 | [MODULES.md](docs/MODULES.md) | Live HTML source map |
 | [CLOUD-PLAN.md](docs/CLOUD-PLAN.md) | Cloud cutover |
 
-**Invoices** and **Design** (Waves A–D) are on `main`. **Finance** (Waves A–E + F1–F4) is on `feat/finance` until you merge.
+**Invoices**, **Design**, and **Finance** native workspaces are on `main`.
 
 ---
 

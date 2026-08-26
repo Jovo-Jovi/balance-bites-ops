@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" role="img" aria-label="Hub architecture">
+  <rect width="1200" height="280" fill="#f4f0ea"/>
+  <rect x="40" y="28" width="200" height="72" rx="16" fill="#1f2930"/>
+  <text x="140" y="72" text-anchor="middle" fill="#f4f0ea" font-family="Tahoma, Arial, sans-serif" font-size="18" font-weight="700">Login</text>
+
+  <rect x="280" y="28" width="200" height="72" rx="16" fill="#0f6e6b"/>
+  <text x="380" y="72" text-anchor="middle" fill="#f4f0ea" font-family="Tahoma, Arial, sans-serif" font-size="18" font-weight="700">Three cards</text>
+
+  <path d="M240 64 H280" stroke="#1f2930" stroke-width="3" fill="none"/>
+  <polygon points="280,64 268,58 268,70" fill="#1f2930"/>
+
+  <rect x="40" y="148" width="280" height="88" rx="16" fill="#fffbf7" stroke="#0f6e6b" stroke-width="3"/>
+  <text x="180" y="184" text-anchor="middle" fill="#0f6e6b" font-family="Tahoma, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">INVOICES</text>
+  <text x="180" y="214" text-anchor="middle" fill="#1f2930" font-family="Tahoma, Arial, sans-serif" font-size="20" font-weight="700">'DAH'*J1</text>
+
+  <rect x="360" y="148" width="280" height="88" rx="16" fill="#fffbf7" stroke="#1f2930" stroke-width="3"/>
+  <text x="500" y="184" text-anchor="middle" fill="#1f2930" font-family="Tahoma, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">DESIGN</text>
+  <text x="500" y="214" text-anchor="middle" fill="#1f2930" font-family="Tahoma, Arial, sans-serif" font-size="20" font-weight="700">'D*5EJE</text>
+
+  <rect x="680" y="148" width="280" height="88" rx="16" fill="#fffbf7" stroke="#b76e32" stroke-width="3"/>
+  <text x="820" y="184" text-anchor="middle" fill="#b76e32" font-family="Tahoma, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">FINANCE</text>
+  <text x="820" y="214" text-anchor="middle" fill="#1f2930" font-family="Tahoma, Arial, sans-serif" font-size="20" font-weight="700">'DE'DJ)</text>
+
+  <rect x="1000" y="36" width="160" height="56" rx="14" fill="#3f7d4e"/>
+  <text x="1080" y="70" text-anchor="middle" fill="#f4f0ea" font-family="Tahoma, Arial, sans-serif" font-size="14" font-weight="700">Firestore</text>
+
+  <rect x="1000" y="168" width="160" height="56" rx="14" fill="#1f2930"/>
+  <text x="1080" y="202" text-anchor="middle" fill="#f4f0ea" font-family="Tahoma, Arial, sans-serif" font-size="14" font-weight="700">R2 art</text>
+
+  <path d="M960 192 H1000" stroke="#1f2930" stroke-width="3" fill="none"/>
+  <path d="M1080 92 V168" stroke="#1f2930" stroke-width="3" fill="none"/>
+  <path d="M480 64 H1080 V92" stroke="#0f6e6b" stroke-width="2" fill="none" opacity="0.7"/>
+  <path d="M380 100 V148" stroke="#0f6e6b" stroke-width="3" fill="none"/>
+  <path d="M180 100 V148" stroke="#0f6e6b" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M820 100 V148" stroke="#0f6e6b" stroke-width="2" fill="none" opacity="0.5"/>
+</svg>
