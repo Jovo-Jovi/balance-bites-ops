@@ -86,9 +86,9 @@ export type InvestorTarget = {
   needed: number;
   split: "equal" | "share";
   projectStart: string;
-  collectionLag?: number;
-  stockPlacement?: string;
-  includeResidual?: boolean;
+  collectionLag: number;
+  stockPlacement: "journal" | "today";
+  includeResidual: boolean;
 };
 
 export type CustomerPayment = {

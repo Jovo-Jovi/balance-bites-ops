@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ActionBtn, Empty, Field, Select, TextInput } from "@/components/invoices/ui";
-import { fmt, fmtQty, num, roundQty } from "@/lib/finance/helpers";
+import { fmt, fmtQty, catalogInactive, num, roundQty } from "@/lib/finance/helpers";
 import { PREP_PRINT_MODES } from "@/lib/finance/print-prep";
 import { calcPrepAggregate, recipeSellPrice } from "@/lib/finance/recipes";
 import { prepBuyQty } from "@/lib/finance/reports";
@@ -10,7 +10,7 @@ import type { Customer } from "@/lib/invoices/types";
 import type { ItemKind } from "./finance-context";
 import { useFinanceApp } from "./finance-context";
 import { PurchaseModal } from "./purchase-modal";
-import { SectionChips } from "./section-chips";
+import { FinanceTable, SectionChips, tdClass, thClass } from "./section-chips";
 
 const SECTIONS = [
   { id: "prep", label: "التحضير" },
@@ -22,7 +22,7 @@ export function FlowTool() {
   return (
     <div className="flex flex-col gap-4">
       <SectionChips items={[...SECTIONS]} value={section} onChange={setSection} />
-      {section === "prep" ? <PrepSection /> : <ProdSection />}
+      {section === "prep" ? <PrepSection /> : <ProdSection onGoPrep={() => setSection("prep")} />}
     </div>
   );
 }
@@ -144,10 +144,19 @@ function PrepSection() {
           الإنتاج: {app.prepProdMode === "net" ? "صافي (بعد الجاهز)" : "كل الكمية"}
         </ActionBtn>
         <ActionBtn onClick={() => app.sendBoardToProduction()}>إرسال اللوحة للإنتاج</ActionBtn>
+        <ActionBtn tone="ghost" onClick={() => app.saveBoardAsPrepOrder()}>
+          حفظ طلب
+        </ActionBtn>
       </div>
 
       <h2 className="text-sm text-[var(--bb-muted)]">مسودات الفواتير</h2>
       <div className="flex flex-wrap gap-2">
+        <ActionBtn
+          onClick={() => void app.approveAllDrafts()}
+          disabled={app.invoiceDrafts.length === 0}
+        >
+          اعتماد الكل
+        </ActionBtn>
         <ActionBtn tone="ghost" onClick={() => app.downloadPrepDraftSheet()}>
           تحميل الشيت المجموع
         </ActionBtn>
@@ -257,17 +266,88 @@ function PrepSection() {
   );
 }
 
-function ProdSection() {
+function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
   const app = useFinanceApp();
   const [recipeId, setRecipeId] = useState("");
   const [units, setUnits] = useState("");
   const [notes, setNotes] = useState("");
+  const demand = useMemo(
+    () =>
+      app.productSummary
+        .filter((r) => {
+          if (!r.hasRecipe || !r.recipeId) return false;
+          const p = app.products.find((x) => x.id === r.productId);
+          return !catalogInactive(p);
+        })
+        .slice()
+        .sort((a, b) => b.gap - a.gap || a.name.localeCompare(b.name, "ar")),
+    [app.productSummary, app.products],
+  );
+  const gapCount = demand.filter((r) => r.gap > 0.0001).length;
 
   return (
     <>
       <p className="text-sm text-[var(--bb-muted)]">
         اعتماد الإنتاج يسجّل دورات ويخصم المكوّنات عبر دفتر المشتريات/الاستهلاك. مسودات الفاتورة لا تظهر هنا.
       </p>
+      <h2 className="text-sm text-[var(--bb-muted)]">الطلب مقابل الإنتاج</h2>
+      <div className="flex flex-wrap gap-2">
+        <ActionBtn
+          onClick={() => {
+            if (app.fillPrepFromGaps()) onGoPrep();
+          }}
+        >
+          تجهيز الناقص
+        </ActionBtn>
+      </div>
+      {demand.length === 0 ? (
+        <Empty>لا منتجات بوصفة لمقارنتها بالفواتير</Empty>
+      ) : (
+        <FinanceTable minWidth="36rem">
+          <thead>
+            <tr>
+              <th className={thClass}>المنتج</th>
+              <th className={thClass}>مباع</th>
+              <th className={thClass}>مُنتَج</th>
+              <th className={thClass}>ينقص</th>
+              <th className={thClass} />
+            </tr>
+          </thead>
+          <tbody>
+            {demand.map((r) => (
+              <tr key={r.productId}>
+                <td className={tdClass}>{r.name}</td>
+                <td className={tdClass} dir="ltr">
+                  {fmtQty(r.soldGross)}
+                </td>
+                <td className={tdClass} dir="ltr">
+                  {fmtQty(r.produced)}
+                </td>
+                <td className={`${tdClass} ${r.gap > 0.0001 ? "text-[var(--bb-bad)]" : "text-[var(--bb-ok)]"}`} dir="ltr">
+                  {fmtQty(r.gap)}
+                </td>
+                <td className={`${tdClass} whitespace-nowrap`}>
+                  {r.gap > 0.0001 ? (
+                    <ActionBtn
+                      tone="ghost"
+                      onClick={() => {
+                        if (app.fillPrepFromProductGap(r.recipeId, r.gap)) onGoPrep();
+                      }}
+                    >
+                      إلى اللوحة
+                    </ActionBtn>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </FinanceTable>
+      )}
+      {gapCount === 0 && demand.length > 0 ? (
+        <p className="text-xs text-[var(--bb-muted)]">لا يوجد نقص — الإنتاج يغطي الفواتير</p>
+      ) : null}
       <h2 className="text-sm text-[var(--bb-muted)]">بانتظار الإنتاج</h2>
       {app.awaitingProduction.length === 0 ? (
         <Empty>لا طلبات بانتظار الإنتاج</Empty>
@@ -279,6 +359,14 @@ function ProdSection() {
               <p className="text-xs text-[var(--bb-muted)]">{p.customerName}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <ActionBtn onClick={() => void app.approveProduction(p.id)}>اعتماد الإنتاج</ActionBtn>
+                <ActionBtn
+                  tone="ghost"
+                  onClick={() => {
+                    if (app.loadOrderIntoPrep(p.id)) onGoPrep();
+                  }}
+                >
+                  تحميل للتحضير
+                </ActionBtn>
                 <ActionBtn tone="ghost" onClick={() => app.updateDraft(p.id, { status: "pending" })}>
                   إرجاع للتحضير
                 </ActionBtn>
@@ -298,7 +386,7 @@ function ProdSection() {
       )}
       <h2 className="text-sm text-[var(--bb-muted)]">طلبات التحضير (لم تُرسل بعد)</h2>
       {app.prepOrders.filter((p) => p.status !== "awaiting_production").length === 0 ? (
-        <Empty>لا طلبات معلّقة — أرسل اللوحة من التحضير</Empty>
+        <Empty>لا طلبات معلّقة — احفظ أو أرسل اللوحة من التحضير</Empty>
       ) : (
         <ul className="flex flex-col gap-2">
           {app.prepOrders
@@ -306,6 +394,14 @@ function ProdSection() {
             .map((p) => (
               <li key={p.id} className="bb-glass flex flex-wrap items-center gap-2 p-3">
                 <span className="flex-1">{p.title}</span>
+                <ActionBtn
+                  tone="ghost"
+                  onClick={() => {
+                    if (app.loadOrderIntoPrep(p.id)) onGoPrep();
+                  }}
+                >
+                  تحميل للتحضير
+                </ActionBtn>
                 <ActionBtn onClick={() => app.sendOrderToProduction(p.id)}>إرسال للإنتاج</ActionBtn>
                 <ActionBtn
                   tone="danger"

@@ -1,6 +1,6 @@
 import type { Invoice, InvoiceLine, ReturnRecord } from "@/lib/invoices/types";
 import type { Investor, InvestorTarget, OpCost, Recipe, StockItem } from "./types";
-import { num, round2 } from "./helpers";
+import { num, round2, todayISO } from "./helpers";
 import { calcCOGS, findRecipeForItem } from "./recipes";
 import { investorShareOf, type LinkedState } from "./reports";
 import type { CustomerLedger } from "./customer-ledger";
@@ -9,6 +9,67 @@ import { isExpiredDisp } from "./returns-live";
 export function invstrDay(d: string | undefined | null) {
   const s = String(d || "").slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+}
+
+export function invstrAddDays(iso: string, n: number) {
+  const d = new Date(`${String(iso)}T12:00:00`);
+  if (!Number.isFinite(d.getTime())) return iso;
+  d.setDate(d.getDate() + (parseInt(String(n), 10) || 0));
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${d.getFullYear()}-${m < 10 ? "0" : ""}${m}-${day < 10 ? "0" : ""}${day}`;
+}
+
+export function clampInvstrDay(d: string | undefined | null, start: string | undefined | null) {
+  let day = invstrDay(d);
+  const begin = invstrDay(start);
+  if (!day) return begin || "0000-00-00";
+  if (begin && day < begin) return begin;
+  return day;
+}
+
+export function invstrMinInvoiceDay(invoices: Invoice[]) {
+  let min = "";
+  (invoices || []).forEach((inv) => {
+    const d = invstrDay(inv.date);
+    if (d && (!min || d < min)) min = d;
+  });
+  return min;
+}
+
+export function invstrMaxInvoiceDay(invoices: Invoice[]) {
+  let max = "";
+  (invoices || []).forEach((inv) => {
+    const d = invstrDay(inv.date);
+    if (d && d > max) max = d;
+  });
+  return max;
+}
+
+export function parseInvestorPlan(raw: unknown): InvestorTarget {
+  const empty: InvestorTarget = {
+    needed: 0,
+    split: "share",
+    projectStart: "",
+    collectionLag: 30,
+    stockPlacement: "journal",
+    includeResidual: false,
+  };
+  if (raw == null || raw === "") return empty;
+  if (typeof raw === "number" || typeof raw === "string") {
+    return { ...empty, needed: Math.max(0, num(raw)) };
+  }
+  const v = raw as Record<string, unknown>;
+  const lagRaw = v.collectionLag == null ? 30 : parseInt(String(v.collectionLag), 10);
+  const lag = !Number.isFinite(lagRaw) || lagRaw < 0 ? 30 : lagRaw;
+  return {
+    needed: Math.max(0, num(v.needed)),
+    split: v.split === "equal" ? "equal" : "share",
+    projectStart: invstrDay(String(v.projectStart || "")),
+    collectionLag: lag,
+    stockPlacement: v.stockPlacement === "today" ? "today" : "journal",
+    includeResidual: !!v.includeResidual,
+  };
 }
 
 export function investorJoinDay(p: Investor, start: string) {
@@ -22,12 +83,7 @@ export function investorJoinDay(p: Investor, start: string) {
 export function resolveProjectStart(invoices: Invoice[], plan: InvestorTarget) {
   const saved = invstrDay(plan.projectStart);
   if (saved) return saved;
-  let min = "";
-  invoices.forEach((inv) => {
-    const d = invstrDay(inv.date);
-    if (d && (!min || d < min)) min = d;
-  });
-  return min;
+  return invstrMinInvoiceDay(invoices) || todayISO();
 }
 
 /** Live `capitalForCurrentState.required`: capital that sales have not yet recycled. */
@@ -182,15 +238,20 @@ export function buildInvestorSnapshot(opts: {
   ledger: CustomerLedger;
   linked: LinkedState;
   findItem: (type: string, id: string) => StockItem | null;
+  /** Live `fin.wc.peak`. Falls back to spent − sales when omitted. */
+  peak?: number;
+  recycled?: number;
 }) {
-  const start = resolveProjectStart(opts.invoices, opts.plan) || "";
+  const plan = parseInvestorPlan(opts.plan);
+  const start = resolveProjectStart(opts.invoices, plan) || "";
   const list = opts.investors.slice().sort((a, b) => {
     const da = investorJoinDay(a, start);
     const db = investorJoinDay(b, start);
     if (da !== db) return da < db ? -1 : 1;
     return num(b.amount) - num(a.amount);
   });
-  const peak = capitalPeak(opts.linked.spent, opts.linked.gross);
+  const simplePeak = capitalPeak(opts.linked.spent, opts.linked.gross);
+  const peak = opts.peak != null ? round2(Math.max(0, opts.peak)) : simplePeak;
   const cap = capitalAssignment(peak, list);
   const profitById = allocateProfitByJoinDate({
     list,
@@ -203,7 +264,7 @@ export function buildInvestorSnapshot(opts: {
     start,
     findItem: opts.findItem,
   });
-  const extraSplits = investorShareOf(list, opts.plan.needed || 0, opts.plan.split || "share");
+  const extraSplits = investorShareOf(list, plan.needed || 0, plan.split || "share");
   const rows: InvestorRow[] = list.map((p) => {
     const toward = cap.toward[p.id] || 0;
     return {
@@ -222,10 +283,14 @@ export function buildInvestorSnapshot(opts: {
   return {
     start,
     peak,
+    simplePeak,
     cap,
     rows,
     extraSplits,
-    recycled: round2(Math.max(0, Math.min(opts.linked.spent, opts.linked.gross))),
+    recycled:
+      opts.recycled != null
+        ? round2(Math.max(0, opts.recycled))
+        : round2(Math.max(0, Math.min(opts.linked.spent, opts.linked.gross))),
     roi: peak > 0.009 ? (opts.linked.netProfit / peak) * 100 : null,
   };
 }

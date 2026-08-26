@@ -111,6 +111,17 @@ export function draftToInvoice(pend: FinancePending, invNum: string): Invoice {
   };
 }
 
+export function mergePrepLines(groups: PrepLine[][]): PrepLine[] {
+  const by: Record<string, number> = {};
+  (groups || []).forEach((g) => {
+    (g || []).forEach((l) => {
+      if (!l?.recipeId || num(l.units) <= 0) return;
+      by[l.recipeId] = roundQty((by[l.recipeId] || 0) + roundQty(l.units));
+    });
+  });
+  return Object.keys(by).map((recipeId) => ({ recipeId, units: by[recipeId] }));
+}
+
 export function makePrepOrder(
   prepLines: PrepLine[],
   items: InvoiceLine[],

@@ -123,7 +123,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | الفواتير | Read invoices; paid/pending; customer account modal; multi-print; undo last payment; read-only Look strip | [x] |
 | COGS | Recipe unit cost vs sell / margin | [x] |
 | الأرباح | P&L = sales − COGS of **sold** − opex − hawalek (not leftover stock); from/to window + print | [x] |
-| المستثمرون | Peak ≈ spent−sales; join-date profit; NAV × toward/peak; copy cash shortfall into المطلوب | [x] |
+| المستثمرون | WC diary peak (lag / journal placement); join-date profit; NAV × toward/peak; copy cash shortfall | [x] |
 | المخزون | Ledger qty × cost + finished goods | [x] |
 | المشتريات | Buy-ins; ledger source of qty | [x] |
 | المواد الخام | Catalog + inline qty; ok/low/crit + usage filters | [x] |
@@ -132,8 +132,8 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | الكتالوج | Products, categories, inactive | [x] |
 | بطاقات المنتج | BOM cards | [x] |
 | الوصفات | BOM, batch, product link | [x] |
-| التحضير | Per-customer items; drafts; شراء shortfall; board / sheet / BOM print | [x] |
-| الإنتاج | Runs; usage fallback if **no invoices**; not `invoice_draft`; delete unsent / awaiting orders | [x] |
+| التحضير | Per-customer items; drafts; شراء shortfall; board / sheet / BOM print; حفظ طلب (pending); اعتماد الكل | [x] |
+| الإنتاج | Runs; usage fallback if **no invoices**; not `invoice_draft`; delete unsent / awaiting; sold/produced/gap + تجهيز الناقص; تحميل للتحضير | [x] |
 | المرتجعات | Restock vs expired / hawalek | [x] |
 | تكاليف التشغيل | Rent, wages, compensation (negative OK) | [x] |
 
@@ -182,7 +182,7 @@ Do not commit these files. Field names to preserve:
 | `bb_production` | array | `recipeId`, `unitsProduced`, `deductions[]`, `isAdjustment` |
 | `bb_operation_costs` | array | `date`, `name`, `category`, `amount` (compensation may be negative) |
 | `bb_investors` | array | (live file currently empty `[]`) |
-| `bb_investor_target` | object | `needed`, `split`, `projectStart` |
+| `bb_investor_target` | object | `needed`, `split`, `projectStart`, `collectionLag`, `stockPlacement`, `includeResidual` |
 | `bb_label_templates` | array | `id`, `name`, `designType`, `labelMode`, `libraryThumb` (R2 WebP/PNG ref), large `state` |
 | `bb_label_open` | object | `stickerId`, `templateId`, `productId`, `ts` |
 | `bb_color_presets` | array | `id`, `name`, `bg`, `gold`, `txt`, `mut`, `row`, `tot`, `grand` |
@@ -194,8 +194,8 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). **Finance** is a native eight-tool workspace on `feat/finance` (not merged). Finance invoices: customer tap opens an account modal; multi-select print original/net; undo last payment restores remaining; Look name / page / margins shown read-only (Invoices → Look still writes those keys). Investor table uses live join-date + peak formulas, not a raw NAV split; «نسخ عجز السيولة» copies cash hole into المطلوب. Overview mix bars + formula hover; stock alerts live on المخزون; الأرباح has a from/to P&L window and print; unmatched invoice lines (no recipe) hinted on Overview / Recipes. Stock catalogs filter ok/low/crit and usage; sticker swatch cards tap through to Design Studio. Prep prints the current board plus draft sheet / BOM.
-- Finance still does **not** port the working-capital event diary (collection lag, stock-placement journal, weekly curve). Look editing stays on Invoices (Finance does not write `bb_inv_*` print keys).
+- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). **Finance** is a native eight-tool workspace on `feat/finance` (not merged). Finance invoices: customer tap opens an account modal; multi-select print original/net; undo last payment restores remaining; Look name / page / margins shown read-only (Invoices → Look still writes those keys). Investor table uses the working-capital event diary for peak / تعيين (collection lag, leftover stock on the live journal window 15 Jul–14 Aug or today, pending invoices never become تحصيل). Overview mix bars + formula hover; stock alerts live on المخزون; الأرباح has a from/to P&L window and print; unmatched invoice lines (no recipe) hinted on Overview / Recipes. Stock catalogs filter ok/low/crit and usage; sticker swatch cards tap through to Design Studio. Prep prints the current board plus draft sheet / BOM. Prep can save an unsent order, load it back onto the board, approve all drafts, and fill the board from production gaps.
+- Look editing stays on Invoices (Finance does not write `bb_inv_*` print keys). Not ported on purpose: COGS / stock-value print (on-screen reports stay); on-screen `bb_prep_ing_view` total-vs-each (print mode already has both); `splitSharedStickersToProducts` (live button hidden unless shared stickers).
 - Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are on `main`. Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.

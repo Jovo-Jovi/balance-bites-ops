@@ -14,6 +14,7 @@ import type { LabelTemplate } from "@/lib/design/types";
 import {
   asArray,
   asRecord,
+  catalogInactive,
   emptyStockItem,
   financeId,
   fmt,
@@ -37,6 +38,7 @@ import {
   type StockItem,
 } from "@/lib/finance/types";
 import { writeFinanceKey, commitPrepInvoice } from "@/lib/finance/write";
+import { EMPTY_DEFAULTS } from "@/lib/keys";
 import {
   buildLedgerMap,
   computeItemLedger,
@@ -70,8 +72,10 @@ import {
   isInvoiceDraft,
   makePrepOrder,
   mergeDraftItem,
+  mergePrepLines,
   prepLinesToItems,
 } from "@/lib/finance/prep";
+import { parseInvestorPlan } from "@/lib/finance/investors";
 import { ensureStickerInProductRecipe, removeStickerFromRecipes, resolveStickerTemplate } from "@/lib/finance/stickers";
 import {
   backupFileName,
@@ -187,8 +191,13 @@ type FinanceContextValue = {
   addToCustomerDraft: (customer: Customer, item: InvoiceLine) => void;
   updateDraft: (id: string, patch: Partial<FinancePending>) => void;
   removePending: (id: string) => void;
-  approveDraft: (id: string) => Promise<boolean>;
+  approveDraft: (id: string, opts?: { silent?: boolean }) => Promise<boolean>;
+  approveAllDrafts: () => Promise<number>;
   sendBoardToProduction: (title?: string) => void;
+  saveBoardAsPrepOrder: (title?: string) => void;
+  loadOrderIntoPrep: (id: string) => boolean;
+  fillPrepFromGaps: () => boolean;
+  fillPrepFromProductGap: (recipeId: string, units: number) => boolean;
   sendOrderToProduction: (id: string) => void;
   approveProduction: (id: string) => Promise<boolean>;
   addProductionRun: (recipeId: string, units: number, notes: string, date?: string) => void;
@@ -229,11 +238,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const production = asArray<ProductionRun>(useCloudKey("bb_production"));
   const opCosts = asArray<OpCost>(useCloudKey("bb_operation_costs"));
   const investors = asArray<Investor>(useCloudKey("bb_investors"));
-  const investorTarget = (useCloudKey("bb_investor_target") || {
-    needed: 0,
-    split: "equal",
-    projectStart: "",
-  }) as InvestorTarget;
+  const investorTarget = parseInvestorPlan(useCloudKey("bb_investor_target"));
   const templates = asArray<LabelTemplate>(useCloudKey("bb_label_templates"));
   const prepLines = asArray<PrepLine>(useCloudKey("bb_prep_lines"));
   const prepProdMode = (String(useCloudKey("bb_prep_prod_mode") || "all") === "net" ? "net" : "all") as
@@ -908,12 +913,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const saveInvestorTarget = useCallback((patch: Partial<InvestorTarget>) => {
-    const cur = (CloudStore.get("bb_investor_target", {
-      needed: 0,
-      split: "equal",
-      projectStart: "",
-    }) || {}) as InvestorTarget;
-    void writeFinanceKey("bb_investor_target", { ...cur, ...patch });
+    const cur = parseInvestorPlan(
+      CloudStore.get("bb_investor_target", EMPTY_DEFAULTS.bb_investor_target),
+    );
+    void writeFinanceKey("bb_investor_target", parseInvestorPlan({ ...cur, ...patch }));
   }, []);
 
   const assignInvestorAmounts = useCallback((amounts: Record<string, number>) => {
@@ -964,20 +967,21 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const approveDraft = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { silent?: boolean }) => {
+      const silent = !!opts?.silent;
       const pend = readArr<FinancePending>("bb_pending_invoices").find((p) => p.id === id);
       if (!pend || !isInvoiceDraft(pend)) return false;
       if (pend.status === "completed") {
-        toast.push("هذه المسودة معتمدة مسبقاً", "warn");
+        if (!silent) toast.push("هذه المسودة معتمدة مسبقاً", "warn");
         return false;
       }
       const items = (pend.items || []).filter((it) => num(it.qty) > 0);
       if (!items.length) {
-        toast.push("لا أصناف في هذه الفاتورة", "warn");
+        if (!silent) toast.push("لا أصناف في هذه الفاتورة", "warn");
         return false;
       }
       if (!pend.customerId) {
-        toast.push("لا يوجد عميل لهذه المسودة", "warn");
+        if (!silent) toast.push("لا يوجد عميل لهذه المسودة", "warn");
         return false;
       }
       const invs = readArr<Invoice>("bb_invoices");
@@ -997,11 +1001,27 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           : p,
       );
       void writeFinanceKey("bb_pending_invoices", nextPend);
-      toast.push(`أُضيفت ${invNum} لـ ${pend.customerName || ""}`, "ok");
+      if (!silent) toast.push(`أُضيفت ${invNum} لـ ${pend.customerName || ""}`, "ok");
       return true;
     },
     [setPayment, toast],
   );
+
+  const approveAllDrafts = useCallback(async () => {
+    const drafts = getInvoiceDrafts(readArr<FinancePending>("bb_pending_invoices"));
+    if (!drafts.length) {
+      toast.push("لا مسودات للاعتماد", "warn");
+      return 0;
+    }
+    if (!window.confirm(`اعتماد ${drafts.length} فاتورة وإضافتها لفواتير العملاء؟`)) return 0;
+    let n = 0;
+    for (const d of drafts) {
+      const ok = await approveDraft(d.id, { silent: true });
+      if (ok) n += 1;
+    }
+    toast.push(`اعتُمد ${n} فاتورة`, "ok");
+    return n;
+  }, [approveDraft, toast]);
 
   const sendBoardToProduction = useCallback(
     (title?: string) => {
@@ -1021,6 +1041,95 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         ...readArr<FinancePending>("bb_pending_invoices"),
       ]);
       toast.push("أُرسل للإنتاج", "ok");
+    },
+    [toast],
+  );
+
+  const saveBoardAsPrepOrder = useCallback(
+    (title?: string) => {
+      const lines = readArr<PrepLine>("bb_prep_lines").filter((l) => num(l.units) > 0);
+      if (!lines.length) {
+        toast.push("لا بنود في لوحة التحضير", "warn");
+        return;
+      }
+      const onHandByRecipe: Record<string, number> = {};
+      productSummary.forEach((r) => {
+        if (r.recipeId) onHandByRecipe[r.recipeId] = r.onHand;
+      });
+      const recs = readArr<Recipe>("bb_recipes");
+      const agg = calcPrepAggregate(lines, recs, {
+        prodMode: prepProdMode,
+        onHandByRecipe,
+        findItem,
+        ledger,
+      });
+      if (!agg.stockOk && !window.confirm("⚠ بعض المكونات غير كافية في المخزون.\n\nالمتابعة على أي حال؟")) {
+        return;
+      }
+      const items = prepLinesToItems(lines, recs, readArr<Product>("bb_products"));
+      const order = makePrepOrder(lines, items, {
+        kind: "prep",
+        status: "pending",
+        title: title || `طلب تحضير · ${todayISO()}`,
+        prepSummary: { stockOk: agg.stockOk },
+      });
+      void writeFinanceKey("bb_pending_invoices", [order, ...readArr<FinancePending>("bb_pending_invoices")]);
+      void writeFinanceKey("bb_prep_lines", []);
+      toast.push(`محفوظ: ${order.title} — أرسل من الإنتاج عندما تجهز`, "ok");
+    },
+    [findItem, ledger, prepProdMode, productSummary, toast],
+  );
+
+  const loadOrderIntoPrep = useCallback(
+    (id: string) => {
+      const pend = readArr<FinancePending>("bb_pending_invoices").find((p) => p.id === id);
+      const lines = mergePrepLines([pend?.prepLines || []]);
+      if (!lines.length) {
+        toast.push("لا توجد بيانات تحضير في هذا الطلب", "warn");
+        return false;
+      }
+      const board = readArr<PrepLine>("bb_prep_lines").filter((l) => num(l.units) > 0);
+      if (
+        board.length &&
+        !window.confirm(
+          `استبدال لوحة التحضير الحالية (${board.length} منتج) بـ «${pend?.title || "الطلب"}»؟`,
+        )
+      ) {
+        return false;
+      }
+      void writeFinanceKey("bb_prep_lines", lines);
+      toast.push(`${lines.length} منتج على اللوحة`, "ok");
+      return true;
+    },
+    [toast],
+  );
+
+  const fillPrepFromGaps = useCallback(() => {
+    const gaps = productSummary.filter((r) => {
+      if (!(r.gap > 0) || !r.recipeId) return false;
+      const p = products.find((x) => x.id === r.productId);
+      return !catalogInactive(p);
+    });
+    if (!gaps.length) {
+      toast.push("لا يوجد نقص — الإنتاج يغطي الفواتير", "ok");
+      return false;
+    }
+    const extra: PrepLine[] = gaps.map((r) => ({ recipeId: r.recipeId, units: roundQty(r.gap) }));
+    void writeFinanceKey("bb_prep_lines", mergePrepLines([readArr<PrepLine>("bb_prep_lines"), extra]));
+    toast.push(`${gaps.length} منتج للتحضير`, "ok");
+    return true;
+  }, [productSummary, products, toast]);
+
+  const fillPrepFromProductGap = useCallback(
+    (recipeId: string, units: number) => {
+      const u = roundQty(units);
+      if (!recipeId || u <= 0) return false;
+      void writeFinanceKey(
+        "bb_prep_lines",
+        mergePrepLines([readArr<PrepLine>("bb_prep_lines"), [{ recipeId, units: u }]]),
+      );
+      toast.push(`أُضيف للتحضير: ${u} وحدة`, "ok");
+      return true;
     },
     [toast],
   );
@@ -1412,7 +1521,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     updateDraft,
     removePending,
     approveDraft,
+    approveAllDrafts,
     sendBoardToProduction,
+    saveBoardAsPrepOrder,
+    loadOrderIntoPrep,
+    fillPrepFromGaps,
+    fillPrepFromProductGap,
     sendOrderToProduction,
     approveProduction,
     addProductionRun,

@@ -352,6 +352,14 @@ Print uses an in-app overlay with **إغلاق** so mobile can leave the preview
 
 ---
 
+## 2026-08-26 — Wave F4 (working-capital diary + leftover prep)
+
+On `feat/finance`. نظرة عامة → المستثمرون uses the live working-capital event diary for peak / still-out / تعيين: invoice adj COGS out, paid collections in after `collectionLag` (default 30), leftover stock placed on the live journal window (15 Jul–14 Aug 2026) or today, hawalek and opex. Pending invoices never become تحصيل. Compact weekly CSS bars + a collapsible event list (not a dump of live rewind filters). Spent−sales stays as a tap-brief estimate.
+
+Prep leftovers that were real workflow gaps: **حفظ طلب** (pending, clears the board), **تحميل للتحضير** on unsent/awaiting orders, **اعتماد الكل** on invoice drafts, production **مباع / مُنتَج / ينقص** + **تجهيز الناقص**. Skipped on purpose: COGS/stock-value print, on-screen `bb_prep_ing_view`, `splitSharedStickersToProducts`, Finance writing Look keys.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump

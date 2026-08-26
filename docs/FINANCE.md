@@ -38,7 +38,7 @@ hub/src/components/finance/
   recipes-tool.tsx
   returns-tool.tsx
   ops-tool.tsx
-hub/src/lib/finance/       write, types, helpers, ledger, recipes, analytics, reports, prep, print-period, print-prep, customer-ledger, backups
+hub/src/lib/finance/       write, types, helpers, ledger, recipes, analytics, reports, prep, print-period, print-prep, customer-ledger, backups, working-capital
 hub/src/lib/keys.ts        FINANCE_WRITE_KEYS (templates + color presets stripped)
 ```
 
@@ -67,7 +67,7 @@ Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report
 5. Profit = sales − COGS of sold − opex − hawalek. Leftover stock is an asset. Overview → الأرباح can filter that window by from/to (invoices by invoice date; opex / hawalek / purchases by their own date).
 6. Shutdown: pending always collected. Stock-as-cash vs stock-as-loss. Words ربح / خسارة.
 7. Do not mix prep-approve with production-approve.
-8. Investors: peak ≈ max(0, spent − sales); toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date (dated invoice net − adj COGS − hawalek − opex). «نسخ عجز السيولة» copies `cashHole` (max(0, spent − invested − paid)) into `investorTarget.needed`. Working-capital event book (collection lag, stock placement journal) is an explicit gap.
+8. Investors: peak = max running balance in the working-capital diary (invoice adj COGS out, paid collections in after `collectionLag` days, leftover stock on the live journal window or today, hawalek, opex). Pending invoices never become تحصيل. toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date. «نسخ عجز السيولة» copies `cashHole` into `investorTarget.needed`. «تعيين كرأس مال المستثمرين» uses the diary peak, not spent − sales.
 
 ## Do not rebuild here
 

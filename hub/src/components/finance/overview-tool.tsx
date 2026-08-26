@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmt, fmtQty, monthIntersectsWindow, todayISO } from "@/lib/finance/helpers";
+import { fmt, fmtQty, monthIntersectsWindow, num, todayISO } from "@/lib/finance/helpers";
 import { buildPeriodProfit } from "@/lib/finance/analytics";
 import { periodRangeLabel, printPeriodProfit } from "@/lib/finance/print-period";
 import { unmatchedInvoiceLines } from "@/lib/finance/recipe-match";
 import { recipeSellPrice, calcCOGS } from "@/lib/finance/recipes";
 import { investorShareOf } from "@/lib/finance/reports";
-import { buildInvestorSnapshot } from "@/lib/finance/investors";
+import { buildInvestorSnapshot, parseInvestorPlan } from "@/lib/finance/investors";
+import { buildWorkingCapital, JOURNAL_FROM, JOURNAL_TO, type WcEvent, type WcWeek } from "@/lib/finance/working-capital";
 import type { Recipe } from "@/lib/finance/types";
-import { ActionBtn, Empty, Field, Modal, Select, TextArea, TextInput } from "@/components/invoices/ui";
+import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextArea, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp } from "./finance-context";
 import {
   ColumnChart,
@@ -538,11 +539,42 @@ function Investors() {
   const [notes, setNotes] = useState("");
   const [joinDate, setJoinDate] = useState(todayISO());
   const L = app.linked;
+  const plan = parseInvestorPlan(app.investorTarget);
+  const wc = useMemo(
+    () =>
+      buildWorkingCapital({
+        invoices: app.invoices,
+        returns: app.returns,
+        recipes: app.recipes,
+        purchases: app.purchases,
+        opCosts: app.opCosts,
+        plan,
+        ledger: app.customerLedger,
+        payments: app.payments,
+        stockReport: app.stockReport,
+        findItem: app.findItem,
+      }),
+    [
+      app.invoices,
+      app.returns,
+      app.recipes,
+      app.purchases,
+      app.opCosts,
+      plan.collectionLag,
+      plan.stockPlacement,
+      plan.includeResidual,
+      plan.projectStart,
+      app.customerLedger,
+      app.payments,
+      app.stockReport,
+      app.findItem,
+    ],
+  );
   const snap = useMemo(
     () =>
       buildInvestorSnapshot({
         investors: app.investors,
-        plan: app.investorTarget,
+        plan,
         invoices: app.invoices,
         returns: app.returns,
         recipes: app.recipes,
@@ -550,6 +582,8 @@ function Investors() {
         ledger: app.customerLedger,
         linked: L,
         findItem: app.findItem,
+        peak: wc.peak,
+        recycled: wc.recycled,
       }),
     [
       app.investors,
@@ -561,6 +595,8 @@ function Investors() {
       app.customerLedger,
       L,
       app.findItem,
+      wc.peak,
+      wc.recycled,
     ],
   );
   const earliest = snap.rows.reduce((m, r) => (r.joinDay && r.joinDay < m ? r.joinDay : m), "9999-99-99");
@@ -578,21 +614,24 @@ function Investors() {
   return (
     <>
       <p className="text-xs text-[var(--bb-muted)]">
-        الذروة ≈ المصروف − المبيعات (رأس المال الذي لم يُعَد من البيع). حصة قيمة المشروع = NAV × (الحصة نحو
-        الفعلي / الذروة). الربح يُوزَّع من تاريخ دخول كل مستثمر فقط — الربح السابق للمستثمرين الأقدم.
+        الذروة من دفتر الأحداث (تحصيل بعد مهلة، مخزون على تواريخ الجرد، هوالك وتشغيل). الفواتير غير المدفوعة لا تدخل
+        التحصيل. حصة قيمة المشروع = NAV × (الحصة نحو الفعلي / الذروة). الربح يُوزَّع من تاريخ دخول كل مستثمر فقط.
       </p>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          quiet
           label="رأس المال الأصلي"
-          value={`≈ ${fmt(snap.peak)} EGP`}
-          hint="تقريبي"
-          formula="تقدير: المصروف − المبيعات (رأس المال الذي لم يُعَد من البيع). ليس دفتر أحداث."
+          value={`${fmt(snap.peak)} EGP`}
+          formula="ذروة الرصيد الجاري في دفتر رأس المال (خرج − دخل) حتى اليوم."
           brief={[
-            { label: "مصروف", value: `${fmt(L.spent)} EGP` },
-            { label: "مبيعات", value: `${fmt(L.gross)} EGP` },
-            { label: "الذروة", value: `${fmt(snap.peak)} EGP` },
+            { label: "تاريخ الذروة", value: wc.peakDate || "—" },
+            { label: "ما زال خارجاً", value: `${fmt(wc.stillOut)} EGP` },
+            { label: "تقدير قديم (مصروف − مبيعات)", value: `${fmt(snap.simplePeak)} EGP` },
           ]}
+        />
+        <StatCard
+          label="ما زال خارجاً اليوم"
+          value={`${fmt(wc.stillOut)} EGP`}
+          hint={wc.peakDate ? `الذروة ${wc.peakDate}` : undefined}
         />
         <StatCard label="مسجّل للمستثمرين" value={`${fmt(L.invested)} EGP`} />
         <StatCard
@@ -618,7 +657,7 @@ function Investors() {
         النقد = مسجّل {fmt(L.invested)} + محصّل {fmt(L.paid)} − مصروف {fmt(L.spent)} = {fmt(L.cash)}. ما تراه الآن =
         مخزون {fmt(L.stock)} + معلق {fmt(L.pending)} + نقد إن وُجد {fmt(L.cashIfAny)} = {fmt(visibleNow)}.
       </p>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <Field label="زيادة رأس مال إضافية (اختياري)">
             <TextInput
@@ -663,7 +702,49 @@ function Investors() {
             onChange={(e) => app.saveInvestorTarget({ projectStart: e.target.value })}
           />
         </Field>
+        <Field label="مهلة التحصيل (يوم)">
+          <TextInput
+            type="number"
+            min={0}
+            value={String(plan.collectionLag)}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10);
+              app.saveInvestorTarget({ collectionLag: !Number.isFinite(n) || n < 0 ? 30 : n });
+            }}
+          />
+        </Field>
+        <Field label="وضع المخزون المتبقي">
+          <Select
+            value={plan.stockPlacement}
+            onChange={(e) =>
+              app.saveInvestorTarget({ stockPlacement: e.target.value === "today" ? "today" : "journal" })
+            }
+          >
+            <option value="journal">توزيع على تواريخ الجرد (١٥ يوليو – ١٤ أغسطس)</option>
+            <option value="today">اليوم</option>
+          </Select>
+        </Field>
+        <label className="flex items-end gap-2 pb-2 text-sm text-[var(--bb-title)]">
+          <input
+            type="checkbox"
+            className="size-4 accent-[var(--bb-gold)]"
+            checked={!!plan.includeResidual}
+            onChange={(e) => app.saveInvestorTarget({ includeResidual: e.target.checked })}
+          />
+          إدراج فرق غير مربوط
+        </label>
       </div>
+      <p className="text-xs text-[var(--bb-muted)]">
+        التحصيل على تاريخ الفاتورة + {plan.collectionLag} يوم. المخزون المتبقي{" "}
+        {plan.stockPlacement === "today"
+          ? "يُوضع اليوم."
+          : `يُوزَّع على المشتريات بين ${JOURNAL_FROM} و ${JOURNAL_TO}.`}{" "}
+        مدفوع {wc.paidCount} · معلّق {wc.pendingCount} ({fmt(wc.pending)} EGP لا يدخل الدفتر).
+      </p>
+      <WcWeekBars weeks={wc.weeks} />
+      <Accordion title="دفتر الأحداث" hint={`${wc.events.length} حركة`} defaultOpen={false}>
+        <WcEventList events={wc.events} />
+      </Accordion>
       <div className="flex flex-wrap gap-2">
         <ActionBtn onClick={() => start()}>مستثمر جديد</ActionBtn>
         <ActionBtn
@@ -689,7 +770,7 @@ function Investors() {
             }
             if (
               !window.confirm(
-                `تعيين مبالغ المستثمرين حسب رأس المال الفعلي ${fmt(snap.peak)} EGP (${mode})؟\nالمصروف الإجمالي يُعاد تدويره من المبيعات ولا يُقسَم كما هو.`,
+                `تعيين مبالغ المستثمرين حسب ذروة رأس المال ${fmt(snap.peak)} EGP (${mode})؟\nمن دفتر الأحداث، وليس المصروف − المبيعات.`,
               )
             ) {
               return;
@@ -867,5 +948,75 @@ function Investors() {
         </div>
       </Modal>
     </>
+  );
+}
+
+function WcWeekBars({ weeks }: { weeks: WcWeek[] }) {
+  const shown = weeks.slice(-16);
+  const max = Math.max(1, ...shown.map((w) => Math.abs(w.stillOut)));
+  if (!shown.length) return null;
+  return (
+    <div className="bb-glass p-4">
+      <p className="text-[10px] tracking-[0.14em] text-[var(--bb-muted)] uppercase">المنحنى الأسبوعي · رأس المال الخارج</p>
+      <div className="mt-3 flex h-28 items-end gap-1">
+        {shown.map((w) => {
+          const h = Math.max(4, (Math.abs(w.stillOut) / max) * 100);
+          return (
+            <div
+              key={w.idx}
+              className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+              title={`${w.from} → ${w.to} · خارج ${fmt(w.stillOut)} · تحصيل ${fmt(w.collected)}`}
+            >
+              <div
+                className="w-full max-w-6 rounded-t-sm"
+                style={{
+                  height: `${h}%`,
+                  background: w.isPeak ? "var(--bb-gold)" : "color-mix(in srgb, var(--bb-title) 55%, transparent)",
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[10px] text-[var(--bb-muted)]">
+        آخر {shown.length} أسبوع · العمود الذهبي = أسبوع الذروة
+        {weeks.length > shown.length ? ` · من ${weeks.length}` : ""}
+      </p>
+    </div>
+  );
+}
+
+function kindTone(kind: WcEvent["kind"]) {
+  if (kind === "تحصيل") return "text-[var(--bb-ok)]";
+  if (kind === "هوالك") return "text-[var(--bb-bad)]";
+  if (kind === "تشغيل") return "text-[var(--bb-warn)]";
+  return "text-[var(--bb-title)]";
+}
+
+function WcEventList({ events }: { events: WcEvent[] }) {
+  if (!events.length) return <Empty>لا حركات في الدفتر بعد</Empty>;
+  const newest = events.slice().reverse();
+  const shown = newest.slice(0, 60);
+  return (
+    <ul className="flex flex-col gap-1 text-sm">
+      {shown.map((e, i) => (
+        <li key={`${e.date}-${e.kind}-${e.name}-${i}`} className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-xs text-[var(--bb-muted)]">{e.date}</span>
+          <span className={`flex-1 ${kindTone(e.kind)}`}>
+            {e.kind} · {e.name}
+          </span>
+          <span dir="ltr" className={e.dir === "out" ? "text-[var(--bb-bad)]" : "text-[var(--bb-ok)]"}>
+            {e.dir === "out" ? "+" : "−"}
+            {fmt(e.amount)}
+          </span>
+          <span className="w-24 text-end text-xs text-[var(--bb-muted)]" dir="ltr">
+            {fmt(num(e.running))}
+          </span>
+        </li>
+      ))}
+      {newest.length > shown.length ? (
+        <li className="text-xs text-[var(--bb-muted)]">و {newest.length - shown.length} حركة أقدم</li>
+      ) : null}
+    </ul>
   );
 }
