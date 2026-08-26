@@ -6,7 +6,7 @@ Live files live in the Desktop folder `saved data` as `{key}.json`. Cloud v1 sto
 
 | Key | Invoice Pro | Stock Costs | Designer |
 |---|---|---|---|
-| `bb_invoices` | write | read | — |
+| `bb_invoices` | write | read + prep-approve append (`FINANCE_PREP_APPEND_KEYS`) | — |
 | `bb_inv2` | write (open editor state) | read | — |
 | `bb_customers` | write | read | — |
 | `bb_products` | read (Stock also writes catalog) | write | read |
@@ -31,7 +31,7 @@ Live files live in the Desktop folder `saved data` as `{key}.json`. Cloud v1 sto
 | `bb_active_color_preset_id` | write | write | write |
 | `bb_active_theme` | — | write | write |
 
-Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore (`READ_KEYS`) except prep-invoice **approve**, which writes invoices through `writeAnyKey` on purpose.
+Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore (`READ_KEYS`) except prep-invoice **approve**, which writes invoices through `writeAnyKey` on purpose. Hub Finance does **not** put `bb_invoices` on `FINANCE_WRITE_KEYS`; the only sanctioned write is `commitPrepInvoice`, which may only touch `FINANCE_PREP_APPEND_KEYS` (`bb_invoices`).
 
 ## Derived vs stored
 
@@ -70,4 +70,4 @@ Live HTML designer is listed as a writer of `bb_color_presets` / theme keys abov
 
 ## Hub Finance (this slice)
 
-Live HTML Stock Costs is listed as a writer of `bb_label_templates` and color/theme keys above. The **hub** Finance app does **not** write those — Design owns templates; Invoices → Look owns presets. Hub Finance writes catalog, recipes, purchases, production, returns, opex, investors, sticker SKUs (`templateKey` + `bb_label_open`), prep drafts, and payments. Prep **approve** is the only `bb_invoices` write (`commitPrepInvoice`). Named backups go to R2 `bb_backups/`; `bb_backup_locals` stays out of Firestore. Map: [FINANCE.md](FINANCE.md). Waves: [FINANCE-WAVES.md](FINANCE-WAVES.md).
+Live HTML Stock Costs is listed as a writer of `bb_label_templates` and color/theme keys above. The **hub** Finance app does **not** write those — Design owns templates; Invoices → Look owns presets. Hub Finance writes catalog, recipes, purchases, production, returns, opex, investors, sticker SKUs (`templateKey` + `bb_label_open`), prep drafts, and payments. Prep **approve** is the only `bb_invoices` write: `commitPrepInvoice` checks `FINANCE_PREP_APPEND_KEYS` and is not a second invoice editor. Named backups go to R2 `bb_backups/`; `bb_backup_locals` stays out of Firestore. Map: [FINANCE.md](FINANCE.md). Waves: [FINANCE-WAVES.md](FINANCE-WAVES.md).

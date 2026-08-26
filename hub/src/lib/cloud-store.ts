@@ -27,6 +27,7 @@ export type CloudKeyDoc = {
   updatedAt: unknown;
   updatedBy: string;
   clientWriteId: string;
+  prevWriteId?: string;
 };
 
 type UiHooks = {
@@ -134,14 +135,22 @@ export const CloudStore = {
     return readLocal(key, fallback);
   },
 
+  getVersioned<T>(key: string, fallback: T): { value: T; writeId: string } {
+    return { value: readLocal(key, fallback), writeId: lastAppliedWriteId.get(key) || "" };
+  },
+
   /**
    * Drop-in for live `Store.set`: cache locally, then write Firestore.
    * Callers that ignore the promise still get a visible error via `onError`.
    */
   set(key: string, value: unknown): Promise<void> {
+    return CloudStore.setFrom(key, value, lastAppliedWriteId.get(key) || "");
+  },
+
+  setFrom(key: string, value: unknown, basedOn: string): Promise<void> {
     writeLocal(key, value);
     notify(key);
-    return persist(key, value);
+    return persist(key, value, basedOn);
   },
 
   remove(key: string): Promise<void> {
@@ -162,6 +171,8 @@ export const CloudStore = {
         if (!snap.exists()) return;
         const payload = snap.data() as CloudKeyDoc;
         if (payload && "data" in payload) {
+          const writeId = String(payload.clientWriteId || "");
+          if (writeId) lastAppliedWriteId.set(key, writeId);
           applyRemote(key, payload.data);
         }
       }),
@@ -274,7 +285,7 @@ export const CloudStore = {
   },
 };
 
-async function persist(key: string, value: unknown): Promise<void> {
+async function persist(key: string, value: unknown, prevWriteId = ""): Promise<void> {
   if (!isFirebaseConfigured()) {
     hooks.onError("Firebase غير مضبوط — الحفظ محلي فقط", key);
     return;
@@ -292,10 +303,12 @@ async function persist(key: string, value: unknown): Promise<void> {
       updatedAt: serverTimestamp(),
       updatedBy: uid,
       clientWriteId,
+      prevWriteId,
     });
+    lastAppliedWriteId.set(key, clientWriteId);
   } catch (err) {
     pendingWriteIds.delete(clientWriteId);
-    const message = formatWriteError(err);
+    const message = formatWriteError(err, { docExists: Boolean(prevWriteId) });
     hooks.onError(message, key);
     throw err instanceof Error ? err : new Error(message);
   }
@@ -313,13 +326,16 @@ async function persistDelete(key: string): Promise<void> {
   }
 }
 
-function formatWriteError(err: unknown): string {
+function formatWriteError(err: unknown, ctx?: { docExists?: boolean }): string {
   const code =
     typeof err === "object" && err && "code" in err
       ? String((err as { code: string }).code)
       : "";
   const message = err instanceof Error ? err.message : String(err);
   if (code.includes("permission-denied") || message.includes("permission")) {
+    if (ctx?.docExists) {
+      return "تغيرت البيانات على جهاز آخر ولم يُحفظ التعديل — أعد المحاولة";
+    }
     return "رُفض الحفظ: الحساب غير مدرج كموظف أو القواعد غير منشورة";
   }
   if (code.includes("unauthenticated")) {

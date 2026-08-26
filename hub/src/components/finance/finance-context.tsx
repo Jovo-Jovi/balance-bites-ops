@@ -984,10 +984,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (!silent) toast.push("لا يوجد عميل لهذه المسودة", "warn");
         return false;
       }
-      const invs = readArr<Invoice>("bb_invoices");
+      const { value: invsRaw, writeId } = CloudStore.getVersioned<unknown>("bb_invoices", []);
+      const invs = asArray<Invoice>(invsRaw);
       const invNum = nextInvoiceNumber(invs, pend.customerId);
       const inv = draftToInvoice({ ...pend, items }, invNum);
-      await commitPrepInvoice([inv, ...invs]);
+      await commitPrepInvoice([inv, ...invs], writeId);
       setPayment(inv.id, "pending");
       const nextPend = readArr<FinancePending>("bb_pending_invoices").map((p) =>
         p.id === id

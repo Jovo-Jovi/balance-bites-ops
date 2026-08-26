@@ -131,6 +131,10 @@ const InvoiceContext = createContext<InvoiceContextValue | null>(null);
 function readInvoices() {
   return asArray<Invoice>(CloudStore.get("bb_invoices", []));
 }
+function readInvoicesVersioned() {
+  const { value, writeId } = CloudStore.getVersioned<unknown>("bb_invoices", []);
+  return { invoices: asArray<Invoice>(value), writeId };
+}
 function readCustomers() {
   return asArray<Customer>(CloudStore.get("bb_customers", []));
 }
@@ -277,7 +281,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         return false;
       }
       const totals = calcTotals(current.items, current.discount);
-      const arr = readInvoices();
+      const { invoices: arr, writeId } = readInvoicesVersioned();
       const existing = current.loadedInvoiceId
         ? arr.find((i) => i.id === current.loadedInvoiceId)
         : undefined;
@@ -301,7 +305,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       let next = arr;
       if (idx >= 0) next = arr.map((i, iAt) => (iAt === idx ? inv : i));
       else next = [inv, ...arr].slice(0, INVOICE_HISTORY_MAX);
-      await writeInvoiceKey("bb_invoices", next);
+      await writeInvoiceKey("bb_invoices", next, writeId);
       if (current.pendingId) {
         void writeInvoiceKey(
           "bb_pending_invoices",
@@ -341,7 +345,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       toast.push(`تم تحميل الفاتورة ${inv.invoiceNumber}`, "ok");
     }
     function duplicateInvoice(id: string) {
-      const arr = readInvoices();
+      const { invoices: arr, writeId } = readInvoicesVersioned();
       const inv = arr.find((i) => i.id === id);
       if (!inv) return;
       const copy: Invoice = {
@@ -351,13 +355,15 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         savedAt: new Date().toISOString(),
         date: todayISO(),
       };
-      void writeInvoiceKey("bb_invoices", [copy, ...arr]);
+      void writeInvoiceKey("bb_invoices", [copy, ...arr], writeId);
       toast.push(`تم نسخ الفاتورة → ${copy.invoiceNumber}`, "ok");
     }
     function removeInvoice(id: string) {
+      const { invoices: arr, writeId } = readInvoicesVersioned();
       void writeInvoiceKey(
         "bb_invoices",
-        readInvoices().filter((i) => i.id !== id),
+        arr.filter((i) => i.id !== id),
+        writeId,
       );
       setDraftState((prev) =>
         prev.loadedInvoiceId === id ? { ...prev, loadedInvoiceId: null } : prev,
@@ -551,7 +557,8 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         toast.push("حدّد عميلاً واحداً على الأقل", "warn");
         return;
       }
-      let arr = readInvoices();
+      const { invoices: start, writeId } = readInvoicesVersioned();
+      let arr = start;
       let created = 0;
       customerIds.forEach((cid) => {
         const c = readCustomers().find((x) => x.id === cid);
@@ -576,7 +583,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         arr = [inv, ...arr];
         created += 1;
       });
-      void writeInvoiceKey("bb_invoices", arr);
+      void writeInvoiceKey("bb_invoices", arr, writeId);
       toast.push(`تم إنشاء ${created} فاتورة من «${b.name}»`, "ok");
     }
     function setPayment(invoiceId: string, status: "paid" | "pending") {
