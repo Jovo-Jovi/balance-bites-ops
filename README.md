@@ -1,89 +1,149 @@
-# Balance Bites
+<div align="center">
 
-Private operations suite for **Balance Bites** — invoices, label design, and finance & inventory.
+<img src="docs/brand/mark.svg" width="56" alt="Balance Bites diamond mark" />
 
-Today the three apps are HTML files that share a Desktop folder (`saved data`). The target is **one URL**: a web hub where you pick a card (Invoices, Design, or Finance & Inventory) and all data lives in one online database.
+# Balance Bites Ops
+
+**Private staff hub** for invoices, label design, and finance & inventory.
+
+<img src="docs/brand/readme-hero.svg" alt="Balance Bites Ops — invoices, design, finance" width="100%" />
+
+<br />
+
+[![Live](https://img.shields.io/badge/Live-balance--bites--ops.vercel.app-0f6e6b?style=for-the-badge&labelColor=1f2930)](https://balance-bites-ops.vercel.app)
+[![Staff only](https://img.shields.io/badge/Access-staff_login-b76e32?style=for-the-badge&labelColor=1f2930)](https://balance-bites-ops.vercel.app)
+[![Private](https://img.shields.io/badge/Repo-private-b4453a?style=for-the-badge&labelColor=1f2930)](https://github.com/Jovo-Jovi/balance-bites-ops)
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-1f2930?style=flat-square&logo=nextdotjs&logoColor=f4f0ea)](https://nextjs.org)
+[![Firebase](https://img.shields.io/badge/Firestore-Auth-0f6e6b?style=flat-square&logo=firebase&logoColor=f4f0ea)](https://firebase.google.com)
+[![R2](https://img.shields.io/badge/Cloudflare-R2_art-1f2930?style=flat-square&logo=cloudflare&logoColor=f4f0ea)](https://www.cloudflare.com/developer-platform/r2/)
+[![RTL](https://img.shields.io/badge/UI-Arabic_RTL-b76e32?style=flat-square)](#apps)
+[![Vercel](https://img.shields.io/badge/Host-Vercel-1f2930?style=flat-square&logo=vercel&logoColor=f4f0ea)](https://balance-bites-ops.vercel.app)
+
+One URL. Three cards after login. **No KPIs on the hub.** Live data is Firebase + Cloudflare R2 — GitHub is code only.
+
+</div>
+
+---
 
 ## Apps
 
-| Hub card | What it is | Live source |
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### <img src="docs/brand/mark.svg" width="14" alt="" /> الفواتير · Invoices
+
+**Live on `main`**
+
+Customers, invoice editor, catalog pick, prep queue, history, reports, and **Look** (shared print colors).
+
+- New invoice · save · print
+- Paid / pending collection
+- Price list print
+- Prep drafts become `#INV-` after finance approve
+
+</td>
+<td width="33%" valign="top">
+
+### <img src="docs/brand/mark.svg" width="14" alt="" /> التصميم · Design
+
+**Live on `main`**
+
+Native library, studio, and print house. Not an HTML wrap.
+
+- Family dies · composite · wrap / taper / lid
+- R2 `label_assets/` (not Firebase Storage)
+- Cut / exact / bleed PNG · 300 DPI · 1.5 mm bleed
+- Flavor packs are **code**, not a Firestore dump
+
+</td>
+<td width="33%" valign="top">
+
+### <img src="docs/brand/mark.svg" width="14" alt="" /> المالية · Finance
+
+**Native on `feat/finance`**
+
+Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
+
+- On-hand = purchases − BOM usage
+- Prep board, production, P&amp;L, investors
+- Named backups on R2
+- **تحميل نسخة محلية** zip (JSON + label art)
+
+</td>
+</tr>
+</table>
+
+---
+
+## What it does
+
+| Color | Area | Highlights |
 |---|---|---|
-| **Invoices** | Native hub: invoices, catalog, print, payments, drafts from prep | `balance-bites-invoice-pro.html` |
-| **Design** | Native hub: library, studio, print house | `balance-bites-sticker.html` |
-| **Finance & Inventory** | Native hub: stock, purchases, recipes, COGS, profit, shutdown, investors | `bb-stock-costs.html` |
+| ![](https://img.shields.io/badge/-Invoices-0f6e6b?style=flat-square) | Billing | Editor, customers, catalog pick, Look print theme, reports, collection flags |
+| ![](https://img.shields.io/badge/-Design-1f2930?style=flat-square) | Labels | Library thumbs, Studio layers, print house SVG/PNG, template JSON |
+| ![](https://img.shields.io/badge/-Finance-b76e32?style=flat-square) | Stock & P&amp;L | Ledger, recipes, prep → production, returns, opex, investor diary |
+| ![](https://img.shields.io/badge/-Data-3f7d4e?style=flat-square) | Cloud | Firestore `bb_*` keys · R2 art · staff zip backup · locked rules |
 
-Arabic UI (RTL) for invoices and finance. Label designer is bilingual (print-house English + Arabic names).
+```mermaid
+flowchart LR
+  subgraph HUB["linen hub"]
+    L[Login]
+    C[Three cards]
+  end
+  L --> C
+  C --> I[Invoices]
+  C --> D[Design]
+  C --> F[Finance]
+  I --- FS[(Firestore bb_*)]
+  D --- FS
+  F --- FS
+  D --- R2[(R2 label_assets)]
+  F --- BK[(R2 bb_backups)]
+```
 
-## How data works today
-
-Each app reads **localStorage** and, when the folder is connected, mirrors JSON files in:
-
-`C:\Users\Marco\Desktop\BALANCE BITES\invoices customers\saved data`
-
-Shared keys include `bb_invoices`, `bb_customers`, `bb_products`, `bb_materials`, `bb_purchases`, `bb_label_templates`, and others. See [docs/DATA.md](docs/DATA.md).
-
-Stock on-hand is **not** a typed count. It is:
-
-**purchases − ingredients implied by invoices**
-
-## Cloud target
-
-- **Hub:** Next.js in `hub/` — login + three cards; Invoices is a live React app
-- **Database:** Firebase (Auth + Firestore). Binaries on Cloudflare R2 — not Firebase Storage / not Blaze.
-- **Git:** GitHub private repo `Jovo-Jovi/balance-bites-ops`
-- **Live:** https://balance-bites-ops.vercel.app (staff login; rules locked)
-
-Parity: [docs/PARITY.md](docs/PARITY.md)  
-What shipped: [docs/JOURNAL.md](docs/JOURNAL.md) · invoices: [docs/INVOICES.md](docs/INVOICES.md) · design: [docs/DESIGN.md](docs/DESIGN.md) · studio: [docs/DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md) (Waves A–D on `main`) · finance: [docs/FINANCE.md](docs/FINANCE.md) (Waves A–E on `feat/finance`)  
-Full plan: [docs/CLOUD-PLAN.md](docs/CLOUD-PLAN.md)  
-Layers and brand: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
-Module map: [docs/MODULES.md](docs/MODULES.md)
-
-## Local use (current)
-
-1. Open the HTML file in Chrome, Edge, or Brave (File System Access API).
-2. Click **ربط المجلد** / connect and choose the `saved data` folder.
-3. Keep **one** window of each app. Invoice Pro and Stock Costs must share the same folder.
-4. Do not open the Desktop copy and the `costs\` copy of the same file at once.
+---
 
 ## Brand
 
-- Wordmark: Playfair Display 900, ink on linen paper
-- Mark: rotated square (diamond) already used on invoices
-- Type: Playfair, Syne, DM Sans, Tajawal
-- Hub: linen `#f4f0ea`, ink `#1f2930`, teal `#0f6e6b` on actions; frosted-glass cards
+Ink diamond on linen. Teal only on actions. One mark for all three apps.
 
-Details: [docs/BRAND-UI.md](docs/BRAND-UI.md)
+<img src="docs/brand/palette.svg" alt="Linen, panel, teal, ink, OK, bad" width="100%" />
 
-## Two folders (until migrate)
+| Token | Hex | Use |
+|---|---|---|
+| Linen | `#f4f0ea` | Page |
+| Panel | `#fffbf7` | Cards |
+| Teal | `#0f6e6b` | Actions |
+| Ink | `#1f2930` | Wordmark / diamond |
+| OK | `#3f7d4e` | Paid / profit |
+| Warn | `#b76e32` | Pending |
+| Bad | `#b4453a` | Loss |
 
-| Folder | Role |
+Type: Playfair Display · Syne · DM Sans · Tajawal. Map: [docs/BRAND-UI.md](docs/BRAND-UI.md).
+
+---
+
+## Data (not this repo)
+
+Live tenant: **balance-bites**.
+
+| Store | What |
 |---|---|
-| **This repo** (`Desktop\balance-bites-ops`) | Cloud hub code, docs, GitHub, Vercel |
-| **Live workspace** (`Desktop\costs`) | Current HTML apps, templates, and local JSON until cutover |
+| **Firestore** | `tenants/balance-bites/keys/{bb_*}` — invoices, catalog, recipes, templates, payments… |
+| **Cloudflare R2** | `label_assets/` art · `bb_backups/` named snapshots |
+| **Hub download** | Staff zip of existing keys **and** label assets (`bb-saved-data-YYYY-MM-DD.zip`) |
 
-Do not treat GitHub as the live database. Invoices, stock, and label templates stay in the Desktop `saved data` folder until Firebase is wired and a cutover is done.
+Stock on-hand is **not** a typed count:
 
-Live app files (leave them in `costs` until migrate):
+**purchases − recipe usage from invoices** (production if there are no invoices)
 
-- `bb-stock-costs.html`
-- `balance-bites-invoice-pro.html`
-- `balance-bites-sticker.html`
-- `bb-prepress.js`, `bb-composite-label.js`, `bb-icon-library.js`, `bb-jelly-kids.js`
-- `assets/presets/`
+Never seed empty catalogs or gold themes when a cloud key is missing. Writer map: [docs/DATA.md](docs/DATA.md).
 
-## Repository layout
+---
 
-```
-balance-bites-ops/
-  .cursor/rules/       Agent rules (workflow, UI, no duplicate modules)
-  hub/                 Next.js App Router (Vercel root directory)
-  docs/                Architecture, modules, data, brand, parity, invoices journal
-  firestore.rules      Locked staff-only rules (prototype — review before launch)
-  storage.rules        Unused — binaries use Cloudflare R2
-```
-
-Local hub:
+## Run locally
 
 ```bash
 cd hub
@@ -91,18 +151,34 @@ npm install
 npm run dev
 ```
 
-Parity checklist: [docs/PARITY.md](docs/PARITY.md)  
-Setup (GitHub / Vercel / Firebase): [SETUP.md](SETUP.md)
+Vercel **Root Directory** is `hub`. Setup: [SETUP.md](SETUP.md).
 
-## Status
+```
+balance-bites-ops/
+  hub/              Next.js App Router
+  docs/             Maps, parity, journal, brand SVGs
+  firestore.rules   Staff-only (Spark — no Firebase Storage)
+```
 
-Hub is live: login, linen UI, CloudStore. **Invoices** is a native workspace (editor, customers, catalog, queue, history, reports, print look) — merged 21 Aug 2026. **Design** is a native workspace on `main` (library, studio, print house; Waves A–D) — map [docs/DESIGN.md](docs/DESIGN.md). **Finance** is a native workspace on `feat/finance` (eight tools; Waves A–E) — map [docs/FINANCE.md](docs/FINANCE.md).
+---
 
-- **GitHub:** https://github.com/Jovo-Jovi/balance-bites-ops  
-- **Vercel:** https://balance-bites-ops.vercel.app  
+## Docs
 
-GitHub is code only — not the live database. Do not run the import script until you ask and have a zip of `saved data`. `balance-bites-ops.vercel.app` must stay on Firebase Auth → Authorized domains.
+| Doc | Use |
+|---|---|
+| [PARITY.md](docs/PARITY.md) | Tick-list vs live HTML |
+| [JOURNAL.md](docs/JOURNAL.md) | What already shipped |
+| [INVOICES.md](docs/INVOICES.md) | Invoice workspace |
+| [DESIGN.md](docs/DESIGN.md) · [DESIGN-STUDIO.md](docs/DESIGN-STUDIO.md) | Design + studio waves |
+| [FINANCE.md](docs/FINANCE.md) · [FINANCE-WAVES.md](docs/FINANCE-WAVES.md) | Finance eight tools |
+| [DATA.md](docs/DATA.md) | Who writes which `bb_*` key |
+| [MODULES.md](docs/MODULES.md) | Live HTML source map |
+| [CLOUD-PLAN.md](docs/CLOUD-PLAN.md) | Cloud cutover |
+
+**Invoices** and **Design** (Waves A–D) are on `main`. **Finance** (Waves A–E + F1–F4) is on `feat/finance` until you merge.
+
+---
 
 ## License
 
-Private. All rights reserved — Balance Bites.
+Private. All rights reserved — **Balance Bites**.

@@ -159,7 +159,7 @@ function Backups() {
       <p className="text-sm text-[var(--bb-muted)]">
         النسخ تُحفظ على Cloudflare R2 في bb_backups/. فهرس الأسماء في Firestore. النسخ المحلية للمتصفح تبقى خارج السحابة.
         الاستعادة تكتب المفاتيح الموجودة في الملف فقط — بلا قوائم فارغة.
-        تحميل نسخة محلية ينزّل كل مفاتيح Firestore الموجودة كملفات JSON في ZIP (مثل مجلد saved data). صور الملصقات تبقى على R2.
+        تحميل نسخة محلية ينزّل مفاتيح Firestore الموجودة وملفات الملصقات من R2 في ZIP (مثل مجلد saved data).
       </p>
       <div className="flex flex-wrap gap-2">
         <LocalBackupButton />

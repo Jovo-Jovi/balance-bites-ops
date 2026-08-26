@@ -17,7 +17,12 @@ export async function GET(req: Request) {
     }
     const kind = new URL(req.url).searchParams.get("kind");
     const prefix = kind === "backups" ? BACKUPS_PREFIX : LABEL_ASSETS_PREFIX;
-    const listed = await listR2Prefix(prefix, 400);
+    const rawLimit = Number(new URL(req.url).searchParams.get("limit"));
+    const max =
+      Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(Math.floor(rawLimit), 2000)
+        : 400;
+    const listed = await listR2Prefix(prefix, max);
     // Keys + sizes only. Signing 400 URLs here made Images → Storage hang; thumbs sign when visible.
     return NextResponse.json({ items: listed });
   } catch (err) {

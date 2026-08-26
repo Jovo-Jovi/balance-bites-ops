@@ -16,7 +16,7 @@ export function LocalBackupButton({
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const idle = lang === "en" ? "Download backup" : "تحميل نسخة محلية";
-  const working = lang === "en" ? "Preparing…" : "جاري التحضير…";
+  const working = lang === "en" ? "Downloading…" : "جاري التنزيل…";
 
   return (
     <button
@@ -28,8 +28,8 @@ export function LocalBackupButton({
           .then((out) => {
             toast.push(
               lang === "en"
-                ? `Saved ${out.filename} (${out.keys.length} keys)`
-                : `حُفظ ${out.filename} (${out.keys.length} ملف)`,
+                ? `Saved ${out.filename} (${out.keys.length} keys · ${out.assets} assets)`
+                : `حُفظ ${out.filename} (${out.keys.length} مفتاح · ${out.assets} ملف ملصق)`,
               "ok",
             );
           })

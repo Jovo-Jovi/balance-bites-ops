@@ -372,7 +372,7 @@ Private zip: `C:\Users\Marco\Desktop\bb-saved-data-2026-08-26.zip`. Wrote 16 fin
 
 ## 2026-08-26 — Local zip backup (hub)
 
-Staff can download live Firestore keys as `bb-saved-data-YYYY-MM-DD.zip` (`{key}.json` files, same shape as Desktop `saved data`). Button on the hub home footer, every workspace footer, and Finance → التشغيل → نسخ احتياطية. Reads existing cloud docs only — no empty dumps, no R2 `label_assets/`. Named R2 backups in ops are unchanged.
+Staff can download live Firestore keys **and** R2 `label_assets/` as `bb-saved-data-YYYY-MM-DD.zip` (`{key}.json` plus `label_assets/{templateId}/…`). Button on the hub home footer, every workspace footer, and Finance → التشغيل → نسخ احتياطية. Existing cloud docs only — no empty dumps. Named R2 backups in ops are unchanged.
 
 ---
 

@@ -73,7 +73,7 @@ Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report
 
 **2026-08-26:** Desktop finance JSON → Firestore (`bb-saved-data-2026-08-26.zip` on Desktop). Catalog, recipes, purchases, production, returns, opex, investors, payments, pending, backup index. Did **not** write templates, Look, invoices, or R2. Do not re-run unless asked.
 
-Hub download: staff button **تحميل نسخة محلية** writes a zip of existing Firestore keys (`{key}.json`, same shape as Desktop `saved data`). R2 `label_assets/` stay in the cloud.
+Hub download: staff button **تحميل نسخة محلية** writes a zip of existing Firestore keys plus R2 `label_assets/` (Desktop `saved data` shape). Named `bb_backups/` stay on R2.
 
 ## Do not rebuild here
 

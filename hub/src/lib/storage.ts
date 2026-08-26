@@ -103,9 +103,9 @@ export async function uploadLabelAsset(
 
 export type LabelAssetItem = { key: string; size: number; url?: string };
 
-export async function listLabelAssets(): Promise<LabelAssetItem[]> {
+export async function listLabelAssets(limit = 400): Promise<LabelAssetItem[]> {
   assertStorageEnabled();
-  const res = await fetch("/api/storage/list", {
+  const res = await fetch(`/api/storage/list?limit=${encodeURIComponent(String(limit))}`, {
     method: "GET",
     headers: await authHeader(),
   });

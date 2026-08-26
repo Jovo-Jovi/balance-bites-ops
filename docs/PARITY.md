@@ -140,7 +140,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 Also:
 
 - [x] Backups (`bb_backups` + `bb_backup_index`)
-- [x] Local zip download of existing Firestore `bb_*` keys (hub / workspace footer / Finance ops)
+- [x] Local zip download of existing Firestore `bb_*` keys plus R2 `label_assets/` (hub / workspace footer / Finance ops)
 - [ ] Theme / color presets shared (Invoices → Look owns; Finance does not write them)
 - [x] Item modal: fill stock from ledger; skip `تسوية جرد` if stock field unchanged
 - [x] After real purchase, bump ledger immediately (`bumpLedgerAfterPurchaseQty`)
