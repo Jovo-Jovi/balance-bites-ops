@@ -5,7 +5,7 @@ Dated notes for later chats. Live behavior still lives in `costs/` HTML. This fi
 Production: https://balance-bites-ops.vercel.app  
 Repo: https://github.com/Jovo-Jovi/balance-bites-ops  
 Firebase: project `balance-bites-ops`, Firestore `(default)` `europe-west3`, Spark (no Storage).  
-Binaries: Cloudflare R2 (`label_assets/` imported 2026-08-21). Desktop `saved data` JSON was imported to Firestore 2026-08-22 (zip kept on Desktop, not git).
+Binaries: Cloudflare R2 (`label_assets/` imported 2026-08-21). Desktop `saved data` JSON was imported to Firestore 2026-08-22 (full set) and **2026-08-26** (finance keys only). Zips stay on Desktop, not git.
 
 Related maps:
 
@@ -359,6 +359,20 @@ On `feat/finance`. نظرة عامة → المستثمرون uses the live work
 Prep leftovers that were real workflow gaps: **حفظ طلب** (pending, clears the board), **تحميل للتحضير** on unsent/awaiting orders, **اعتماد الكل** on invoice drafts, production **مباع / مُنتَج / ينقص** + **تجهيز الناقص**. Skipped on purpose: COGS/stock-value print, on-screen `bb_prep_ing_view`, `splitSharedStickersToProducts`, Finance writing Look keys.
 
 Kitchen polish: التحضير board sits under the add row (save/send/print, then BOM, unsent list, drafts). Send-to-production uses the same stock confirm and clears the board as save. Production demand table defaults to ينقص with a الكل chip. Investor diary layout left dense on purpose.
+
+---
+
+## 2026-08-26 — Finance JSON import (live Firestore)
+
+Private zip: `C:\Users\Marco\Desktop\bb-saved-data-2026-08-26.zip`. Wrote 16 finance keys from Desktop `saved data` (mostly 25 Aug) into `tenants/balance-bites/keys/`: `bb_materials`, `bb_packages`, `bb_stickers`, `bb_recipes`, `bb_purchases`, `bb_production`, `bb_products`, `bb_categories`, `bb_returns`, `bb_operation_costs`, `bb_investors`, `bb_investor_target`, `bb_customer_payments`, `bb_invoice_payments`, `bb_pending_invoices`, `bb_backup_index`.
+
+**Not written:** Design (`bb_label_templates`, `bb_label_open`, `bbLabel-*`, R2 `label_assets/`), Look / theme (`bb_color_presets`, `bb_active_color_preset_id`, `bb_active_theme`), invoices (`bb_invoices`, `bb_inv2`, `bb_customers`, `bb_invoice_bundles`, `bb_inv_print_*`). No `--assets`. Prep UI keys have no Desktop files (live drafts left as-is).
+
+---
+
+## 2026-08-26 — Local zip backup (hub)
+
+Staff can download live Firestore keys as `bb-saved-data-YYYY-MM-DD.zip` (`{key}.json` files, same shape as Desktop `saved data`). Button on the hub home footer, every workspace footer, and Finance → التشغيل → نسخ احتياطية. Reads existing cloud docs only — no empty dumps, no R2 `label_assets/`. Named R2 backups in ops are unchanged.
 
 ---
 

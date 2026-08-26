@@ -140,6 +140,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 Also:
 
 - [x] Backups (`bb_backups` + `bb_backup_index`)
+- [x] Local zip download of existing Firestore `bb_*` keys (hub / workspace footer / Finance ops)
 - [ ] Theme / color presets shared (Invoices → Look owns; Finance does not write them)
 - [x] Item modal: fill stock from ledger; skip `تسوية جرد` if stock field unchanged
 - [x] After real purchase, bump ledger immediately (`bumpLedgerAfterPurchaseQty`)
@@ -199,7 +200,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are on `main`. Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
-- Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** Desktop `saved data` JSON keys were written to Firestore (zip on Desktop, not git). Use `--only=` for a subset; npm steals `--keys`.
+- Import script is dry-run by default. **2026-08-21:** `bb_label_templates` + `label_assets/` imported. **2026-08-22:** full Desktop JSON set. **2026-08-26:** finance keys only (`bb-saved-data-2026-08-26.zip` on Desktop; no templates, Look, invoices, or R2). Use `--only=` for a subset; npm steals `--keys`.
 - `bb_backup_locals` (last 2 browser snapshots) stays out of Firestore. Restore from Desktop `bb_backups/`.
 - Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
@@ -210,4 +211,4 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 ## Suggested next slice
 
 1. Merge `feat/finance` → `main` when Waves A–E are confirmed.
-2. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.
+2. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder 2026-08-22; finance-only refresh 2026-08-26.

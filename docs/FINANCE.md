@@ -69,6 +69,12 @@ Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report
 7. Do not mix prep-approve with production-approve.
 8. Investors: peak = max running balance in the working-capital diary (invoice adj COGS out, paid collections in after `collectionLag` days, leftover stock on the live journal window or today, hawalek, opex). Pending invoices never become تحصيل. toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date. «نسخ عجز السيولة» copies `cashHole` into `investorTarget.needed`. «تعيين كرأس مال المستثمرين» uses the diary peak, not spent − sales.
 
+## Cloud seed
+
+**2026-08-26:** Desktop finance JSON → Firestore (`bb-saved-data-2026-08-26.zip` on Desktop). Catalog, recipes, purchases, production, returns, opex, investors, payments, pending, backup index. Did **not** write templates, Look, invoices, or R2. Do not re-run unless asked.
+
+Hub download: staff button **تحميل نسخة محلية** writes a zip of existing Firestore keys (`{key}.json`, same shape as Desktop `saved data`). R2 `label_assets/` stay in the cloud.
+
 ## Do not rebuild here
 
 - Invoice editor, customers, Look, print pipeline — Invoices

@@ -7,6 +7,7 @@ import { backupFileName } from "@/lib/finance/backups";
 import { getLabelAssetUrl } from "@/lib/storage";
 import type { OpCost } from "@/lib/finance/types";
 import { useFinanceApp } from "./finance-context";
+import { LocalBackupButton } from "../local-backup-button";
 import { SectionChips } from "./section-chips";
 
 const SECTIONS = [
@@ -158,8 +159,10 @@ function Backups() {
       <p className="text-sm text-[var(--bb-muted)]">
         النسخ تُحفظ على Cloudflare R2 في bb_backups/. فهرس الأسماء في Firestore. النسخ المحلية للمتصفح تبقى خارج السحابة.
         الاستعادة تكتب المفاتيح الموجودة في الملف فقط — بلا قوائم فارغة.
+        تحميل نسخة محلية ينزّل كل مفاتيح Firestore الموجودة كملفات JSON في ZIP (مثل مجلد saved data). صور الملصقات تبقى على R2.
       </p>
       <div className="flex flex-wrap gap-2">
+        <LocalBackupButton />
         <TextInput
           className="max-w-xs"
           value={label}

@@ -1,0 +1,54 @@
+"use client";
+
+import { useState } from "react";
+import { useAuth } from "./auth-provider";
+import { useToast } from "./toast";
+import { downloadLocalBackup } from "@/lib/local-backup";
+
+export function LocalBackupButton({
+  lang = "ar",
+  tone = "ghost",
+}: {
+  lang?: "ar" | "en";
+  tone?: "ghost" | "primary";
+}) {
+  const { storeReady } = useAuth();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const idle = lang === "en" ? "Download backup" : "تحميل نسخة محلية";
+  const working = lang === "en" ? "Preparing…" : "جاري التحضير…";
+
+  return (
+    <button
+      type="button"
+      disabled={!storeReady || busy}
+      onClick={() => {
+        setBusy(true);
+        void downloadLocalBackup()
+          .then((out) => {
+            toast.push(
+              lang === "en"
+                ? `Saved ${out.filename} (${out.keys.length} keys)`
+                : `حُفظ ${out.filename} (${out.keys.length} ملف)`,
+              "ok",
+            );
+          })
+          .catch((err) => {
+            toast.push(
+              err instanceof Error ? err.message : "تعذر تحميل النسخة",
+              "bad",
+            );
+          })
+          .finally(() => setBusy(false));
+      }}
+      className={`bb-btn rounded-[var(--bb-radius)] sm:w-auto disabled:cursor-not-allowed disabled:opacity-50 ${
+        tone === "primary"
+          ? "border border-[var(--bb-btn)] bg-[var(--bb-btn)] text-[var(--bb-btn-text)] hover:bg-[var(--bb-btn-hover)] hover:text-[var(--bb-btn-hover-text)]"
+          : "border border-[var(--bb-line)]"
+      }`}
+      data-tone={tone === "primary" ? undefined : "ghost"}
+    >
+      {busy ? working : idle}
+    </button>
+  );
+}

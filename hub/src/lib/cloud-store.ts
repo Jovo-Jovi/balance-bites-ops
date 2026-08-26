@@ -179,6 +179,43 @@ export const CloudStore = {
     }
   },
 
+  /**
+   * Live Firestore docs that exist. Missing keys are omitted (no empty dumps).
+   * Used for a local zip backup — not a write path.
+   */
+  async exportExisting(
+    keys: readonly string[] = BB_KEYS,
+  ): Promise<{ key: string; data: unknown }[]> {
+    if (!isFirebaseConfigured() || typeof window === "undefined") {
+      throw new Error("Firebase غير مضبوط");
+    }
+    if (!getFirebaseAuth().currentUser) {
+      throw new Error("سجّل الدخول قبل تحميل النسخة");
+    }
+
+    const results = await Promise.allSettled(
+      keys.map(async (key) => {
+        const snap = await getDoc(keyDocRef(key));
+        if (!snap.exists()) return null;
+        const payload = snap.data() as CloudKeyDoc;
+        if (!payload || !("data" in payload)) return null;
+        return { key, data: decodeCloudData(payload.data) };
+      }),
+    );
+
+    const rows: { key: string; data: unknown }[] = [];
+    for (const r of results) {
+      if (r.status === "rejected") {
+        const reason =
+          r.reason instanceof Error ? r.reason.message : "تعذر قراءة Firestore";
+        hooks.onError(`فشل التحميل من السحابة: ${reason}`);
+        throw r.reason;
+      }
+      if (r.value) rows.push(r.value);
+    }
+    return rows;
+  },
+
   watchKey(key: string): Unsubscribe {
     if (!isFirebaseConfigured()) return () => undefined;
     unsubscribers.get(key)?.();

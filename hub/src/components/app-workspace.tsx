@@ -16,6 +16,7 @@ import {
 import { InvoiceApp } from "./invoices/invoice-app";
 import { DesignApp } from "./design/design-app";
 import { FinanceApp } from "./finance/finance-app";
+import { LocalBackupButton } from "./local-backup-button";
 
 export function WorkspaceScreen({ appId }: { appId: AppId }) {
   const app = getWorkspaceApp(appId);
@@ -157,6 +158,7 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
       <footer className="bb-glass mt-4 flex flex-col items-stretch gap-3 px-4 py-3 text-sm text-[var(--bb-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <span className="text-center sm:text-start">{TENANT_NAME}</span>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <LocalBackupButton lang={app.lang === "en" ? "en" : "ar"} />
           <Link
             href="/"
             className="bb-btn inline-flex items-center justify-center rounded-[var(--bb-radius)] border border-[var(--bb-line)] sm:w-auto"

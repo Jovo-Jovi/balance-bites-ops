@@ -5,6 +5,7 @@ import { useAuth } from "./auth-provider";
 import { BrandLockup } from "./brand-lockup";
 import { DiamondMark } from "./diamond-mark";
 import { LoginForm } from "./login-form";
+import { LocalBackupButton } from "./local-backup-button";
 import { TENANT_NAME } from "@/lib/tenant";
 import { WORKSPACE_APPS } from "@/lib/workspace";
 
@@ -124,14 +125,17 @@ export function HubHome() {
         <span className="text-center sm:text-start">
           المستأجر: <span className="text-[var(--bb-text)]">{TENANT_NAME}</span>
         </span>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-line)] sm:w-auto"
-          data-tone="ghost"
-        >
-          خروج
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <LocalBackupButton tone="primary" />
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="bb-btn rounded-[var(--bb-radius)] border border-[var(--bb-line)] sm:w-auto"
+            data-tone="ghost"
+          >
+            خروج
+          </button>
+        </div>
       </footer>
     </div>
   );
