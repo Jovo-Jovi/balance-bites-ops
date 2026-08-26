@@ -1,10 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionBtn, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp, type ItemKind } from "./finance-context";
 import { INV_TYPES, todayISO } from "@/lib/finance/helpers";
-import type { Purchase } from "@/lib/finance/types";
+import type { Purchase, StockItem } from "@/lib/finance/types";
+
+function catalogFor(type: ItemKind, catalogs: { materials: StockItem[]; packages: StockItem[]; stickers: StockItem[] }) {
+  if (type === "bb_packages") return catalogs.packages;
+  if (type === "bb_stickers") return catalogs.stickers;
+  return catalogs.materials;
+}
+
+function seedPurchase(
+  edit: Purchase | null | undefined,
+  prefill: { type: ItemKind; itemId: string; qty?: number } | undefined,
+  catalogs: { materials: StockItem[]; packages: StockItem[]; stickers: StockItem[] },
+) {
+  if (edit) {
+    return {
+      date: edit.date || todayISO(),
+      type: edit.itemType,
+      itemId: edit.itemId,
+      qty: String(edit.qty),
+      cost: String(edit.costPerUnit),
+      supplier: edit.supplier || "",
+      notes: edit.notes || "",
+    };
+  }
+  const type = prefill?.type || "bb_materials";
+  const itemId = prefill?.itemId || "";
+  const found = catalogFor(type, catalogs).find((i) => i.id === itemId);
+  return {
+    date: todayISO(),
+    type,
+    itemId,
+    qty: prefill?.qty && prefill.qty > 0 ? String(prefill.qty) : "",
+    cost: String(found?.costPerUnit ?? 0),
+    supplier: "",
+    notes: "",
+  };
+}
 
 export function PurchaseModal({
   open,
@@ -17,14 +53,33 @@ export function PurchaseModal({
   edit?: Purchase | null;
   prefill?: { type: ItemKind; itemId: string; qty?: number };
 }) {
+  if (!open) return null;
+  const key = edit?.id ?? `${prefill?.type ?? "new"}:${prefill?.itemId ?? ""}`;
+  return <PurchaseModalForm key={key} onClose={onClose} edit={edit} prefill={prefill} />;
+}
+
+function PurchaseModalForm({
+  onClose,
+  edit,
+  prefill,
+}: {
+  onClose: () => void;
+  edit?: Purchase | null;
+  prefill?: { type: ItemKind; itemId: string; qty?: number };
+}) {
   const app = useFinanceApp();
-  const [date, setDate] = useState(todayISO());
-  const [type, setType] = useState<ItemKind>("bb_materials");
-  const [itemId, setItemId] = useState("");
-  const [qty, setQty] = useState("");
-  const [cost, setCost] = useState("");
-  const [supplier, setSupplier] = useState("");
-  const [notes, setNotes] = useState("");
+  const seed = seedPurchase(edit, prefill, {
+    materials: app.materials,
+    packages: app.packages,
+    stickers: app.stickers,
+  });
+  const [date, setDate] = useState(seed.date);
+  const [type, setType] = useState<ItemKind>(seed.type);
+  const [itemId, setItemId] = useState(seed.itemId);
+  const [qty, setQty] = useState(seed.qty);
+  const [cost, setCost] = useState(seed.cost);
+  const [supplier, setSupplier] = useState(seed.supplier);
+  const [notes, setNotes] = useState(seed.notes);
 
   const items = useMemo(() => {
     if (type === "bb_materials") return app.materials;
@@ -34,40 +89,9 @@ export function PurchaseModal({
 
   const item = items.find((i) => i.id === itemId);
 
-  useEffect(() => {
-    if (!open) return;
-    if (edit) {
-      setDate(edit.date || todayISO());
-      setType(edit.itemType);
-      setItemId(edit.itemId);
-      setQty(String(edit.qty));
-      setCost(String(edit.costPerUnit));
-      setSupplier(edit.supplier || "");
-      setNotes(edit.notes || "");
-      return;
-    }
-    setDate(todayISO());
-    setType(prefill?.type || "bb_materials");
-    setItemId(prefill?.itemId || "");
-    setQty(prefill?.qty && prefill.qty > 0 ? String(prefill.qty) : "");
-    setSupplier("");
-    setNotes("");
-    const found = (prefill?.type === "bb_packages"
-      ? app.packages
-      : prefill?.type === "bb_stickers"
-        ? app.stickers
-        : app.materials
-    ).find((i) => i.id === prefill?.itemId);
-    setCost(String(found?.costPerUnit ?? 0));
-  }, [open, edit, prefill, app.materials, app.packages, app.stickers]);
-
-  useEffect(() => {
-    if (item && !edit) setCost(String(item.costPerUnit || 0));
-  }, [itemId, item, edit]);
-
   return (
     <Modal
-      open={open}
+      open
       title={edit ? "تعديل شراء" : prefill ? `تسجيل شراء · ${item?.name || ""}` : "تسجيل شراء"}
       onClose={onClose}
       footer={
@@ -120,7 +144,17 @@ export function PurchaseModal({
           </Select>
         </Field>
         <Field label="الصنف">
-          <Select value={itemId} disabled={!!prefill} onChange={(e) => setItemId(e.target.value)}>
+          <Select
+            value={itemId}
+            disabled={!!prefill}
+            onChange={(e) => {
+              const id = e.target.value;
+              setItemId(id);
+              if (edit) return;
+              const found = items.find((i) => i.id === id);
+              setCost(String(found?.costPerUnit ?? 0));
+            }}
+          >
             <option value="">—</option>
             {items.map((i) => (
               <option key={i.id} value={i.id}>

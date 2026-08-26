@@ -673,7 +673,7 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
     const parts = (next._composite.parts || []).map((p) => {
       if (p.id !== id) return p;
       let borderColor = patch.borderColor ?? p.borderColor;
-      let borderWidth = patch.borderWidth ?? p.borderWidth;
+      const borderWidth = patch.borderWidth ?? p.borderWidth;
       if (patch.color) {
         return { ...p, color: patch.color, borderColor, borderWidth };
       }

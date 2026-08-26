@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PreviewFace } from "@/lib/design/layout";
 import { familyFocus } from "@/lib/design/layout";
 import {
@@ -60,26 +60,24 @@ export function FaceInspector({ face }: { face: PreviewFace }) {
   const app = useDesignApp();
   const tabs = tabsFor(face);
   const [panel, setPanel] = useState<TabId>(tabs[0].id);
+  const [prevSelected, setPrevSelected] = useState(app.selectedId);
   const focusTab = familyFocus(app.selectedId)?.tab ?? null;
 
-  useEffect(() => {
-    const ids = tabsFor(face).map((tab) => tab.id);
-    if (!ids.includes(panel)) setPanel(ids[0]);
-  }, [face, panel]);
+  if (app.selectedId !== prevSelected) {
+    setPrevSelected(app.selectedId);
+    if (focusTab && !STICKY_TABS.includes(panel)) {
+      const next = focusTab === "nutrition" ? "nutrition" : "copy";
+      if (next !== panel) setPanel(next);
+    }
+  }
 
-  useEffect(() => {
-    if (!focusTab) return;
-    setPanel((prev) => {
-      if (STICKY_TABS.includes(prev)) return prev;
-      return focusTab === "nutrition" ? "nutrition" : "copy";
-    });
-  }, [app.selectedId, focusTab]);
+  const shown = tabs.some((tab) => tab.id === panel) ? panel : tabs[0].id;
 
   return (
     <div>
       <div className="mb-2 flex flex-wrap gap-1.5" role="tablist" aria-label="This face">
         {tabs.map((tab) => {
-          const on = panel === tab.id;
+          const on = shown === tab.id;
           return (
             <button
               key={tab.id}
@@ -99,18 +97,18 @@ export function FaceInspector({ face }: { face: PreviewFace }) {
         })}
       </div>
       <div className="bb-sheet max-h-[min(70vh,44rem)] overflow-y-auto p-4">
-        {panel === "copy" ? <CopyPanel /> : null}
-        {panel === "nutrition" ? <NutritionPanel /> : null}
-        {panel === "layout" ? <LayoutPanel /> : null}
-        {panel === "type" ? <TypePanel face={face} /> : null}
-        {panel === "size" ? <SizePanel face={face} /> : null}
-        {panel === "color" ? (
+        {shown === "copy" ? <CopyPanel /> : null}
+        {shown === "nutrition" ? <NutritionPanel /> : null}
+        {shown === "layout" ? <LayoutPanel /> : null}
+        {shown === "type" ? <TypePanel face={face} /> : null}
+        {shown === "size" ? <SizePanel face={face} /> : null}
+        {shown === "color" ? (
           <div className="grid gap-4">
             <p className="text-sm text-[var(--bb-muted)]">Flavor packs are in Libraries → Brand.</p>
             <ColorFields face={face} />
           </div>
         ) : null}
-        {panel === "layers" ? <LayersPanel /> : null}
+        {shown === "layers" ? <LayersPanel /> : null}
       </div>
     </div>
   );

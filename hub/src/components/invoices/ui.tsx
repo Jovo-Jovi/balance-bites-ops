@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
+import { useIsClient } from "@/lib/use-is-client";
 
 export function Field({
   label,
@@ -136,10 +137,7 @@ export function Modal({
   closeLabel?: string;
   wide?: boolean;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsClient();
   useEffect(() => {
     if (!open) return;
     const html = document.documentElement;

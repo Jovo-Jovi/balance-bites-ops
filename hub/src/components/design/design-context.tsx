@@ -326,7 +326,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       if (templateId) {
         wantedId.current = templateId;
         const t = templates.find((x) => x.id === templateId);
-        if (t) void loadIntoCurrent(t).then(() => go("atelier", t.id));
+        if (t) {
+          const openId = t.id;
+          void Promise.resolve().then(() =>
+            loadIntoCurrent(t).then(() => go("atelier", openId)),
+          );
+        }
       }
       return;
     }
@@ -336,7 +341,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     if (wantedId.current && wantedId.current !== urlId) return;
     const t = templates.find((x) => x.id === urlId);
     if (!t) return;
-    void loadIntoCurrent(t);
+    void Promise.resolve().then(() => {
+      void loadIntoCurrent(t);
+    });
   }, [labelOpen, params, templates, stickers, loadIntoCurrent, go]);
 
   const replaceCurrent = useCallback((next: LabelTemplate) => {

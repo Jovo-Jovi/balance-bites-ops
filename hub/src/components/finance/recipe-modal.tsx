@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActionBtn, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp } from "./finance-context";
 import type { Recipe, RecipeIngredient } from "@/lib/finance/types";
@@ -15,21 +15,19 @@ export function RecipeModal({
   recipe: Recipe | null;
   onClose: () => void;
 }) {
-  const app = useFinanceApp();
-  const [name, setName] = useState("");
-  const [batchSize, setBatch] = useState("1");
-  const [productId, setProductId] = useState("");
-  const [unitPrice, setPrice] = useState("0");
-  const [ings, setIngs] = useState<RecipeIngredient[]>([]);
+  if (!open) return null;
+  return <RecipeModalForm key={recipe?.id ?? "new"} recipe={recipe} onClose={onClose} />;
+}
 
-  useEffect(() => {
-    if (!open) return;
-    setName(recipe?.name || "");
-    setBatch(String(recipe?.batchSize || 1));
-    setProductId(recipe?.productId || "");
-    setPrice(String(recipe?.unitPrice || 0));
-    setIngs(recipe?.ingredients?.length ? recipe.ingredients.map((i) => ({ ...i })) : []);
-  }, [open, recipe]);
+function RecipeModalForm({ recipe, onClose }: { recipe: Recipe | null; onClose: () => void }) {
+  const app = useFinanceApp();
+  const [name, setName] = useState(recipe?.name || "");
+  const [batchSize, setBatch] = useState(String(recipe?.batchSize || 1));
+  const [productId, setProductId] = useState(recipe?.productId || "");
+  const [unitPrice, setPrice] = useState(String(recipe?.unitPrice || 0));
+  const [ings, setIngs] = useState<RecipeIngredient[]>(
+    recipe?.ingredients?.length ? recipe.ingredients.map((i) => ({ ...i })) : [],
+  );
 
   const product = app.products.find((p) => p.id === productId);
 
@@ -39,7 +37,7 @@ export function RecipeModal({
 
   return (
     <Modal
-      open={open}
+      open
       title={recipe ? "تعديل وصفة" : "وصفة جديدة"}
       wide
       onClose={onClose}
