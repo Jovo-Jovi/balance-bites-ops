@@ -1,5 +1,4 @@
 import { usableImage } from "./art";
-import { type ArtSrcKind } from "./art-presets";
 import { getDesignSpec } from "./specs";
 import { stampOnFace } from "./studio-library";
 import {
@@ -210,22 +209,7 @@ function htmlShapeStyle(kind: string, radiusPx = 0) {
   return `border-radius:50%;overflow:hidden`;
 }
 
-type FamilySvgOpts = { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number };
-
-function artHref(value: unknown, opts?: FamilySvgOpts) {
-  const kind: ArtSrcKind = opts?.printCss ? "print" : "preview";
-  return usableImage(value, undefined, kind);
-}
-
-function stampLayer(
-  state: LabelState,
-  minX: number,
-  minY: number,
-  vbW: number,
-  vbH: number,
-  face: PreviewFace,
-  opts?: FamilySvgOpts,
-) {
+function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, vbH: number, face: PreviewFace) {
   const stamps = (state._stamps || []).filter((st) => stampOnFace(st, face));
   if (!stamps.length || !(vbW > 0) || !(vbH > 0)) return "";
   return stamps
@@ -233,7 +217,7 @@ function stampLayer(
       const cx = minX + (st.x / 100) * vbW;
       const cy = minY + (st.y / 100) * vbH;
       const side = Math.max(4, Math.min((st.w / 100) * vbW, (st.h / 100) * vbH));
-      const href = artHref(st.src, opts);
+      const href = usableImage(st.src);
       let body = "";
       if (href) {
         const left = cx - side / 2;
@@ -264,7 +248,7 @@ function framed(
   vbH: number,
   geom: string,
   painted: string,
-  svgOpts: FamilySvgOpts,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const stroke = cutStroke(state);
   const pad = showCut && stroke.px > 0 ? svgOpts.padPx ?? 0 : 0;
@@ -295,7 +279,7 @@ function drawCircle(
   state: LabelState,
   lite: boolean,
   showCut: boolean,
-  svgOpts: FamilySvgOpts,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const spec = getDesignSpec(template.designType);
   const { W, H } = circlePx(state);
@@ -315,8 +299,8 @@ function drawCircle(
   const pSz = n(state, "sCProdSz", 80);
   const pSc = n(state, "sCProdScale", 1);
   const pPct = W ? (pSz / W) * 100 : 0;
-  const photo = lite ? "" : artHref(state.hxCProd, svgOpts);
-  const qr = lite ? "" : artHref(state.hxQr, svgOpts);
+  const photo = lite ? "" : usableImage(state.hxCProd);
+  const qr = lite ? "" : usableImage(state.hxQr);
   const qrSz = n(state, "sCQRSize", 26);
   const wtShow = s(state, "eWeight", "30 gm").replace(/^net\s*weight\s*:?\s*/i, "");
   const d1 = flag(state, "bCShowDate1", true) ? s(state, "eCDate1") : "";
@@ -422,7 +406,7 @@ function drawCircle(
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden">${body}</foreignObject>
-      ${stampLayer(state, 0, 0, W, H, "circle", svgOpts)}
+      ${stampLayer(state, 0, 0, W, H, "circle")}
     </g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
@@ -431,7 +415,7 @@ function drawTop(
   template: LabelTemplate,
   state: LabelState,
   showCut: boolean,
-  svgOpts: FamilySvgOpts,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const fill = fillOf(state);
   const ink = inkOf(state);
@@ -499,7 +483,7 @@ function drawTop(
     <g clip-path="url(#${clipId})">
       <g fill="${esc(fill)}">${geom}</g>
       <foreignObject x="0" y="0" width="${W}" height="${H}" overflow="hidden">${body}</foreignObject>
-      ${stampLayer(state, 0, 0, W, H, "top", svgOpts)}
+      ${stampLayer(state, 0, 0, W, H, "top")}
     </g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
@@ -509,7 +493,7 @@ function drawBack(
   state: LabelState,
   lite: boolean,
   showCut: boolean,
-  svgOpts: FamilySvgOpts,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const { W, H } = backPx(state);
   const fill = fillOf(state);
@@ -520,7 +504,7 @@ function drawBack(
   for (const sec of secs) {
     const clip = `${uid}c${safeId(sec.k)}`;
     clips.push(`<clipPath id="${clip}"><rect x="${sec.l}" y="0" width="${sec.w}" height="${H}" /></clipPath>`);
-    const href = lite ? "" : artHref(state[`hxBg${sec.k}`], svgOpts);
+    const href = lite ? "" : usableImage(state[`hxBg${sec.k}`]);
     if (href) {
       const o = n(state, `sOpa${sec.k}`, 0.5);
       const z = Math.max(0.05, n(state, `sZoom${sec.k}`, 100) / 100);
@@ -542,7 +526,7 @@ function drawBack(
     .join("");
   const fo = `<foreignObject x="0" y="0" width="${W}" height="${H}" overflow="visible"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px;overflow:visible;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">${columns}</div></foreignObject>`;
   const geom = `<rect x="0" y="0" width="${W}" height="${H}" />`;
-  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}</g>${fo}<g clip-path="url(#${uid}die)">${stampLayer(state, 0, 0, W, H, "back", svgOpts)}</g>`;
+  const painted = `<defs>${clips.join("")}<clipPath id="${uid}die">${geom}</clipPath></defs><g clip-path="url(#${uid}die)">${parts.join("")}</g>${fo}<g clip-path="url(#${uid}die)">${stampLayer(state, 0, 0, W, H, "back")}</g>`;
   return framed(state, showCut, 0, 0, W, H, geom, painted, svgOpts);
 }
 
@@ -551,7 +535,7 @@ function drawTaper(
   state: LabelState,
   lite: boolean,
   showCut: boolean,
-  svgOpts: FamilySvgOpts,
+  svgOpts: { wCm?: number; hCm?: number; printCss?: boolean; padPx?: number },
 ) {
   const { g, secs } = taperSectors(state);
   if (!g.R1 || !g.R2 || !g.arcDeg || !g.vbW || !g.vbH) {
@@ -574,7 +558,7 @@ function drawTaper(
   const parts = [`<path d="${fan}" fill="${esc(fill)}" />`];
   if (!lite) {
     for (const d of secData) {
-      const href = artHref(state[`hxBg${d.k}`], svgOpts);
+      const href = usableImage(state[`hxBg${d.k}`]);
       if (!href) continue;
       const z = n(state, `sZoom${d.k}`, 100) / 100;
       const imgSz = Math.max(d.fW, d.fH) * 1.5 * z;
@@ -609,7 +593,7 @@ function drawTaper(
     </g>`);
   }
   const dieId = `${uid}die`;
-  const painted = `<defs><clipPath id="${dieId}"><path d="${fan}" /></clipPath>${clips.join("")}</defs><g clip-path="url(#${dieId})">${parts.join("")}${stampLayer(state, g.minX, g.minY, g.vbW, g.vbH, "taper", svgOpts)}</g>`;
+  const painted = `<defs><clipPath id="${dieId}"><path d="${fan}" /></clipPath>${clips.join("")}</defs><g clip-path="url(#${dieId})">${parts.join("")}${stampLayer(state, g.minX, g.minY, g.vbW, g.vbH, "taper")}</g>`;
   return framed(state, showCut, g.minX, g.minY, g.vbW, g.vbH, `<path d="${fan}" />`, painted, svgOpts);
 }
 

@@ -376,6 +376,12 @@ Staff can download live Firestore keys **and** R2 `label_assets/` as `bb-saved-d
 
 ---
 
+## 2026-08-27 — Restore original design-preset SVGs (T12 quality rollback)
+
+Studio and Print house both load `/design-presets/*.svg` again (original polygon traces: jelly-fruit 22,443 paths). The T12 spline re-trace and 512px WebP preview folder are gone — quality in Studio and print was the requirement.
+
+---
+
 ## 2026-08-27 — T14 bb_invoices sharding (deferred)
 
 Not this round. `bb_invoices` remains one document (~730 typical 6-line Arabic invoices before the 1 MiB ceiling). `formatWriteError` already shows the failure. When it is time: year keys `bb_invoices_2026`, extend `isKnownKey`, migrate `enrichInvoice` plus `invoices/reports.ts` and `finance/analytics.ts`. After T7 only — sharding multiplies CAS documents; doing it without `prevWriteId` multiplies the clobber. Quotas are not the reason (~68 hydrate/watch reads per sign-in).
@@ -390,7 +396,7 @@ Deleted `public/bb-cloud-store.js` and unauthenticated `/api/firebase-config`. D
 
 ## 2026-08-27 — T12 design-preset re-trace
 
-Polygon vtracer dumps in `hub/public/design-presets/` (≈18 MB, up to 22k `<path>`s) re-traced spline + speckle 12. Studio / Library on-screen preview loads `/design-presets/preview/*.webp` (512px). Prepress + PNG pack still embed the SVG (`physical: true`). Popcorn-blue / popcorn-red stay print-pack excluded. Same 12 `PRESET_FILES` keys.
+Polygon vtracer dumps in `hub/public/design-presets/` (≈18 MB, up to 22k `<path>`s) re-traced spline + speckle 12. Studio / Library on-screen preview loads `/design-presets/preview/*.webp` (512px). Prepress + PNG pack still embed the SVG (`physical: true`). Popcorn-blue / popcorn-red stay print-pack excluded. Same 12 `PRESET_FILES` keys. **Rolled back the same day** — original SVGs restored for Studio and print.
 
 ---
 

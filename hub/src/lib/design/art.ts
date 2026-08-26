@@ -1,5 +1,5 @@
 import { genId } from "@/lib/invoices/helpers";
-import { resolveArtSrc, type ArtSrcKind } from "./art-presets";
+import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
 import type { PreviewFace } from "./layout";
 import { stampFaceOf } from "./studio-library";
@@ -52,8 +52,8 @@ export function iconSizeById(id: string) {
   return ICON_SIZES.find((s) => s.id === id) ?? ICON_SIZES[1];
 }
 
-export function usableImage(value: unknown, artKey?: string, kind: ArtSrcKind = "preview") {
-  const preset = resolveArtSrc(value, artKey, kind);
+export function usableImage(value: unknown, artKey?: string) {
+  const preset = resolveArtSrc(value, artKey);
   if (preset) return preset;
   const s = String(value ?? "");
   if (!s || isAssetRef(s)) return "";
@@ -90,14 +90,9 @@ export function compositeShowsProductPhoto(state: LabelState) {
   return Boolean(usableImage(state.hxCProd) || isAssetRef(state.hxCProd));
 }
 
-export function previewImage(
-  value: unknown,
-  artKey: string | undefined,
-  lite: boolean,
-  kind: ArtSrcKind = "preview",
-) {
+export function previewImage(value: unknown, artKey: string | undefined, lite: boolean) {
   if (lite) return "";
-  return usableImage(value, artKey, kind);
+  return usableImage(value, artKey);
 }
 
 export function syncPaperToSilhouette(state: LabelState): LabelState {

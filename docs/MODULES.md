@@ -50,7 +50,7 @@ Hub card: **Design** — **ported** to native React (filtered tools). Do not wra
 | `bb-composite-label.js` | Composite label layout | Wave A die-cut + Wave B PNG clip from `unionPath` |
 | `bb-icon-library.js` | Icon stamps on labels | Studio **Icons** tab (repo catalog + live A–Z letters). Not dumped into Firestore |
 | `bb-jelly-kids.js` | Jelly Kids preset behavior | Gap — do not dump into Firestore |
-| `assets/presets/` | Art preset payloads (repo, not tenant) | Print SVG in `hub/public/design-presets/`; Studio preview WebP in `design-presets/preview/`. Do not dump folders into Firestore |
+| `assets/presets/` | Art preset payloads (repo, not tenant) | Preview via `hub/public/design-presets/`. Do not dump folders into Firestore |
 
 Designer **writes** `bb_label_templates` and clears `bb_label_open`. Stock Costs **links** a sticker SKU to a template and can deep-link via `bb_label_open`. Design **reads** `bb_products` / `bb_stickers`. Hub Design does **not** write `bb_color_presets` (Invoices → Look).
 
