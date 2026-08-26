@@ -39,6 +39,8 @@ export function presetThumbFill(artKey?: string) {
   return PRESET_THUMB_FILL[k] || "";
 }
 
+export type ArtSrcKind = "preview" | "print";
+
 function publicSrc(file: string) {
   return `/design-presets/${file}`;
 }
@@ -48,6 +50,14 @@ function fileForKey(key: string) {
   return PRESET_FILES[k] || (k && PRESET_FILES[k.replace(/_/g, "-")]) || "";
 }
 
+function hrefForFile(file: string, kind: ArtSrcKind) {
+  if (kind === "preview") {
+    return `/design-presets/preview/${file.replace(/\.svg$/i, ".webp")}`;
+  }
+  return publicSrc(file);
+}
+
+/** Print / existence check. Studio preview uses `resolveArtSrc(..., "preview")`. */
 export function presetSrcForKey(artKey: string) {
   const file = fileForKey(artKey);
   return file ? publicSrc(file) : "";
@@ -75,18 +85,27 @@ export function isPrintPackExcludedArt(artKey: string) {
   return k === "popcorn-blue" || k === "popcorn-red";
 }
 
-export function resolveArtSrc(raw: unknown, artKey?: string) {
+export function resolveArtSrc(raw: unknown, artKey?: string, kind: ArtSrcKind = "preview") {
+  const fromKey = (key: string) => {
+    const file = fileForKey(key);
+    return file ? hrefForFile(file, kind) : "";
+  };
   if (artKey) {
-    const fromKey = presetSrcForKey(artKey);
-    if (fromKey) return fromKey;
+    const hit = fromKey(artKey);
+    if (hit) return hit;
   }
   const s = String(raw ?? "").trim();
   if (!s) return "";
-  if (s.startsWith("artref:")) return presetSrcForKey(s.slice(7));
+  if (s.startsWith("artref:")) return fromKey(s.slice(7));
   const file = s.match(/assets\/presets\/([^/?#]+)/i)?.[1] || "";
   if (file) {
     const base = file.replace(/\.(png|svg|jpg|jpeg|webp)$/i, "");
-    return presetSrcForKey(base) || publicSrc(base.endsWith(".svg") ? file : `${base}.svg`);
+    return fromKey(base) || publicSrc(base.endsWith(".svg") ? file : `${base}.svg`);
+  }
+  const nested = s.match(/\/design-presets\/(?:preview\/)?(bb-[^/?#]+)/i)?.[1] || "";
+  if (nested) {
+    const stem = nested.replace(/\.(png|svg|jpg|jpeg|webp)$/i, "").replace(/^bb-/, "");
+    return fromKey(stem);
   }
   return "";
 }
@@ -95,5 +114,10 @@ export function resolveArtSrc(raw: unknown, artKey?: string) {
 export function isCharacterPresetArt(src?: string, artKey?: string) {
   if (artKey && fileForKey(artKey)) return true;
   const s = String(src || "");
-  return s.startsWith("artref:") || /\/design-presets\//i.test(s) || /assets\/presets\//i.test(s);
+  return (
+    s.startsWith("artref:") ||
+    /\/design-presets\//i.test(s) ||
+    /\/design-preset-previews\//i.test(s) ||
+    /assets\/presets\//i.test(s)
+  );
 }

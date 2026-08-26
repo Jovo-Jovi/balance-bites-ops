@@ -87,7 +87,7 @@ hub/src/lib/design/
   icons.ts          repo catalog + LETTER_STYLES. Not Firestore.
   icon-catalog.json
   art.ts            bg slots, stamps, addProductPhotos, fill-cut-with-paper
-  art-presets.ts    artref: / assets/presets/ → /design-presets/*.svg
+  art-presets.ts    artref: / assets/presets/ → preview WebP (`/design-presets/preview/*.webp`); print SVG (`/design-presets/*.svg`)
   product-match.ts  template name → current bb_products when productId is empty
   layers.ts         layer list / move / rotate / recolor / drag; grouped parts move together
   part-types.ts     live PART_TYPES + add-shape factory
@@ -97,7 +97,7 @@ hub/src/lib/design/
   character-library.ts DiceBear style/seed catalog (not product stickers)
   preview.ts        composite SVG or family face; cut stroke overlay
   prepress.ts       1.5 mm bleed, 300 DPI, SVG print/download
-  png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN); FO overlay; nested preset SVG→PNG
+  png-pack.ts       Cut / Exact / Bleed PNG (300 DPI, pHYs, die clip, extendBleedNN); FO overlay; nested preset SVG→PNG on print
   library-thumb.ts  Raster Library snap (WebP/PNG on R2 `library_thumb.webp`)
 hub/src/app/api/design/character/route.ts  staff proxy for DiceBear PNG
 hub/src/app/api/storage/list/route.ts   list R2 prefix for Images → Storage
@@ -105,7 +105,8 @@ hub/src/lib/storage.ts                  listLabelAssets
 hub/src/lib/storage-paths.ts            parseLabelAssetKey
 hub/src/lib/server/r2.ts                Get / Put / Delete / ListObjectsV2
 hub/src/lib/keys.ts                     DESIGN_WRITE_KEYS
-hub/public/design-presets/              repo character SVGs (not Firestore)
+hub/public/design-presets/              repo character SVGs (print / prepress; not Firestore)
+hub/public/design-presets/preview/      512px WebP for Library/Studio on-screen preview
 ```
 
 Shared hub (do not fork): `app-workspace.tsx`, `brand-lockup.tsx`, `auth-provider.tsx`, `cloud-store.ts`, `globals.css`, invoice `ui.tsx` primitives.
@@ -129,7 +130,7 @@ Finance later **writes** `bb_stickers` and may set `bb_label_open` to open a tem
 | `__asset__:field` | Bytes live at `label_assets/{templateId}/{field}` on R2; hydrate to a URL/data URL in memory |
 | `__r2__:tenants/…/label_assets/{id}/{file}` | Reuse an object already on R2 (Images → Storage). Save must not upload a second copy |
 | `data:` / blob | Device upload; strip to `__asset__:` on save when storage is on |
-| `artref:` / `assets/presets/…` | Repo file under `hub/public/design-presets/`. Not a tenant dump |
+| `artref:` / `assets/presets/…` | Repo files under `hub/public/design-presets/` (print SVG) and `design-presets/preview/` (Studio WebP). Not a tenant dump |
 
 `NEXT_PUBLIC_BB_USE_STORAGE=true` is required for R2 hydrate. If storage is off, placeholders stay refs. Opening a template **batch-signs** R2 keys (up to 40 per request) and hydrates in parallel. Images → Storage **lists keys only**; each tile signs when it is on screen. Library cards are a **raster snap** (`libraryThumb`: WebP/PNG, max 256 px, stored as `__r2__:…/library_thumb.webp` on save/create). Never `data:image/svg+xml` and never `/design-presets/*.svg` in the grid. Studio keeps the full live SVG/FO preview. Existing templates without a snap paint a **cheap Path2D die** (no FO, no preset SVG fetch) until the next Save. Design workspace uses a solid sheet (not glass blur) so scrolling stays light.
 
@@ -145,7 +146,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Wrap / taper Layers **Up / Down** reorder `eSecOrd` columns. Composite Up / Down still restack z-order.
 - Studio inspector Copy / Nutrition follow the selected wrap column only while you are already on a content tab. **Layers / Layout / Type / Size / Color stay put** until the designer clicks another inspector tab.
 - Composite Size / resize / move of a sole silhouette **rebuilds Print cut from `pathLocal`** (same mapping as the art). Do not scale a raster-traced `unionPath` — that halo sits outside the sticker. Multi-part unions still recompute; Size slider pointer-up calls `syncCutPath`.
-- Character preset SVGs (`/design-presets/`) have a square `viewBox` inside a tall or wide canvas, so default SVG meet letterboxes the kernels. Studio / print paint those files with `preserveAspectRatio="xMidYMid slice"` so the art fills the part and Print cut sits on the silhouette. Device photos still use `none` (live fill). PNG cut uses the same `compositeDiePath` as the overlay.
+- Character presets letterbox a square `viewBox` in a tall or wide canvas. Studio paints `/design-presets/preview/*.webp` (512px); prepress / PNG pack keep `/design-presets/*.svg`. Both use `preserveAspectRatio="xMidYMid slice"` so the art fills the part and Print cut sits on the silhouette. Device photos still use `none` (live fill). PNG cut uses the same `compositeDiePath` as the overlay.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image. Save still writes the 256 px WebP. Re-save a family card to replace a colour-only die.

@@ -1,5 +1,5 @@
 import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
-import { isCharacterPresetArt } from "./art-presets";
+import { isCharacterPresetArt, type ArtSrcKind } from "./art-presets";
 import { partFillPath } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
@@ -124,13 +124,13 @@ function partRot(part: CompositePart, inner: string) {
   return `<g transform="rotate(${part.rot} ${part.x} ${part.y})">${inner}</g>`;
 }
 
-function partShape(part: CompositePart, lite = false) {
+function partShape(part: CompositePart, lite = false, kind: ArtSrcKind = "preview") {
   const fill = part.color || "#2e7d32";
   const x = part.x;
   const y = part.y;
   const rx = part.w / 2;
   const ry = part.h / 2;
-  const src = previewImage(part.src || part.srcUrl, part.artKey, lite);
+  const src = previewImage(part.src || part.srcUrl, part.artKey, lite, kind);
   const wantImage = Boolean(src) && part.showImage === true;
   if (wantImage) {
     const par = isCharacterPresetArt(src, part.artKey) ? "xMidYMid slice" : "none";
@@ -177,7 +177,7 @@ function compositeClip(comp: CompositeBlob) {
   return `<rect width="100" height="100" />`;
 }
 
-function bgLayers(state: LabelState, lite = false) {
+function bgLayers(state: LabelState, lite = false, kind: ArtSrcKind = "preview") {
   if (lite) return "";
   const slots: Array<[string, string, string]> = [
     ["hxBg1", "sOpa1", "sZoom1"],
@@ -188,7 +188,7 @@ function bgLayers(state: LabelState, lite = false) {
   ];
   return slots
     .map(([srcKey, opaKey, zoomKey]) => {
-      const href = usableImage(state[srcKey]);
+      const href = usableImage(state[srcKey], undefined, kind);
       if (!href) return "";
       const o = num(state, opaKey, 1);
       const z = Math.max(0.05, num(state, zoomKey, 100) / 100);
@@ -203,9 +203,9 @@ function bgLayers(state: LabelState, lite = false) {
     .join("");
 }
 
-function productLayer(state: LabelState, circular: boolean, lite = false) {
+function productLayer(state: LabelState, circular: boolean, lite = false, kind: ArtSrcKind = "preview") {
   if (lite) return "";
-  const href = usableImage(state.hxCProd);
+  const href = usableImage(state.hxCProd, undefined, kind);
   if (!href) return "";
   const box = productPhotoBox(state, circular);
   const x = box.x - box.w / 2;
@@ -213,9 +213,9 @@ function productLayer(state: LabelState, circular: boolean, lite = false) {
   return `<image href="${esc(href)}" x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
-function qrLayer(state: LabelState, lite = false) {
+function qrLayer(state: LabelState, lite = false, kind: ArtSrcKind = "preview") {
   if (lite) return "";
-  const href = usableImage(state.hxQr);
+  const href = usableImage(state.hxQr, undefined, kind);
   if (!href) return "";
   const w = Math.max(8, num(state, "sQRSize", 16));
   const x = num(state, "sQRX", 86);
@@ -223,8 +223,8 @@ function qrLayer(state: LabelState, lite = false) {
   return `<image href="${esc(href)}" x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet" />`;
 }
 
-function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; borderColor?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string) {
-  const href = usableImage(s.src);
+function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; borderColor?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string, kind: ArtSrcKind = "preview") {
+  const href = usableImage(s.src, undefined, kind);
   if (href) {
     const side = Math.max(2, Math.min(s.w, s.h));
     const left = s.x - side / 2;
@@ -288,7 +288,7 @@ function fontOf(state: LabelState, keys: string[], fallback: string) {
   return fallback;
 }
 
-function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false) {
+function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false, kind: ArtSrcKind = "preview") {
   if (z.kind === "icon" && z.iconId) {
     return iconMark(
       z.iconId,
@@ -303,7 +303,7 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     );
   }
   if (z.kind === "image") {
-    const src = previewImage(z.src || z.srcUrl, undefined, lite);
+    const src = previewImage(z.src || z.srcUrl, undefined, lite, kind);
     if (!src) return "";
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
@@ -572,6 +572,7 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
 export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts?: LabelPreviewOpts) {
   const spec = getDesignSpec(template.designType);
   const lite = Boolean(opts?.lite);
+  const kind = opts?.physical ? "print" : "preview";
   if (!spec.composite || !state._composite) {
     return familyPreviewSvg(template, state, lite, Boolean(opts?.showCut), Boolean(opts?.physical));
   }
@@ -589,24 +590,24 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     const boardFill =
       lite || !exactArt ? `<rect width="100" height="100" fill="${esc(comp.bg || fill)}" />` : "";
     const stack: { z: number; html: string }[] = [];
-    for (const p of parts) stack.push({ z: p.z || 0, html: partShape(p, lite) });
-    for (const z of zones) stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
+    for (const p of parts) stack.push({ z: p.z || 0, html: partShape(p, lite, kind) });
+    for (const z of zones) stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite, kind) });
     for (const s of stamps) {
       stack.push({
         z: s.z || 0,
-        html: stampMark(s, txt),
+        html: stampMark(s, txt, kind),
       });
     }
-    const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);
+    const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite, kind);
     if (photo) stack.push({ z: 0.5, html: photo });
     stack.sort((a, b) => a.z - b.z);
     const inner = `
       <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
         ${boardFill}
-        ${bgLayers(state, lite)}
+        ${bgLayers(state, lite, kind)}
         ${stack.map((item) => item.html).join("")}
-        ${qrLayer(state, lite)}
+        ${qrLayer(state, lite, kind)}
       </g>`;
     return wrapPreviewSvg(inner, template, state, opts);
   }
