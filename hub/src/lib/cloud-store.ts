@@ -266,6 +266,12 @@ export const CloudStore = {
     pendingWriteIds.clear();
     lastAppliedWriteId.clear();
   },
+
+  /** Drop every `bb_*` cache entry. Does not touch other origin keys. */
+  clearLocalCache() {
+    for (const key of BB_KEYS) clearLocal(key);
+    for (const key of BB_KEYS) notify(key);
+  },
 };
 
 async function persist(key: string, value: unknown): Promise<void> {
