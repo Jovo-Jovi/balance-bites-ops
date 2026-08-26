@@ -1,6 +1,6 @@
 # Modules
 
-Three entry HTML files share `Store` + `FileStore` and a common JSON tenant. Invoices and Design are native hub apps; this map is still the live-behavior source for remaining gaps and for Finance.
+Three entry HTML files share `Store` + `FileStore` and a common JSON tenant. Invoices, Design, and Finance are native hub apps; this map is the live-behavior source.
 
 ---
 
@@ -58,7 +58,7 @@ Designer **writes** `bb_label_templates` and clears `bb_label_open`. Stock Costs
 
 ## C. Stock & Costs — `bb-stock-costs.html`
 
-Hub card: **Finance & Inventory**
+Hub card: **Finance & Inventory** — **ported** to native React (eight grouped tools). Do not wrap this HTML. Map: [FINANCE.md](FINANCE.md).
 
 | Module | Role |
 |---|---|

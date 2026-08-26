@@ -158,7 +158,7 @@ Shipped as native React (PRs #1 + #2, 21 Aug 2026). See `docs/INVOICES.md` and `
 
 ### Design (`balance-bites-sticker.html` + JS)
 
-Shipped as native React on `main` (Waves A–D, PR #4 + #5). See `docs/DESIGN.md` and `docs/JOURNAL.md`. Do not wrap the sticker HTML. Do not start Finance until asked.
+Shipped as native React on `main` (Waves A–D, PR #4 + #5). See `docs/DESIGN.md` and `docs/JOURNAL.md`. Do not wrap the sticker HTML.
 
 - [x] Template library CRUD (`bb_label_templates`)
 - [x] Import/export JSON (`bb_label_template_v2`)
@@ -179,31 +179,31 @@ Shipped as native React on `main` (Waves A–D, PR #4 + #5). See `docs/DESIGN.md
 
 ### Finance (`bb-stock-costs.html` tabs — all of them)
 
-- [ ] لوحة التحكم — including shutdown two scenarios
-- [ ] الفواتير — read invoices; paid/pending; customer ledger
-- [ ] COGS
-- [ ] الأرباح — P&L rule above
-- [ ] المستثمرون
-- [ ] المخزون — ledger qty × cost + finished goods
-- [ ] المشتريات
-- [ ] المواد الخام / التغليف / الملصقات
-- [ ] الكتالوج + بطاقات المنتج
-- [ ] الوصفات (BOM)
-- [ ] التحضير + فواتير التحضير + شراء shortfall
-- [ ] الإنتاج
-- [ ] المرتجعات (restock vs expired / hawalek)
-- [ ] تكاليف التشغيل
-- [ ] Backups (`bb_backups`)
-- [ ] Theme / color presets shared with other apps
-- [ ] Item modal: fill stock from ledger; skip تسوية if stock field unchanged
-- [ ] After real purchase, bump ledger immediately
+- [x] لوحة التحكم — including shutdown two scenarios
+- [x] الفواتير — read invoices; paid/pending; customer ledger
+- [x] COGS
+- [x] الأرباح — P&L rule above
+- [x] المستثمرون
+- [x] المخزون — ledger qty × cost + finished goods
+- [x] المشتريات
+- [x] المواد الخام / التغليف / الملصقات
+- [x] الكتالوج + بطاقات المنتج
+- [x] الوصفات (BOM)
+- [x] التحضير + فواتير التحضير + شراء shortfall
+- [x] الإنتاج
+- [x] المرتجعات (restock vs expired / hawalek)
+- [x] تكاليف التشغيل
+- [x] Backups (`bb_backups`)
+- [ ] Theme / color presets shared with other apps (Invoices → Look; Finance does not write them)
+- [x] Item modal: fill stock from ledger; skip تسوية if stock field unchanged
+- [x] After real purchase, bump ledger immediately
 
 ## Suggested build order
 
 1. ~~Scaffold Next.js + CloudStore + hub.~~ Done.
 2. ~~Port invoices as native React.~~ Done (`docs/INVOICES.md`).
 3. ~~Port Design as native React.~~ Done on `main` (`docs/DESIGN.md`). Do not wrap the sticker HTML.
-4. Finance (hardest formulas) from `bb-stock-costs.html`.
+4. ~~Finance (hardest formulas) from `bb-stock-costs.html`.~~ On `feat/finance` (`docs/FINANCE.md`). Merge when confirmed.
 5. **Import script** (`saved data` → Firestore) only when the user says; zip backup first.
 6. Production is live at https://balance-bites-ops.vercel.app — still staff-only Auth + Firestore rules. Do not dump empty catalogs.
 
@@ -215,4 +215,4 @@ Shipped as native React on `main` (Waves A–D, PR #4 + #5). See `docs/DESIGN.md
 - When unsure, open the HTML function (`getDisplayStock`, `buildLinkedState`, `PendingInvoiceMgr`, FileStore `WRITE_KEYS` / `READ_KEYS`) and match it.
 - After each slice, list remaining unchecked parity items.
 
-Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md`. Hub, invoices, and Design Waves A–D are on `main`. Next app slice is Finance unless asked — grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.
+Start from `docs/JOURNAL.md` + `docs/INVOICES.md` + `docs/DESIGN.md` + `docs/FINANCE.md`. Hub, invoices, and Design Waves A–D are on `main`. Finance Waves A–E are on `feat/finance`. Grep `costs/bb-stock-costs.html`, do not duplicate invoice or design modules, do not dump empty keys.

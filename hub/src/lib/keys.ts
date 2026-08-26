@@ -26,6 +26,24 @@ export function isDesignWriteKey(key: string): key is BbKey {
   return DESIGN_WRITE_SET.has(key);
 }
 
+/** Hub Finance may persist these. Templates and color presets stay with Design / Invoices Look. */
+const FINANCE_BLOCKED = new Set([
+  "bb_label_templates",
+  "bb_color_presets",
+  "bb_active_color_preset_id",
+  "bb_active_theme",
+]);
+
+export const FINANCE_WRITE_KEYS = keyManifest.writers.stockCosts.filter(
+  (key) => !FINANCE_BLOCKED.has(key),
+) as BbKey[];
+
+const FINANCE_WRITE_SET = new Set<string>(FINANCE_WRITE_KEYS);
+
+export function isFinanceWriteKey(key: string): key is BbKey {
+  return FINANCE_WRITE_SET.has(key);
+}
+
 const KEY_SET = new Set<string>(BB_KEYS);
 
 export function isBbKey(key: string): key is BbKey {
@@ -51,7 +69,14 @@ export const EMPTY_DEFAULTS: Record<BbKey, unknown> = {
   bb_production: [],
   bb_operation_costs: [],
   bb_investors: [],
-  bb_investor_target: { needed: 0, split: "equal", projectStart: "" },
+  bb_investor_target: {
+    needed: 0,
+    split: "equal",
+    projectStart: "",
+    collectionLag: 30,
+    stockPlacement: "journal",
+    includeResidual: false,
+  },
   bb_label_templates: [],
   bb_label_open: null,
   bb_color_presets: [],

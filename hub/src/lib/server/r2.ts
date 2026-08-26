@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
+  BACKUPS_PREFIX,
   isAllowedStorageKey,
   LABEL_ASSETS_PREFIX,
   normalizeStorageKey,
@@ -118,7 +119,10 @@ export async function listR2Prefix(prefix = LABEL_ASSETS_PREFIX, max = 400) {
   const cfg = readR2Config();
   if (!cfg) throw new Error("Cloudflare R2 is not configured");
   const keyPrefix = normalizeStorageKey(prefix);
-  if (!keyPrefix.startsWith(LABEL_ASSETS_PREFIX)) {
+  if (
+    !keyPrefix.startsWith(LABEL_ASSETS_PREFIX) &&
+    !keyPrefix.startsWith(BACKUPS_PREFIX)
+  ) {
     throw new Error("مسار تخزين غير مسموح");
   }
   const client = getR2Client(cfg);

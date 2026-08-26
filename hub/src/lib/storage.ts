@@ -114,6 +114,17 @@ export async function listLabelAssets(): Promise<LabelAssetItem[]> {
   return body.items || [];
 }
 
+export async function listBackups(): Promise<LabelAssetItem[]> {
+  assertStorageEnabled();
+  const res = await fetch("/api/storage/list?kind=backups", {
+    method: "GET",
+    headers: await authHeader(),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const body = (await res.json()) as { items?: LabelAssetItem[] };
+  return body.items || [];
+}
+
 export async function deleteLabelAssetFolder(templateId: string): Promise<number> {
   assertStorageEnabled();
   const res = await fetch(

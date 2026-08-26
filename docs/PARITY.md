@@ -37,7 +37,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
 - [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
 - [x] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
-- [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; invoices were rebuilt as React instead)
+- [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; all three apps are native React instead)
 
 ### Keys imported from disk today
 
@@ -119,30 +119,30 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 
 | Tab | Live purpose | Status |
 |---|---|---|
-| لوحة التحكم | Project cost, sales, stock, **shutdown two scenarios** | [ ] |
-| الفواتير | Read invoices; paid/pending; customer ledger | [ ] |
-| COGS | Recipe unit cost vs sell / margin | [ ] |
-| الأرباح | P&L = sales − COGS of **sold** − opex − hawalek (not leftover stock) | [ ] |
-| المستثمرون | Capital, shares, NAV includes stock | [ ] |
-| المخزون | Ledger qty × cost + finished goods | [ ] |
-| المشتريات | Buy-ins; ledger source of qty | [ ] |
-| المواد الخام | Catalog + inline qty | [ ] |
-| التغليف | Catalog + inline qty | [ ] |
-| الملصقات | Catalog + template link + `bb_label_open` | [ ] |
-| الكتالوج | Products, categories, inactive | [ ] |
-| بطاقات المنتج | BOM cards | [ ] |
-| الوصفات | BOM, batch, product link | [ ] |
-| التحضير | Per-customer items; drafts; شراء shortfall | [ ] |
-| الإنتاج | Runs; usage fallback if **no invoices**; not `invoice_draft` | [ ] |
-| المرتجعات | Restock vs expired / hawalek | [ ] |
-| تكاليف التشغيل | Rent, wages, compensation (negative OK) | [ ] |
+| لوحة التحكم | Project cost, sales, stock, **shutdown two scenarios**, mix bars, formula hover | [x] |
+| الفواتير | Read invoices; paid/pending; customer account modal; multi-print; undo last payment; read-only Look strip | [x] |
+| COGS | Recipe unit cost vs sell / margin | [x] |
+| الأرباح | P&L = sales − COGS of **sold** − opex − hawalek (not leftover stock); from/to window + print | [x] |
+| المستثمرون | WC diary peak (lag / journal placement); join-date profit; NAV × toward/peak; copy cash shortfall | [x] |
+| المخزون | Ledger qty × cost + finished goods | [x] |
+| المشتريات | Buy-ins; ledger source of qty | [x] |
+| المواد الخام | Catalog + inline qty; ok/low/crit + usage filters | [x] |
+| التغليف | Catalog + inline qty; ok/low/crit + usage filters | [x] |
+| الملصقات | Swatch cards; tap opens Studio via `bb_label_open`; ok/low/crit + usage filters | [x] |
+| الكتالوج | Products, categories, inactive | [x] |
+| بطاقات المنتج | BOM cards | [x] |
+| الوصفات | BOM, batch, product link | [x] |
+| التحضير | Board first (save/send/print); unsent list; drafts; شراء; BOM print; اعتماد الكل | [x] |
+| الإنتاج | Runs; gap table defaults to ينقص; تجهيز الناقص; load/delete unsent / awaiting | [x] |
+| المرتجعات | Restock vs expired / hawalek | [x] |
+| تكاليف التشغيل | Rent, wages, compensation (negative OK) | [x] |
 
 Also:
 
-- [ ] Backups (`bb_backups` + `bb_backup_index`)
-- [ ] Theme / color presets shared
-- [ ] Item modal: fill stock from ledger; skip `تسوية جرد` if stock field unchanged
-- [ ] After real purchase, bump ledger immediately (`bumpLedgerAfterPurchaseQty`)
+- [x] Backups (`bb_backups` + `bb_backup_index`)
+- [ ] Theme / color presets shared (Invoices → Look owns; Finance does not write them)
+- [x] Item modal: fill stock from ledger; skip `تسوية جرد` if stock field unchanged
+- [x] After real purchase, bump ledger immediately (`bumpLedgerAfterPurchaseQty`)
 
 ### Intended formulas (do not “fix” unless asked)
 
@@ -182,7 +182,7 @@ Do not commit these files. Field names to preserve:
 | `bb_production` | array | `recipeId`, `unitsProduced`, `deductions[]`, `isAdjustment` |
 | `bb_operation_costs` | array | `date`, `name`, `category`, `amount` (compensation may be negative) |
 | `bb_investors` | array | (live file currently empty `[]`) |
-| `bb_investor_target` | object | `needed`, `split`, `projectStart` |
+| `bb_investor_target` | object | `needed`, `split`, `projectStart`, `collectionLag`, `stockPlacement`, `includeResidual` |
 | `bb_label_templates` | array | `id`, `name`, `designType`, `labelMode`, `libraryThumb` (R2 WebP/PNG ref), large `state` |
 | `bb_label_open` | object | `stickerId`, `templateId`, `productId`, `ts` |
 | `bb_color_presets` | array | `id`, `name`, `bg`, `gold`, `txt`, `mut`, `row`, `tot`, `grand` |
@@ -194,7 +194,8 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Explicit gaps (this slice)
 
-- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). Finance is still a **tool shell**.
+- **Invoices is done** (native React). **Design** is a native three-tool workspace (library / studio / print). **Finance** is a native eight-tool workspace on `feat/finance` (not merged). Finance invoices: customer tap opens an account modal; multi-select print original/net; undo last payment restores remaining; Look name / page / margins shown read-only (Invoices → Look still writes those keys). Investor table uses the working-capital event diary for peak / تعيين (collection lag, leftover stock on the live journal window 15 Jul–14 Aug or today, pending invoices never become تحصيل). Overview mix bars + formula hover; stock alerts live on المخزون; الأرباح has a from/to P&L window and print; unmatched invoice lines (no recipe) hinted on Overview / Recipes. Stock catalogs filter ok/low/crit and usage; sticker swatch cards tap through to Design Studio. Prep prints the current board plus draft sheet / BOM. Prep can save an unsent order, load it back onto the board, approve all drafts, and fill the board from production gaps.
+- Look editing stays on Invoices (Finance does not write `bb_inv_*` print keys). Not ported on purpose: COGS / stock-value print (on-screen reports stay); on-screen `bb_prep_ing_view` total-vs-each (print mode already has both); `splitSharedStickersToProducts` (live button hidden unless shared stickers).
 - Design does **not** wrap `balance-bites-sticker.html`. Wave D generic sections are on `main`. Jelly Kids dump and Desktop `bbLabel-*` folder scan are listed above — not silently dropped.
 - Design does **not** seed flavor packs, Jelly Kids, or sample templates when `bb_label_templates` is missing.
 - Shared `bb_color_presets` stay on Invoices → Look. Design flavor packs are code-only.
@@ -208,5 +209,5 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Suggested next slice
 
-1. **Finance** (stock ledger, prep, P&L) from `bb-stock-costs.html`.
+1. Merge `feat/finance` → `main` when Waves A–E are confirmed.
 2. Import remaining keys only when asked (`node scripts/import-saved-data.mjs --apply --only=…`). Full folder already applied 2026-08-22.

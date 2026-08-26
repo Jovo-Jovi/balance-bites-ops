@@ -13,6 +13,8 @@ Related maps:
 |---|---|
 | [INVOICES.md](INVOICES.md) | Invoice app file map, keys, UX decisions |
 | [DESIGN.md](DESIGN.md) | Design app file map, filtered tools, gaps |
+| [FINANCE.md](FINANCE.md) | Finance app file map, eight tools, writers |
+| [FINANCE-WAVES.md](FINANCE-WAVES.md) | Finance waves A–E |
 | [PARITY.md](PARITY.md) | Tick-list vs live HTML |
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
 | [MODULES.md](MODULES.md) | Live HTML module map (Finance source; Design gaps) |
@@ -330,7 +332,37 @@ Design Waves A–D are on `main`. Feature branches `feat/design` and `feat/desig
 
 ---
 
+## 2026-08-25 — Finance native app (`feat/finance`)
+
+Waves A–E on `feat/finance` (not merged). Native eight tools under `hub/src/components/finance/` — **not** an HTML wrap. Same linen chrome and Invoices UI kit (portal Modal, ActionBtn). `writeFinanceKey` rejects `bb_label_templates` and color presets. Prep approve is the only `bb_invoices` write. Ledger, purchases, prep/production, returns, opex, dashboard shutdown pair, COGS, P&L, investors, R2 backups. Map: [FINANCE.md](FINANCE.md).
+
+UX polish vs live Stock Costs: purchases as a compact filtered table; stock report in accordion sections (summary / all SKUs / FG / materials / packaging); invoice cards with live fields + customer account modal + confirm on دفعة / سدّد الكل + multi-select print; investor peak / toward / join-date profit instead of splitting NAV equally.
+
+**Wave F1 (overview + period P&L):** اللوحة mix bars (spent / sales / stock) and formula hover on StatCard + shutdown columns; تنبيهات المخزون moved to المخزون → دفتر الكميات; الأرباح from/to window (invoices by invoice date, opex/hawalek/purchases by their date) + monthly CSS bars + print; unmatched-recipe hint on Overview / Recipes (same `findRecipeForItem` matcher). Invoices catalog hub copy is pick / print prices only. Follow-up: tap profit/COGS cards for a number brief; CSS column charts on اللوحة/الأرباح; per-section invoice print selection; confirm on payment delete and stock qty edits; larger BOM card numbers.
+
+**Wave F2 (live leftovers):** المخزون filters ok / low / crit and usage (active / unused / shared / inactive) on materials, packaging, and stickers. الملصقات are compact swatch cards (template colors); tap or استوديو writes `bb_label_open` and opens Design Studio. كشف عميل has «تراجع عن آخر دفعة» (newest by date then id) while per-row حذف stays. المستثمرون «نسخ عجز السيولة» copies `cashHole` into `investorTarget.needed` when cash is negative.
+
+---
+
+## 2026-08-26 — Wave F3 (prep print + Look readout)
+
+On `feat/finance`. التحضير prints the current calculator board (`bb_prep_print_mode`: both / total / each) and invoice-draft sheet + aggregated BOM (`findRecipeForItem`, full qty). Draft «طباعة» previews with Invoices Look keys (does not approve). Finance الفواتير shows the current Look name, page size, and margins as read-only — no Theme tab, no writes to `bb_inv_print_*`.
+
+Print uses an in-app overlay with **إغلاق** so mobile can leave the preview after the system print sheet. Production lists can **حذف** unsent and awaiting prep orders (live ✕).
+
+---
+
+## 2026-08-26 — Wave F4 (working-capital diary + leftover prep)
+
+On `feat/finance`. نظرة عامة → المستثمرون uses the live working-capital event diary for peak / still-out / تعيين: invoice adj COGS out, paid collections in after `collectionLag` (default 30), leftover stock placed on the live journal window (15 Jul–14 Aug 2026) or today, hawalek and opex. Pending invoices never become تحصيل. Compact weekly CSS bars + a collapsible event list (not a dump of live rewind filters). Spent−sales stays as a tap-brief estimate.
+
+Prep leftovers that were real workflow gaps: **حفظ طلب** (pending, clears the board), **تحميل للتحضير** on unsent/awaiting orders, **اعتماد الكل** on invoice drafts, production **مباع / مُنتَج / ينقص** + **تجهيز الناقص**. Skipped on purpose: COGS/stock-value print, on-screen `bb_prep_ing_view`, `splitSharedStickersToProducts`, Finance writing Look keys.
+
+Kitchen polish: التحضير board sits under the add row (save/send/print, then BOM, unsent list, drafts). Send-to-production uses the same stock confirm and clears the board as save. Production demand table defaults to ينقص with a الكل chip. Investor diary layout left dense on purpose.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
-- Finance tabs and ledger formulas
+- Merge `feat/finance` → `main` when Waves A–E are confirmed

@@ -3,7 +3,7 @@
 Native React. Live behavior: `costs/balance-bites-invoice-pro.html`.  
 Entry: `/invoices` → `InvoiceApp` → `InvoiceProvider`.
 
-When building **Finance**, reuse this chrome and CloudStore. Do **not** duplicate these tools, keys, or print pipelines. Design map: [DESIGN.md](DESIGN.md).
+When building **Finance**, reuse this chrome and CloudStore. Do **not** duplicate these tools, keys, or print pipelines. Design map: [DESIGN.md](DESIGN.md). Finance map: [FINANCE.md](FINANCE.md).
 
 ## Tabs (`?tab=`)
 
@@ -60,6 +60,7 @@ Invoice **reads only:** `bb_products`, `bb_categories`, `bb_returns`, prep draft
 4. Unknown print preset id → `__inv2__`. Keep a visible selected option on mobile.
 5. `.bb-btn.bb-glass` / `data-tone="ghost"` keep **dark text** on hover. Filled teal buttons go teal/white.
 6. Customer card tint: unpaid → amber (`bb-card-pending`), none pending → green (`bb-card-clear`).
+7. Print opens an in-app overlay with **إغلاق** (not a `window.open` tab). Mobile can return to the app after the system print sheet.
 
 ## Print looks
 

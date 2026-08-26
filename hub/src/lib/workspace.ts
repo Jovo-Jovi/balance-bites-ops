@@ -69,14 +69,14 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         id: "catalog",
         label: "الكتالوج",
         en: "Catalog",
-        summary: "التصنيفات والمنتجات وقائمة الأسعار للطباعة.",
+        summary: "اختيار أصناف للفاتورة وطباعة قائمة الأسعار. الكتالوج يُدار من المالية.",
         actions: [
-          { label: "إضافة منتج" },
+          { label: "اختيار للفاتورة" },
           { label: "طباعة الأسعار" },
         ],
         features: [
-          "إضافة واحد / تصنيف كامل / تصنيفات محددة",
-          "عبوات وأوزان على سطر الفاتورة",
+          "اختيار وإضافة إلى الفاتورة وطباعة الأسعار فقط",
+          "إضافة المنتجات من المالية",
         ],
       },
       {
@@ -181,8 +181,8 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         summary:
           "لوحة التحكم والأرباح وCOGS والمستثمرون. الإغلاق سيناريوهان. الربح = مبيعات − تكلفة المباع − تشغيل − حوالك. المخزون أصل وليس ربحاً.",
         actions: [
-          { label: "اللوحة", soon: true },
-          { label: "الأرباح", soon: true },
+          { label: "اللوحة" },
+          { label: "الأرباح" },
         ],
         features: [
           "إغلاق: مخزون→نقد / مخزون→خسارة — المعلق يُحصّل دائماً",
@@ -196,8 +196,8 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         en: "Invoices",
         summary: "قراءة الفواتير، مدفوع/معلق، ودفتر العميل. الكتابة الأساسية من تطبيق الفواتير.",
         actions: [
-          { label: "كشف عميل", soon: true },
-          { label: "التحصيل", soon: true },
+          { label: "كشف عميل" },
+          { label: "التحصيل" },
         ],
         features: ["bb_invoice_payments", "bb_customer_payments"],
       },
@@ -208,8 +208,8 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         summary:
           "الكمية المعروضة = مجموع المشتريات − استهلاك الوصفة من الفواتير (أو الإنتاج إن لم توجد فواتير).",
         actions: [
-          { label: "دفتر الكميات", soon: true },
-          { label: "مواد / تغليف / ملصقات", soon: true },
+          { label: "دفتر الكميات" },
+          { label: "مواد / تغليف / ملصقات" },
         ],
         features: [
           "الكتالوج وبطاقات BOM",
@@ -223,9 +223,9 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         summary:
           "تحضير حسب العميل، مسودات فاتورة، وشراء العجز. الإنتاج زر منفصل — لا تخلط الاعتمادين.",
         actions: [
-          { label: "التحضير", soon: true },
-          { label: "الإنتاج", soon: true },
-          { label: "شراء عجز", soon: true },
+          { label: "التحضير" },
+          { label: "الإنتاج" },
+          { label: "شراء عجز" },
         ],
         features: [
           "مسودة kind: invoice_draft",
@@ -237,7 +237,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "المشتريات",
         en: "Purchases",
         summary: "مصدر كمية الدفتر. بعد شراء حقيقي يُحدَّث الدفتر فوراً.",
-        actions: [{ label: "تسجيل شراء", soon: true }],
+        actions: [{ label: "تسجيل شراء" }],
         features: ["تسوية الجرد تُتخطى إن لم تتغير الكمية"],
       },
       {
@@ -245,7 +245,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "الوصفات",
         en: "Recipes",
         summary: "قائمة المواد للدفعات وربط المنتج.",
-        actions: [{ label: "وصفة جديدة", soon: true }],
+        actions: [{ label: "وصفة جديدة" }],
         features: ["تكلفة الدفعة", "ربط منتج"],
       },
       {
@@ -253,17 +253,17 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
         label: "المرتجعات",
         en: "Returns",
         summary: "إعادة للمخزون أو تالف/حوالك.",
-        actions: [{ label: "مرتجع جديد", soon: true }],
+        actions: [{ label: "مرتجع جديد" }],
         features: ["restock / expired / mixed"],
       },
       {
         id: "ops",
         label: "التشغيل",
         en: "Ops",
-        summary: "إيجار وأجور وتعويض (سالب مسموح). النسخ على سطح المكتب لا السحابة.",
+        summary: "إيجار وأجور وتعويض (سالب مسموح). النسخ المسماة على Cloudflare R2.",
         actions: [
-          { label: "تكلفة تشغيل", soon: true },
-          { label: "نسخة احتياطية", soon: true },
+          { label: "تكلفة تشغيل" },
+          { label: "نسخة احتياطية" },
         ],
         features: ["bb_operation_costs", "bb_backups على Cloudflare R2"],
       },

@@ -30,13 +30,13 @@ MCP: GitLens can commit/push after the remote exists. Repo **create** is GitHub 
 
 ## Phase 2 — Hub app (Next.js) + Vercel
 
-**Shipped:** hub at `hub/` (Vercel root `hub`). Invoices native React on `main`. Design Waves A–D on `main` ([DESIGN.md](DESIGN.md), [DESIGN-STUDIO.md](DESIGN-STUDIO.md)). Finance is still a shell. HTML wrap into `public/` was **not** used.
+**Shipped:** hub at `hub/` (Vercel root `hub`). Invoices native React on `main`. Design Waves A–D on `main` ([DESIGN.md](DESIGN.md)). Finance Waves A–E on `feat/finance` ([FINANCE.md](FINANCE.md)). HTML wrap into `public/` was **not** used.
 
 1. Scaffold Next.js (App Router) in repo root `hub/`.
 2. Home `/` : login gate + **three cards** (RTL).
    - `/invoices` → native Invoice app
    - `/design` → native Design app (library / studio / print house)
-   - `/finance` → Stock & Costs (shell until that slice)
+   - `/finance` → native Finance app (eight tools)
 3. Env: `NEXT_PUBLIC_FIREBASE_*` and R2 keys on Vercel (`NEXT_PUBLIC_BB_USE_STORAGE` for label art).
 4. MCP after Vercel login (already done for this repo):
    - `list_teams` → get `teamId`

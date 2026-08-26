@@ -5,7 +5,7 @@ Entry: `/design` → `DesignApp` → `DesignProvider`. English chrome. Arabic pr
 
 This is **not** a paste of the sticker HTML and **not** an iframe. Tools are filtered to the work that belongs in this app.
 
-When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, studio, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
+When building **Finance**, reuse hub chrome and CloudStore. Do **not** duplicate this library, studio, print house, or `bb_label_templates` writer. Invoice map: [INVOICES.md](INVOICES.md). Finance map: [FINANCE.md](FINANCE.md). Journal: [JOURNAL.md](JOURNAL.md). Parity ticks: [PARITY.md](PARITY.md).
 
 **Studio waves:** [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Waves A–D are on `main` (PR #4 A–B; PR #5 C–D). Closed 25 Aug 2026.
 
