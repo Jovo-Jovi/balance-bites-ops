@@ -1,7 +1,15 @@
 import type { Invoice, InvoiceLine, InvoicePayments, Product, ReturnRecord } from "@/lib/invoices/types";
 import { getReturnLineTotal } from "@/lib/invoices/returns";
 import { invoicePayStatus } from "@/lib/invoices/payments";
-import type { CustomerPayment, OpCost, ProductionRun, Purchase, Recipe, StockItem } from "./types";
+import type {
+  CustomerPayment,
+  ItemUsageKind,
+  OpCost,
+  ProductionRun,
+  Purchase,
+  Recipe,
+  StockItem,
+} from "./types";
 import { catalogInactive, dateInRange, num, round2 } from "./helpers";
 import { calcCOGS, findRecipeForItem, isRecipeInactive } from "./recipes";
 import {
@@ -498,11 +506,24 @@ export function itemUsage(
       if (rec) addName(rec.name || item.recipeId, isRecipeInactive(rec, products));
     }
   }
-  let kind: "unused" | "active" | "inactive" | "shared" = "unused";
+  let kind: ItemUsageKind = "unused";
   if (active.length && inactive.length) kind = "shared";
   else if (inactive.length && !active.length) kind = "inactive";
   else if (active.length) kind = "active";
   return { kind, active, inactive };
+}
+
+/** Exact kind match. Live's "active" option also included unused — that is not intended. */
+export function matchesInventoryUsageFilter(kind: ItemUsageKind, filter: string) {
+  if (!filter) return true;
+  return kind === filter;
+}
+
+export function inventoryUsageLabel(kind: ItemUsageKind) {
+  if (kind === "shared") return "مشترك";
+  if (kind === "inactive") return "غير نشط";
+  if (kind === "active") return "نشط";
+  return "—";
 }
 
 export function alertSuppressed(

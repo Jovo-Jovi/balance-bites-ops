@@ -11,6 +11,8 @@ This is the Finance slice, not a fourth hub app. Keep **eight** workspace tools.
 - [x] **Wave C** — prep drafts, approve → `#INV-`, production separate, شراء shortfall
 - [x] **Wave D** — returns writes, finance invoices / payments / ledger, opex
 - [x] **Wave E** — dashboard shutdown pair, COGS, P&L, investors, R2 backups
+- [x] **Wave F1** — overview mix / period P&L / unmatched-recipe hint
+- [x] **Wave F2** — stock filters, sticker swatch cards → Studio, undo last payment, copy cash hole
 - [x] Reuse Invoices chrome (`bb-glass`, portal Modal, ActionBtn) — no second UI kit
 - [x] No Theme tab; no `bb_label_templates` writer; no empty catalog dumps
 
@@ -45,4 +47,4 @@ Dashboard (project cost, sales, stock, two shutdown columns), COGS, P&L, investo
 
 ## UX polish (after Waves A–E)
 
-Purchases table + date filters. Stock report in accordion sections. Invoice cards match live fields; customer tap opens an account modal; دفعة / سدّد الكل confirm; multi-select print original/net. Investor table uses peak ≈ spent−sales, toward/overflow, and join-date profit — not a raw NAV split. **Wave F1:** overview mix bars + formula hover; stock alerts on المخزون not اللوحة; date-window P&L print on الأرباح; unmatched-recipe hint. Working-capital event diary stays an approve-point.
+Purchases table + date filters. Stock report in accordion sections. Invoice cards match live fields; customer tap opens an account modal; دفعة / سدّد الكل confirm; multi-select print original/net. Investor table uses peak ≈ spent−sales, toward/overflow, and join-date profit — not a raw NAV split. **Wave F1:** overview mix bars + formula hover; stock alerts on المخزون not اللوحة; date-window P&L print on الأرباح; unmatched-recipe hint. **Wave F2:** stock ok/low/crit + usage filters; sticker swatch cards open Studio; undo last payment; copy cash shortfall into المطلوب. Working-capital event diary stays an approve-point.

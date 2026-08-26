@@ -15,6 +15,7 @@ import { fmt, todayISO } from "@/lib/finance/helpers";
 import {
   custKey,
   lastDueInvoice,
+  newestCustomerPayment,
   settleAmount,
   type CustomerLedgerCard,
   type LedgerInvoiceRow,
@@ -623,6 +624,23 @@ function CustomerDetailModal({
             </ActionBtn>
             <ActionBtn tone="ghost" onClick={() => onPay("keep_last")}>
               آخر فاتورة
+            </ActionBtn>
+            <ActionBtn
+              tone="ghost"
+              onClick={() => {
+                const last = newestCustomerPayment(c.payments);
+                if (!last) {
+                  window.alert("لا توجد دفعة للتراجع عنها");
+                  return;
+                }
+                const ok = window.confirm(
+                  `تراجع عن آخر دفعة؟\n${payModeLabel(last.mode)} · ${fmt(last.amount)} EGP · ${last.date || ""}\nتُعاد حالة الفواتير كما كانت قبل هذه الدفعة.`,
+                );
+                if (!ok) return;
+                app.removeCustomerPayment(last.id);
+              }}
+            >
+              تراجع عن آخر دفعة
             </ActionBtn>
             <ActionBtn tone="ghost" onClick={onClose}>
               إغلاق

@@ -1,3 +1,5 @@
+import type { LabelTemplate } from "@/lib/design/types";
+import type { Product } from "@/lib/invoices/types";
 import type { Recipe, StockItem } from "./types";
 import { num } from "./helpers";
 
@@ -59,4 +61,61 @@ export function removeStickerFromRecipes(stickerId: string, recipes: Recipe[]) {
       (ing) => !(ing.itemType === "bb_stickers" && ing.itemId === stickerId),
     ),
   }));
+}
+
+export function resolveStickerTemplate(
+  item: StockItem | null | undefined,
+  templates: LabelTemplate[],
+): LabelTemplate | null {
+  if (!item) return null;
+  if (item.templateKey) {
+    const t = templates.find((x) => x.id === item.templateKey);
+    if (t) return t;
+  }
+  if (item.productId) {
+    return templates.find((t) => t.productId === item.productId) || null;
+  }
+  return null;
+}
+
+export function stickerDisplayName(item: StockItem, templates: LabelTemplate[]) {
+  const tmpl = resolveStickerTemplate(item, templates);
+  return (tmpl && tmpl.name) || item.name || "؟";
+}
+
+export function stickerProductLabel(
+  item: StockItem,
+  products: Product[],
+  recipes: Recipe[],
+) {
+  if (item.productId) {
+    const p = products.find((x) => x.id === item.productId);
+    return p?.name || item.productId;
+  }
+  if (item.recipeId) {
+    const rec = recipes.find((r) => r.id === item.recipeId);
+    if (rec?.productId) {
+      const p = products.find((x) => x.id === rec.productId);
+      return p?.name || rec.name || item.recipeId;
+    }
+    return rec?.name || item.recipeId;
+  }
+  return "غير مربوط بمنتج";
+}
+
+export function labelTemplatePreview(t: LabelTemplate) {
+  const st = t.state || {};
+  return {
+    color: String(st.cLabel || "#2e7d32"),
+    logo: String(st.cLogoTxt || "#ffffff"),
+    accent: String(st.cName2Bg || st.cLogoCircle || st.cLabel || "#2e7d32"),
+  };
+}
+
+export function labelDesignBadge(t: LabelTemplate | null) {
+  if (!t) return { kind: "none" as const, txt: "بدون تصميم" };
+  const dt = t.designType || "rect_top";
+  if (dt === "circular") return { kind: "circle" as const, txt: "دائري" };
+  if (dt === "taper_top") return { kind: "cup" as const, txt: "كوب" };
+  return { kind: "rect" as const, txt: "مستطيل+علوي" };
 }

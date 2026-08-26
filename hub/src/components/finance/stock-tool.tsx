@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
-import { fmt, fmtQty, INV_TYPES, todayISO, typeLabel } from "@/lib/finance/helpers";
+import { fmt, fmtQty, INV_TYPES, itemKey, todayISO, typeLabel } from "@/lib/finance/helpers";
 import { calcCOGS, recipeSellPrice } from "@/lib/finance/recipes";
+import { itemUsage, inventoryUsageLabel, matchesInventoryUsageFilter } from "@/lib/finance/analytics";
+import {
+  labelDesignBadge,
+  labelTemplatePreview,
+  resolveStickerTemplate,
+  stickerDisplayName,
+  stickerProductLabel,
+} from "@/lib/finance/stickers";
 import type { Category, Product } from "@/lib/invoices/types";
 import type { StockItem } from "@/lib/finance/types";
 import { useFinanceApp, type ItemKind } from "./finance-context";
@@ -357,26 +366,103 @@ function ReportItemTable({
 
 function ItemCatalog({ type }: { type: ItemKind }) {
   const app = useFinanceApp();
+  const router = useRouter();
   const [q, setQ] = useState("");
+  const [stockF, setStockF] = useState("");
+  const [usageF, setUsageF] = useState("");
   const [modal, setModal] = useState<StockItem | null | "new">(null);
   const list =
     type === "bb_materials" ? app.materials : type === "bb_packages" ? app.packages : app.stickers;
-  const visible = list.filter((i) => !q || i.name.toLowerCase().includes(q.toLowerCase()));
+  const needle = q.trim().toLowerCase();
+  const visible = list.filter((i) => {
+    if (needle) {
+      const nameHit = i.name.toLowerCase().includes(needle);
+      const supplierHit = (i.supplier || "").toLowerCase().includes(needle);
+      let extra = false;
+      if (type === "bb_stickers") {
+        const prod = i.productId ? app.products.find((p) => p.id === i.productId) : null;
+        const tmpl = resolveStickerTemplate(i, app.templates);
+        extra =
+          !!(prod && prod.name.toLowerCase().includes(needle)) ||
+          !!(tmpl && tmpl.name.toLowerCase().includes(needle));
+      }
+      if (!nameHit && !supplierHit && !extra) return false;
+    }
+    if (stockF && app.itemStatus(i, type) !== stockF) return false;
+    const usage = itemUsage(i, type, app.recipes, app.products, app.stickers);
+    if (!matchesInventoryUsageFilter(usage.kind, usageF)) return false;
+    return true;
+  });
   const label = INV_TYPES.find((t) => t.id === type)?.label;
+  const linkedN =
+    type === "bb_stickers"
+      ? visible.filter((i) => resolveStickerTemplate(i, app.templates)).length
+      : 0;
+
+  function openStudio(item: StockItem) {
+    app.prepareLabelOpen(item.id);
+    router.push("/design?tab=atelier");
+  }
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-end gap-2">
         <ActionBtn onClick={() => setModal("new")}>إضافة {label}</ActionBtn>
         <TextInput
           className="max-w-xs"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="بحث..."
+          placeholder="بحث: اسم، مورد..."
         />
+        <div className="min-w-[9rem] max-w-[12rem]">
+          <Select
+            value={stockF}
+            onChange={(e) => setStockF(e.target.value)}
+            aria-label="مستوى المخزون"
+          >
+            <option value="">كل المستويات</option>
+            <option value="ok">طبيعي</option>
+            <option value="low">منخفض</option>
+            <option value="crit">حرج</option>
+          </Select>
+        </div>
+        <div className="min-w-[10rem] max-w-[14rem]">
+          <Select
+            value={usageF}
+            onChange={(e) => setUsageF(e.target.value)}
+            aria-label="الاستخدام"
+          >
+            <option value="">كل الاستخدام</option>
+            <option value="active">نشط</option>
+            <option value="unused">غير مستخدم</option>
+            <option value="shared">مشترك</option>
+            <option value="inactive">غير نشط فقط</option>
+          </Select>
+        </div>
       </div>
+      <p className="text-xs text-[var(--bb-muted)]">
+        عرض {visible.length} من {list.length}
+        {type === "bb_stickers"
+          ? ` · ${linkedN} مربوط بتصميم · اضغط البطاقة لفتح الاستوديو`
+          : " · المخزون = مشتريات − استخدام الفواتير"}
+      </p>
       {visible.length === 0 ? (
         <Empty>لا أصناف</Empty>
+      ) : type === "bb_stickers" ? (
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((item) => (
+            <StickerCard
+              key={item.id}
+              item={item}
+              onOpen={() => openStudio(item)}
+              onEdit={() => setModal(item)}
+              onDelete={() => {
+                if (!window.confirm(`حذف «${item.name}» من المخزون؟`)) return;
+                app.removeItem(type, item.id);
+              }}
+            />
+          ))}
+        </ul>
       ) : (
         <ul className="flex flex-col gap-2">
           {visible.map((item) => (
@@ -417,13 +503,14 @@ function ItemRow({
   const app = useFinanceApp();
   const qty = app.qtyOf(type, item.id, item);
   const st = app.itemStatus(item, type);
+  const usage = itemUsage(item, type, app.recipes, app.products, app.stickers);
   return (
     <li className="bb-glass flex flex-wrap items-center gap-3 p-3">
       <button type="button" className="min-w-0 flex-1 text-start" onClick={onEdit}>
         <span className="block text-[var(--bb-title)]">{item.name}</span>
         <span className="text-xs text-[var(--bb-muted)]">
           {item.unit} · {fmt(item.costPerUnit)} EGP
-          {type === "bb_stickers" && item.templateKey ? " · قالب مربوط" : ""}
+          {usage.kind !== "unused" ? ` · ${inventoryUsageLabel(usage.kind)}` : ""}
         </span>
       </button>
       <label className="flex items-center gap-2 text-sm">
@@ -455,6 +542,93 @@ function ItemRow({
       <ActionBtn tone="danger" onClick={onDelete}>
         حذف
       </ActionBtn>
+    </li>
+  );
+}
+
+function StickerCard({
+  item,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  item: StockItem;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const app = useFinanceApp();
+  const qty = app.qtyOf("bb_stickers", item.id, item);
+  const st = app.itemStatus(item, "bb_stickers");
+  const usage = itemUsage(item, "bb_stickers", app.recipes, app.products, app.stickers);
+  const tmpl = resolveStickerTemplate(item, app.templates);
+  const prev = tmpl ? labelTemplatePreview(tmpl) : null;
+  const badge = labelDesignBadge(tmpl);
+  const led = app.ledger[itemKey("bb_stickers", item.id)];
+  const badgeCls =
+    badge.kind === "circle"
+      ? "border-[color-mix(in_srgb,#d4a860_40%,transparent)] text-[#d4a860]"
+      : badge.kind === "cup"
+        ? "border-[color-mix(in_srgb,#8ec0e0_40%,transparent)] text-[#8ec0e0]"
+        : badge.kind === "none"
+          ? "opacity-50"
+          : "";
+
+  return (
+    <li
+      className={`bb-glass overflow-hidden ${
+        st === "crit"
+          ? "ring-1 ring-[var(--bb-bad)]"
+          : st === "low"
+            ? "ring-1 ring-[var(--bb-warn)]"
+            : ""
+      } ${usage.kind === "inactive" ? "opacity-60" : ""}`}
+    >
+      <button type="button" className="w-full text-start" onClick={onOpen}>
+        <div className="flex h-8 overflow-hidden">
+          <span className="min-w-0 flex-1" style={{ background: prev?.color || "#2a2520" }} />
+          <span className="min-w-0 flex-[1.35]" style={{ background: prev?.accent || "#3a3530" }} />
+          <span className="min-w-0 flex-1" style={{ background: prev?.logo || "#1a1815" }} />
+        </div>
+        <div className="flex flex-col gap-1 p-3">
+          <p className="truncate text-sm text-[var(--bb-title)]">
+            {stickerDisplayName(item, app.templates)}
+            {usage.kind !== "unused" ? (
+              <span className="ms-2 text-[10px] text-[var(--bb-muted)]">
+                {inventoryUsageLabel(usage.kind)}
+              </span>
+            ) : null}
+          </p>
+          <p className="truncate text-[10px] text-[var(--bb-muted)]">
+            {stickerProductLabel(item, app.products, app.recipes)}
+          </p>
+          <p className="truncate text-[10px] text-[var(--bb-gold)]">
+            {tmpl ? tmpl.name : "لا يوجد تصميم مربوط"}
+          </p>
+          <p className="text-[10px] text-[var(--bb-muted)]">
+            مشتريات {fmtQty(led?.purchased || 0)} · مباع {fmtQty(led?.used || 0)} · {fmt(item.costPerUnit)}{" "}
+            EGP
+          </p>
+          <p className="mt-1 text-lg text-[var(--bb-gold)]" dir="ltr">
+            {fmtQty(qty)}{" "}
+            <span className="text-[10px] font-normal text-[var(--bb-muted)]">{item.unit}</span>
+          </p>
+        </div>
+      </button>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--bb-line)]/40 px-3 py-2">
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${badgeCls}`}>{badge.txt}</span>
+        <div className="flex flex-wrap gap-1">
+          <ActionBtn tone="ghost" onClick={onOpen}>
+            استوديو
+          </ActionBtn>
+          <ActionBtn tone="ghost" onClick={onEdit}>
+            تعديل
+          </ActionBtn>
+          <ActionBtn tone="danger" onClick={onDelete}>
+            حذف
+          </ActionBtn>
+        </div>
+      </div>
     </li>
   );
 }

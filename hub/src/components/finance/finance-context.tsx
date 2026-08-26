@@ -72,7 +72,7 @@ import {
   mergeDraftItem,
   prepLinesToItems,
 } from "@/lib/finance/prep";
-import { ensureStickerInProductRecipe, removeStickerFromRecipes } from "@/lib/finance/stickers";
+import { ensureStickerInProductRecipe, removeStickerFromRecipes, resolveStickerTemplate } from "@/lib/finance/stickers";
 import {
   backupFileName,
   collectBackupSnapshot,
@@ -837,7 +837,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       });
       void writeFinanceKey("bb_invoice_payments", next);
     }
-  }, []);
+    toast.push("حُذفت الدفعة", "ok");
+  }, [toast]);
 
   const saveOpCost = useCallback((data: Omit<OpCost, "id"> & { id?: string }) => {
     const rec: OpCost = {
@@ -1084,15 +1085,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const prepareLabelOpen = useCallback(
     (stickerId: string) => {
       const item = stickers.find((s) => s.id === stickerId);
+      const tmpl = resolveStickerTemplate(item, templates);
       void writeFinanceKey("bb_label_open", {
         stickerId: stickerId || "",
-        templateId: item?.templateKey || "",
+        templateId: tmpl?.id || item?.templateKey || "",
         productId: item?.productId || "",
         recipeId: item?.recipeId || "",
         ts: Date.now(),
       });
     },
-    [stickers],
+    [stickers, templates],
   );
 
   const printSavedInvoice = useCallback(

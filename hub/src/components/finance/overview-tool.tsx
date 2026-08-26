@@ -608,13 +608,32 @@ function Investors() {
         مخزون {fmt(L.stock)} + معلق {fmt(L.pending)} + نقد إن وُجد {fmt(L.cashIfAny)} = {fmt(visibleNow)}.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="زيادة رأس مال إضافية (اختياري)">
-          <TextInput
-            type="number"
-            value={String(app.investorTarget.needed || "")}
-            onChange={(e) => app.saveInvestorTarget({ needed: parseFloat(e.target.value) || 0 })}
-          />
-        </Field>
+        <div>
+          <Field label="زيادة رأس مال إضافية (اختياري)">
+            <TextInput
+              type="number"
+              value={String(app.investorTarget.needed || "")}
+              onChange={(e) => app.saveInvestorTarget({ needed: parseFloat(e.target.value) || 0 })}
+            />
+          </Field>
+          {L.cashHole > 0.009 ? (
+            <ActionBtn
+              tone="ghost"
+              className="mt-2"
+              onClick={() => {
+                const hole = L.cashHole;
+                if (hole <= 0.009) {
+                  window.alert("لا يوجد عجز سيولة — رأس المال + المحصّل يغطيان المصروف");
+                  return;
+                }
+                if (!window.confirm(`نسخ عجز السيولة ${fmt(hole)} EGP إلى «المطلوب»؟`)) return;
+                app.saveInvestorTarget({ needed: hole });
+              }}
+            >
+              نسخ عجز السيولة
+            </ActionBtn>
+          ) : null}
+        </div>
         <Field label="توزيع الفعلي">
           <Select
             value={app.investorTarget.split || "equal"}

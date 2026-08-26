@@ -52,7 +52,7 @@ Finance **reads only:** `bb_invoices` / `bb_inv2` / `bb_customers` (except prep 
 
 **Narrow exception:** `commitPrepInvoice` appends `#INV-` then marks the draft completed. Not a second invoice editor. Invoice Pro queue already skips `kind: 'invoice_draft'`.
 
-**Hub Finance does not write:** `bb_label_templates` (Design), `bb_color_presets` / theme keys (Invoices → Look). Sticker SKU stores `templateKey` and may set `bb_label_open`.
+**Hub Finance does not write:** `bb_label_templates` (Design), `bb_color_presets` / theme keys (Invoices → Look). Sticker SKU stores `templateKey` and may set `bb_label_open`. الملصقات cards tap through to `/design?tab=atelier` (same handshake as the item modal).
 
 Empty cloud must **not** dump default catalogs, recipes, or gold themes.
 
@@ -67,7 +67,7 @@ Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report
 5. Profit = sales − COGS of sold − opex − hawalek. Leftover stock is an asset. Overview → الأرباح can filter that window by from/to (invoices by invoice date; opex / hawalek / purchases by their own date).
 6. Shutdown: pending always collected. Stock-as-cash vs stock-as-loss. Words ربح / خسارة.
 7. Do not mix prep-approve with production-approve.
-8. Investors: peak ≈ max(0, spent − sales); toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date (dated invoice net − adj COGS − hawalek − opex). Working-capital event book (collection lag, stock placement journal) is an explicit gap.
+8. Investors: peak ≈ max(0, spent − sales); toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date (dated invoice net − adj COGS − hawalek − opex). «نسخ عجز السيولة» copies `cashHole` (max(0, spent − invested − paid)) into `investorTarget.needed`. Working-capital event book (collection lag, stock placement journal) is an explicit gap.
 
 ## Do not rebuild here
 

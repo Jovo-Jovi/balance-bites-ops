@@ -270,3 +270,10 @@ export function lastDueInvoice(cust: CustomerLedgerCard) {
   const due = cust.invoices.filter((r) => r.remaining > 0.009);
   return due.length ? due[due.length - 1] : null;
 }
+
+/** Newest payment by date, then id — same order as the account modal list. */
+export function newestCustomerPayment(payments: CustomerPayment[]) {
+  return payments
+    .slice()
+    .sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.id.localeCompare(a.id))[0] || null;
+}

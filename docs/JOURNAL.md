@@ -340,6 +340,8 @@ UX polish vs live Stock Costs: purchases as a compact filtered table; stock repo
 
 **Wave F1 (overview + period P&L):** اللوحة mix bars (spent / sales / stock) and formula hover on StatCard + shutdown columns; تنبيهات المخزون moved to المخزون → دفتر الكميات; الأرباح from/to window (invoices by invoice date, opex/hawalek/purchases by their date) + monthly CSS bars + print; unmatched-recipe hint on Overview / Recipes (same `findRecipeForItem` matcher). Invoices catalog hub copy is pick / print prices only. Follow-up: tap profit/COGS cards for a number brief; CSS column charts on اللوحة/الأرباح; per-section invoice print selection; confirm on payment delete and stock qty edits; larger BOM card numbers.
 
+**Wave F2 (live leftovers):** المخزون filters ok / low / crit and usage (active / unused / shared / inactive) on materials, packaging, and stickers. الملصقات are compact swatch cards (template colors); tap or استوديو writes `bb_label_open` and opens Design Studio. كشف عميل has «تراجع عن آخر دفعة» (newest by date then id) while per-row حذف stays. المستثمرون «نسخ عجز السيولة» copies `cashHole` into `investorTarget.needed` when cash is negative.
+
 ---
 
 ## Still not done (do not tick as shipped)
