@@ -582,7 +582,18 @@ function Investors() {
         الفعلي / الذروة). الربح يُوزَّع من تاريخ دخول كل مستثمر فقط — الربح السابق للمستثمرين الأقدم.
       </p>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="رأس المال الأصلي (ذروة)" value={`${fmt(snap.peak)} EGP`} />
+        <StatCard
+          quiet
+          label="رأس المال الأصلي"
+          value={`≈ ${fmt(snap.peak)} EGP`}
+          hint="تقريبي"
+          formula="تقدير: المصروف − المبيعات (رأس المال الذي لم يُعَد من البيع). ليس دفتر أحداث."
+          brief={[
+            { label: "مصروف", value: `${fmt(L.spent)} EGP` },
+            { label: "مبيعات", value: `${fmt(L.gross)} EGP` },
+            { label: "الذروة", value: `${fmt(snap.peak)} EGP` },
+          ]}
+        />
         <StatCard label="مسجّل للمستثمرين" value={`${fmt(L.invested)} EGP`} />
         <StatCard
           label="المطلوب للوضع الحالي"

@@ -46,6 +46,7 @@ export function StatCard({
   formula,
   brief,
   size = "md",
+  quiet = false,
 }: {
   label: string;
   value: string;
@@ -54,6 +55,8 @@ export function StatCard({
   formula?: string;
   brief?: { label: string; value: string }[];
   size?: "md" | "lg";
+  /** Faded estimate — value sits transparent in the glass card. */
+  quiet?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const color =
@@ -70,11 +73,22 @@ export function StatCard({
     <button
       type="button"
       className="bb-glass bb-pressable w-full p-3 text-start"
+      style={
+        quiet
+          ? {
+              background: "color-mix(in srgb, var(--bb-panel) 18%, transparent)",
+              boxShadow: "none",
+            }
+          : undefined
+      }
       title={title || undefined}
       onClick={() => expandable && setOpen((v) => !v)}
     >
       <p className="text-[10px] tracking-[0.14em] text-[var(--bb-muted)] uppercase">{label}</p>
-      <p className={`mt-1 ${size === "lg" ? "text-2xl sm:text-3xl" : "text-xl"} ${color}`} dir="ltr">
+      <p
+        className={`mt-1 ${size === "lg" ? "text-2xl sm:text-3xl" : "text-xl"} ${quiet ? "text-[var(--bb-title)] opacity-40" : color}`}
+        dir="ltr"
+      >
         {value}
       </p>
       {hint ? <p className="mt-1 text-xs text-[var(--bb-muted)]">{hint}</p> : null}

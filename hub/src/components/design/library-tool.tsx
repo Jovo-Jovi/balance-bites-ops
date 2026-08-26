@@ -1,71 +1,14 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionBtn, Empty, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
-import { artboardOf } from "@/lib/design/layout";
-import { resolveLibraryThumbSrc, isRasterImageSrc } from "@/lib/design/library-thumb";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
-import type { DesignType, LabelTemplate } from "@/lib/design/types";
+import type { DesignType } from "@/lib/design/types";
 import { productOptions, useDesignApp } from "./design-context";
-
-const LibraryThumb = memo(function LibraryThumb({ template }: { template: LabelTemplate }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [on, setOn] = useState(false);
-  const [src, setSrc] = useState("");
-  const board = artboardOf(template, template.state);
-  const wCm = Math.max(0.8, board.wCm || 6);
-  const hCm = Math.max(0.8, board.hCm || 6);
-  const safeH = hCm;
-  const wide = wCm / safeH > 2;
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setOn(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "80px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  useEffect(() => {
-    if (!on) return;
-    let live = true;
-    void resolveLibraryThumbSrc(template).then((url) => {
-      if (live && isRasterImageSrc(url)) setSrc(url);
-    });
-    return () => {
-      live = false;
-    };
-  }, [on, template.id, template.updatedAt, template.libraryThumb]);
-  const maxH = wide ? 96 : 140;
-  return (
-    <div
-      ref={ref}
-      className="mx-auto overflow-hidden rounded-[var(--bb-radius)] bg-[var(--bb-panel)]"
-      style={{
-        aspectRatio: `${wCm} / ${hCm}`,
-        width: "100%",
-        height: "auto",
-        maxHeight: maxH,
-        maxWidth: `min(100%, calc(${maxH}px * ${wCm} / ${safeH}))`,
-      }}
-    >
-      {src ? (
-        <img src={src} alt="" className="h-full w-full object-contain p-1" decoding="async" draggable={false} />
-      ) : (
-        <span className="block h-full w-full bg-[var(--bb-panel)]" />
-      )}
-    </div>
-  );
-});
+import { LibraryThumb } from "./library-thumb-img";
 
 export function LibraryTool() {
   const app = useDesignApp();

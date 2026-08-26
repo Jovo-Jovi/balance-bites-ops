@@ -3,18 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
+import { LibraryThumb } from "@/components/design/library-thumb-img";
 import { fmt, fmtQty, INV_TYPES, itemKey, todayISO, typeLabel } from "@/lib/finance/helpers";
 import { calcCOGS, recipeSellPrice } from "@/lib/finance/recipes";
 import { itemUsage, inventoryUsageLabel, matchesInventoryUsageFilter } from "@/lib/finance/analytics";
 import {
   labelDesignBadge,
-  labelTemplatePreview,
   resolveStickerTemplate,
   stickerDisplayName,
   stickerProductLabel,
 } from "@/lib/finance/stickers";
 import type { Category, Product } from "@/lib/invoices/types";
-import type { StockItem } from "@/lib/finance/types";
+import type { Recipe, StockItem } from "@/lib/finance/types";
 import { useFinanceApp, type ItemKind } from "./finance-context";
 import { ItemModal } from "./item-modal";
 import { FinanceTable, SectionChips, StatCard, tdClass, thClass } from "./section-chips";
@@ -562,7 +562,6 @@ function StickerCard({
   const st = app.itemStatus(item, "bb_stickers");
   const usage = itemUsage(item, "bb_stickers", app.recipes, app.products, app.stickers);
   const tmpl = resolveStickerTemplate(item, app.templates);
-  const prev = tmpl ? labelTemplatePreview(tmpl) : null;
   const badge = labelDesignBadge(tmpl);
   const led = app.ledger[itemKey("bb_stickers", item.id)];
   const badgeCls =
@@ -585,10 +584,14 @@ function StickerCard({
       } ${usage.kind === "inactive" ? "opacity-60" : ""}`}
     >
       <button type="button" className="w-full text-start" onClick={onOpen}>
-        <div className="flex h-8 overflow-hidden">
-          <span className="min-w-0 flex-1" style={{ background: prev?.color || "#2a2520" }} />
-          <span className="min-w-0 flex-[1.35]" style={{ background: prev?.accent || "#3a3530" }} />
-          <span className="min-w-0 flex-1" style={{ background: prev?.logo || "#1a1815" }} />
+        <div className="px-3 pt-3">
+          {tmpl ? (
+            <LibraryThumb template={tmpl} compact />
+          ) : (
+            <div className="flex h-20 items-center justify-center rounded-[var(--bb-radius)] border border-dashed border-[var(--bb-line)] text-[10px] text-[var(--bb-muted)]">
+              بدون تصميم
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1 p-3">
           <p className="truncate text-sm text-[var(--bb-title)]">
@@ -601,9 +604,6 @@ function StickerCard({
           </p>
           <p className="truncate text-[10px] text-[var(--bb-muted)]">
             {stickerProductLabel(item, app.products, app.recipes)}
-          </p>
-          <p className="truncate text-[10px] text-[var(--bb-gold)]">
-            {tmpl ? tmpl.name : "لا يوجد تصميم مربوط"}
           </p>
           <p className="text-[10px] text-[var(--bb-muted)]">
             مشتريات {fmtQty(led?.purchased || 0)} · مباع {fmtQty(led?.used || 0)} · {fmt(item.costPerUnit)}{" "}
@@ -833,69 +833,115 @@ function ProductModal({
 
 function BomCards() {
   const app = useFinanceApp();
-  const cards = app.recipes.filter((r) => r.productId);
+  const cards = app.recipes.filter((r) => r.productId).slice().sort((a, b) => a.name.localeCompare(b.name, "ar"));
   if (!cards.length) return <Empty>اربط وصفة بمنتج لعرض بطاقة BOM</Empty>;
   return (
-    <ul className="grid gap-4 xl:grid-cols-2">
-      {cards.map((r) => {
-        const cogs = calcCOGS(r, app.findItem);
-        const sell = recipeSellPrice(r, app.products);
-        const fg = app.productSummary.find((p) => p.productId === r.productId);
-        const onHand = fg?.onHand ?? 0;
-        const stockVal = fg?.stockValue ?? Math.max(0, onHand) * cogs.total;
-        return (
-          <li key={r.id} className="bb-glass p-5">
-            <p className="text-lg text-[var(--bb-title)]">{r.name}</p>
-            <p className="mt-1 text-xs text-[var(--bb-muted)]">
-              دفعة {r.batchSize}
-              {r.productWeight ? ` · ${r.productWeight}` : ""}
+    <>
+      <p className="text-xs text-[var(--bb-muted)]">اضغط البطاقة لفتح الوصفة والكميات</p>
+      <ul className="grid gap-3 xl:grid-cols-2">
+        {cards.map((r) => (
+          <BomCard key={r.id} recipe={r} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function BomCard({ recipe: r }: { recipe: Recipe }) {
+  const app = useFinanceApp();
+  const [open, setOpen] = useState(false);
+  const cogs = calcCOGS(r, app.findItem);
+  const sell = recipeSellPrice(r, app.products);
+  const fg = app.productSummary.find((p) => p.productId === r.productId);
+  const onHand = fg?.onHand ?? 0;
+  const stockVal = fg?.stockValue ?? Math.max(0, onHand) * cogs.total;
+  const ings = r.ingredients || [];
+  const shortN = ings.filter((ing) => {
+    const item = app.findItem(ing.itemType, ing.itemId);
+    const qty = item ? app.qtyOf(ing.itemType, ing.itemId, item) : 0;
+    return qty + 0.0001 < ing.qty;
+  }).length;
+  const margin = sell > 0.009 ? ((sell - cogs.total) / sell) * 100 : null;
+
+  return (
+    <li className="bb-glass overflow-hidden">
+      <button
+        type="button"
+        className="bb-pressable flex w-full items-start gap-3 p-4 text-start"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-[var(--bb-title)]">{r.name}</p>
+          <p className="mt-1 text-xs text-[var(--bb-muted)]">
+            دفعة {r.batchSize}
+            {r.productWeight ? ` · ${r.productWeight}` : ""}
+            {ings.length ? ` · ${ings.length} أصناف` : ""}
+            {shortN ? ` · ${shortN} عجز` : ""}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+            <p>
+              <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">جاهز</span>
+              <span className="text-lg text-[var(--bb-title)]" dir="ltr">
+                {fmtQty(onHand)}
+              </span>
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <p>
-                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">جاهز</span>
-                <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
-                  {fmtQty(onHand)}
-                </span>
-              </p>
-              <p>
-                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">COGS</span>
-                <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
-                  {fmt(cogs.total)}
-                </span>
-              </p>
-              <p>
-                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">بيع</span>
-                <span className="text-2xl text-[var(--bb-title)]" dir="ltr">
-                  {fmt(sell)}
-                </span>
-              </p>
-              <p>
-                <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">قيمة</span>
-                <span className="text-2xl text-[var(--bb-gold)]" dir="ltr">
-                  {fmt(stockVal)}
-                </span>
-              </p>
-            </div>
-            <label className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-              تعديل الجاهز
-              <TextInput
-                className="w-28 text-base"
-                defaultValue={String(onHand)}
-                key={`${r.productId}-${onHand}`}
-                onBlur={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (Number.isNaN(v) || !r.productId) return;
-                  if (Math.abs(v - onHand) < 0.0001) return;
-                  if (!confirmQtyChange(r.name, onHand, v)) {
-                    e.target.value = String(onHand);
-                    return;
-                  }
-                  void app.applyProductStock(r.productId, r.id, v);
-                }}
-              />
-            </label>
-            <ul className="mt-4 space-y-3 border-t border-[var(--bb-line)]/50 pt-4">
-              {(r.ingredients || []).map((ing) => {
+            <p>
+              <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">COGS</span>
+              <span className="text-lg text-[var(--bb-title)]" dir="ltr">
+                {fmt(cogs.total)}
+              </span>
+            </p>
+            <p>
+              <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">بيع</span>
+              <span className="text-lg text-[var(--bb-title)]" dir="ltr">
+                {fmt(sell)}
+              </span>
+            </p>
+            <p>
+              <span className="block text-[10px] tracking-[0.12em] text-[var(--bb-muted)]">قيمة</span>
+              <span className="text-lg text-[var(--bb-gold)]" dir="ltr">
+                {fmt(stockVal)}
+              </span>
+            </p>
+          </div>
+          <p className="mt-2 text-[10px] text-[var(--bb-gold)]">
+            {open ? "إخفاء التفاصيل" : "اضغط للتفاصيل"}
+            {margin != null ? ` · هامش ${margin.toFixed(0)}%` : ""}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 text-sm text-[var(--bb-gold)] transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          ▾
+        </span>
+      </button>
+      {open ? (
+        <div className="border-t border-[var(--bb-line)]/50 px-4 pb-4 pt-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            تعديل الجاهز
+            <TextInput
+              className="w-28 text-base"
+              defaultValue={String(onHand)}
+              key={`${r.productId}-${onHand}`}
+              onBlur={(e) => {
+                const v = parseFloat(e.target.value);
+                if (Number.isNaN(v) || !r.productId) return;
+                if (Math.abs(v - onHand) < 0.0001) return;
+                if (!confirmQtyChange(r.name, onHand, v)) {
+                  e.target.value = String(onHand);
+                  return;
+                }
+                void app.applyProductStock(r.productId, r.id, v);
+              }}
+            />
+          </label>
+          {ings.length === 0 ? (
+            <Empty>لا أصناف في الوصفة</Empty>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {ings.map((ing) => {
                 const item = app.findItem(ing.itemType, ing.itemId);
                 const qty = item ? app.qtyOf(ing.itemType, ing.itemId, item) : 0;
                 const perUnit = r.batchSize > 0 ? ing.qty / r.batchSize : ing.qty;
@@ -918,16 +964,18 @@ function BomCards() {
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--bb-gold)_12%,transparent)]">
                       <div
                         className={`h-full ${short ? "bg-[var(--bb-bad)]" : "bg-[var(--bb-ok)]"}`}
-                        style={{ width: `${Math.min(100, ing.qty > 0 ? (Math.max(0, qty) / ing.qty) * 100 : 0)}%` }}
+                        style={{
+                          width: `${Math.min(100, ing.qty > 0 ? (Math.max(0, qty) / ing.qty) * 100 : 0)}%`,
+                        }}
                       />
                     </div>
                   </li>
                 );
               })}
             </ul>
-          </li>
-        );
-      })}
-    </ul>
+          )}
+        </div>
+      ) : null}
+    </li>
   );
 }
