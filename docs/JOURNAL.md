@@ -358,6 +358,8 @@ On `feat/finance`. نظرة عامة → المستثمرون uses the live work
 
 Prep leftovers that were real workflow gaps: **حفظ طلب** (pending, clears the board), **تحميل للتحضير** on unsent/awaiting orders, **اعتماد الكل** on invoice drafts, production **مباع / مُنتَج / ينقص** + **تجهيز الناقص**. Skipped on purpose: COGS/stock-value print, on-screen `bb_prep_ing_view`, `splitSharedStickersToProducts`, Finance writing Look keys.
 
+Kitchen polish: التحضير board sits under the add row (save/send/print, then BOM, unsent list, drafts). Send-to-production uses the same stock confirm and clears the board as save. Production demand table defaults to ينقص with a الكل chip. Investor diary layout left dense on purpose.
+
 ---
 
 ## Still not done (do not tick as shipped)

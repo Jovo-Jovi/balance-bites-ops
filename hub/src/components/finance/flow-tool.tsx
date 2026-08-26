@@ -121,6 +121,40 @@ function PrepSection() {
           </ActionBtn>
         </div>
       </div>
+
+      <h2 className="text-sm text-[var(--bb-muted)]">لوحة التحضير</h2>
+      {app.prepLines.length === 0 ? (
+        <Empty>اللوحة فارغة — أضف وصفة أعلاه</Empty>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {app.prepLines.map((l) => {
+            const rec = app.recipes.find((r) => r.id === l.recipeId);
+            return (
+              <li key={l.recipeId} className="bb-glass flex items-center gap-2 p-3">
+                <span className="flex-1">{rec?.name || l.recipeId}</span>
+                <TextInput
+                  className="w-24"
+                  type="number"
+                  value={String(l.units)}
+                  onChange={(e) =>
+                    app.setPrepLines(
+                      app.prepLines.map((x) =>
+                        x.recipeId === l.recipeId ? { ...x, units: parseFloat(e.target.value) || 0 } : x,
+                      ),
+                    )
+                  }
+                />
+                <ActionBtn
+                  tone="danger"
+                  onClick={() => app.setPrepLines(app.prepLines.filter((x) => x.recipeId !== l.recipeId))}
+                >
+                  ✕
+                </ActionBtn>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-56">
           <Field label="طباعة اللوحة">
@@ -139,7 +173,7 @@ function PrepSection() {
         <ActionBtn onClick={() => app.printPrepBoard()}>طباعة</ActionBtn>
         <ActionBtn
           tone="ghost"
-          onClick={() => app.setPrepProdMode(app.prepProdMode === "all" ? "net" : "all")}
+          onClick={() => app.setPrepProdMode(app.prepProdMode === "net" ? "all" : "net")}
         >
           الإنتاج: {app.prepProdMode === "net" ? "صافي (بعد الجاهز)" : "كل الكمية"}
         </ActionBtn>
@@ -148,6 +182,36 @@ function PrepSection() {
           حفظ طلب
         </ActionBtn>
       </div>
+
+      <h2 className="text-sm text-[var(--bb-muted)]">ورقة المكوّنات المجمّعة</h2>
+      {agg.lines.length === 0 ? (
+        <Empty>أضف بنوداً للوحة لرؤية العجز والشراء</Empty>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {agg.lines.map((l) => {
+            const need = prepBuyQty(l);
+            return (
+              <li key={`${l.type}|${l.itemId}`} className="bb-glass flex flex-wrap items-center gap-2 p-3">
+                <span className="flex-1">{l.name}</span>
+                <span className={l.ok ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"} dir="ltr">
+                  يلزم {fmtQty(l.needed)} · رصيد {fmtQty(l.stock)}
+                  {!l.ok ? ` · ينقص ${fmtQty(l.shortfall)}` : ""}
+                </span>
+                <ActionBtn
+                  tone={need > 0 ? "primary" : "ghost"}
+                  onClick={() =>
+                    setBuy({ type: l.type as ItemKind, itemId: l.itemId, qty: need })
+                  }
+                >
+                  {need > 0 ? `شراء ${fmtQty(need)}` : "شراء"}
+                </ActionBtn>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <UnsentPrepList />
 
       <h2 className="text-sm text-[var(--bb-muted)]">مسودات الفواتير</h2>
       <div className="flex flex-wrap gap-2">
@@ -199,69 +263,50 @@ function PrepSection() {
         </ul>
       )}
 
-      <h2 className="text-sm text-[var(--bb-muted)]">ورقة المكوّنات المجمّعة</h2>
-      {agg.lines.length === 0 ? (
-        <Empty>أضف بنوداً للوحة لرؤية العجز والشراء</Empty>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {agg.lines.map((l) => {
-            const need = prepBuyQty(l);
-            return (
-              <li key={`${l.type}|${l.itemId}`} className="bb-glass flex flex-wrap items-center gap-2 p-3">
-                <span className="flex-1">{l.name}</span>
-                <span className={l.ok ? "text-[var(--bb-ok)]" : "text-[var(--bb-bad)]"} dir="ltr">
-                  يلزم {fmtQty(l.needed)} · رصيد {fmtQty(l.stock)}
-                  {!l.ok ? ` · ينقص ${fmtQty(l.shortfall)}` : ""}
-                </span>
-                <ActionBtn
-                  tone={need > 0 ? "primary" : "ghost"}
-                  onClick={() =>
-                    setBuy({ type: l.type as ItemKind, itemId: l.itemId, qty: need })
-                  }
-                >
-                  {need > 0 ? `شراء ${fmtQty(need)}` : "شراء"}
-                </ActionBtn>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <h2 className="text-sm text-[var(--bb-muted)]">لوحة التحضير</h2>
-      {app.prepLines.length === 0 ? (
-        <Empty>اللوحة فارغة</Empty>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {app.prepLines.map((l) => {
-            const rec = app.recipes.find((r) => r.id === l.recipeId);
-            return (
-              <li key={l.recipeId} className="bb-glass flex items-center gap-2 p-3">
-                <span className="flex-1">{rec?.name || l.recipeId}</span>
-                <TextInput
-                  className="w-24"
-                  type="number"
-                  value={String(l.units)}
-                  onChange={(e) =>
-                    app.setPrepLines(
-                      app.prepLines.map((x) =>
-                        x.recipeId === l.recipeId ? { ...x, units: parseFloat(e.target.value) || 0 } : x,
-                      ),
-                    )
-                  }
-                />
-                <ActionBtn
-                  tone="danger"
-                  onClick={() => app.setPrepLines(app.prepLines.filter((x) => x.recipeId !== l.recipeId))}
-                >
-                  ✕
-                </ActionBtn>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
       <PurchaseModal open={!!buy} prefill={buy || undefined} onClose={() => setBuy(null)} />
+    </>
+  );
+}
+
+function unsentPrepOrders(app: ReturnType<typeof useFinanceApp>) {
+  return app.prepOrders.filter((p) => p.status !== "awaiting_production");
+}
+
+function UnsentPrepList({ onLoaded }: { onLoaded?: () => void }) {
+  const app = useFinanceApp();
+  const rows = unsentPrepOrders(app);
+  return (
+    <>
+      <h2 className="text-sm text-[var(--bb-muted)]">طلبات لم تُرسل</h2>
+      {rows.length === 0 ? (
+        <Empty>لا طلبات معلّقة — احفظ اللوحة من التحضير</Empty>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {rows.map((p) => (
+            <li key={p.id} className="bb-glass flex flex-wrap items-center gap-2 p-3">
+              <span className="flex-1">{p.title}</span>
+              <ActionBtn
+                tone="ghost"
+                onClick={() => {
+                  if (app.loadOrderIntoPrep(p.id)) onLoaded?.();
+                }}
+              >
+                تحميل للتحضير
+              </ActionBtn>
+              <ActionBtn onClick={() => app.sendOrderToProduction(p.id)}>إرسال للإنتاج</ActionBtn>
+              <ActionBtn
+                tone="danger"
+                onClick={() => {
+                  if (!window.confirm(`حذف «${p.title || "طلب التحضير"}»؟`)) return;
+                  app.removePending(p.id);
+                }}
+              >
+                حذف
+              </ActionBtn>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
@@ -271,6 +316,7 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
   const [recipeId, setRecipeId] = useState("");
   const [units, setUnits] = useState("");
   const [notes, setNotes] = useState("");
+  const [demandView, setDemandView] = useState<"gap" | "all">("gap");
   const demand = useMemo(
     () =>
       app.productSummary
@@ -284,6 +330,7 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
     [app.productSummary, app.products],
   );
   const gapCount = demand.filter((r) => r.gap > 0.0001).length;
+  const shownDemand = demandView === "gap" ? demand.filter((r) => r.gap > 0.0001) : demand;
 
   return (
     <>
@@ -291,7 +338,7 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
         اعتماد الإنتاج يسجّل دورات ويخصم المكوّنات عبر دفتر المشتريات/الاستهلاك. مسودات الفاتورة لا تظهر هنا.
       </p>
       <h2 className="text-sm text-[var(--bb-muted)]">الطلب مقابل الإنتاج</h2>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <ActionBtn
           onClick={() => {
             if (app.fillPrepFromGaps()) onGoPrep();
@@ -299,9 +346,19 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
         >
           تجهيز الناقص
         </ActionBtn>
+        <SectionChips
+          items={[
+            { id: "gap", label: "ينقص" },
+            { id: "all", label: "الكل" },
+          ]}
+          value={demandView}
+          onChange={setDemandView}
+        />
       </div>
       {demand.length === 0 ? (
         <Empty>لا منتجات بوصفة لمقارنتها بالفواتير</Empty>
+      ) : shownDemand.length === 0 ? (
+        <Empty>لا يوجد نقص — الإنتاج يغطي الفواتير</Empty>
       ) : (
         <FinanceTable minWidth="36rem">
           <thead>
@@ -314,7 +371,7 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
             </tr>
           </thead>
           <tbody>
-            {demand.map((r) => (
+            {shownDemand.map((r) => (
               <tr key={r.productId}>
                 <td className={tdClass}>{r.name}</td>
                 <td className={tdClass} dir="ltr">
@@ -345,7 +402,7 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
           </tbody>
         </FinanceTable>
       )}
-      {gapCount === 0 && demand.length > 0 ? (
+      {demandView === "all" && gapCount === 0 && demand.length > 0 ? (
         <p className="text-xs text-[var(--bb-muted)]">لا يوجد نقص — الإنتاج يغطي الفواتير</p>
       ) : null}
       <h2 className="text-sm text-[var(--bb-muted)]">بانتظار الإنتاج</h2>
@@ -384,38 +441,7 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
           ))}
         </ul>
       )}
-      <h2 className="text-sm text-[var(--bb-muted)]">طلبات التحضير (لم تُرسل بعد)</h2>
-      {app.prepOrders.filter((p) => p.status !== "awaiting_production").length === 0 ? (
-        <Empty>لا طلبات معلّقة — احفظ أو أرسل اللوحة من التحضير</Empty>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {app.prepOrders
-            .filter((p) => p.status !== "awaiting_production")
-            .map((p) => (
-              <li key={p.id} className="bb-glass flex flex-wrap items-center gap-2 p-3">
-                <span className="flex-1">{p.title}</span>
-                <ActionBtn
-                  tone="ghost"
-                  onClick={() => {
-                    if (app.loadOrderIntoPrep(p.id)) onGoPrep();
-                  }}
-                >
-                  تحميل للتحضير
-                </ActionBtn>
-                <ActionBtn onClick={() => app.sendOrderToProduction(p.id)}>إرسال للإنتاج</ActionBtn>
-                <ActionBtn
-                  tone="danger"
-                  onClick={() => {
-                    if (!window.confirm(`حذف «${p.title || "طلب التحضير"}»؟`)) return;
-                    app.removePending(p.id);
-                  }}
-                >
-                  حذف
-                </ActionBtn>
-              </li>
-            ))}
-        </ul>
-      )}
+      <UnsentPrepList onLoaded={onGoPrep} />
       <h2 className="text-sm text-[var(--bb-muted)]">دورة إنتاج يدوية</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="وصفة">

@@ -57,4 +57,4 @@ Purchases table + date filters. Stock report in accordion sections. Invoice card
 
 ### Wave F4 — Working capital + leftover prep
 
-`buildWorkingCapital` ports live invoice adj COGS out, paid collections in after lag, leftover stock chunks (journal window 2026-07-15–2026-08-14 or today), hawalek, opex. Pending never becomes تحصيل. Investor peak / تعيين use `wc.peak`. Prep: save board as pending order (clears board), load order onto board, approve all drafts, fill board from `productSummary.gap`.
+`buildWorkingCapital` ports live invoice adj COGS out, paid collections in after lag, leftover stock chunks (journal window 2026-07-15–2026-08-14 or today), hawalek, opex. Pending never becomes تحصيل. Investor peak / تعيين use `wc.peak`. Prep: save board as pending order (clears board), load order onto board, approve all drafts, fill board from `productSummary.gap`. Kitchen polish: board first on التحضير; send-to-production matches save (stock warn + clear); unsent list on prep; production gap table defaults to ينقص.

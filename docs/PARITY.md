@@ -132,8 +132,8 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | الكتالوج | Products, categories, inactive | [x] |
 | بطاقات المنتج | BOM cards | [x] |
 | الوصفات | BOM, batch, product link | [x] |
-| التحضير | Per-customer items; drafts; شراء shortfall; board / sheet / BOM print; حفظ طلب (pending); اعتماد الكل | [x] |
-| الإنتاج | Runs; usage fallback if **no invoices**; not `invoice_draft`; delete unsent / awaiting; sold/produced/gap + تجهيز الناقص; تحميل للتحضير | [x] |
+| التحضير | Board first (save/send/print); unsent list; drafts; شراء; BOM print; اعتماد الكل | [x] |
+| الإنتاج | Runs; gap table defaults to ينقص; تجهيز الناقص; load/delete unsent / awaiting | [x] |
 | المرتجعات | Restock vs expired / hawalek | [x] |
 | تكاليف التشغيل | Rent, wages, compensation (negative OK) | [x] |
 

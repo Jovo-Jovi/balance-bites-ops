@@ -1023,30 +1023,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return n;
   }, [approveDraft, toast]);
 
-  const sendBoardToProduction = useCallback(
-    (title?: string) => {
-      const lines = readArr<PrepLine>("bb_prep_lines").filter((l) => num(l.units) > 0);
-      if (!lines.length) {
-        toast.push("لا بنود في لوحة التحضير", "warn");
-        return;
-      }
-      const items = prepLinesToItems(lines, readArr<Recipe>("bb_recipes"), readArr<Product>("bb_products"));
-      const order = makePrepOrder(lines, items, {
-        kind: "prep",
-        status: "awaiting_production",
-        title: title || `طلب تحضير · ${todayISO()}`,
-      });
-      void writeFinanceKey("bb_pending_invoices", [
-        order,
-        ...readArr<FinancePending>("bb_pending_invoices"),
-      ]);
-      toast.push("أُرسل للإنتاج", "ok");
-    },
-    [toast],
-  );
-
-  const saveBoardAsPrepOrder = useCallback(
-    (title?: string) => {
+  const commitBoardOrder = useCallback(
+    (status: "pending" | "awaiting_production", title?: string) => {
       const lines = readArr<PrepLine>("bb_prep_lines").filter((l) => num(l.units) > 0);
       if (!lines.length) {
         toast.push("لا بنود في لوحة التحضير", "warn");
@@ -1069,15 +1047,33 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const items = prepLinesToItems(lines, recs, readArr<Product>("bb_products"));
       const order = makePrepOrder(lines, items, {
         kind: "prep",
-        status: "pending",
+        status,
         title: title || `طلب تحضير · ${todayISO()}`,
         prepSummary: { stockOk: agg.stockOk },
       });
       void writeFinanceKey("bb_pending_invoices", [order, ...readArr<FinancePending>("bb_pending_invoices")]);
       void writeFinanceKey("bb_prep_lines", []);
-      toast.push(`محفوظ: ${order.title} — أرسل من الإنتاج عندما تجهز`, "ok");
+      if (status === "awaiting_production") {
+        toast.push("أُرسل للإنتاج", "ok");
+      } else {
+        toast.push(`محفوظ: ${order.title} — أرسل من الإنتاج عندما تجهز`, "ok");
+      }
     },
     [findItem, ledger, prepProdMode, productSummary, toast],
+  );
+
+  const sendBoardToProduction = useCallback(
+    (title?: string) => {
+      commitBoardOrder("awaiting_production", title);
+    },
+    [commitBoardOrder],
+  );
+
+  const saveBoardAsPrepOrder = useCallback(
+    (title?: string) => {
+      commitBoardOrder("pending", title);
+    },
+    [commitBoardOrder],
   );
 
   const loadOrderIntoPrep = useCallback(
