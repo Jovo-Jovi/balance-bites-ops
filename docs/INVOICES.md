@@ -75,3 +75,4 @@ Invoice **reads only:** `bb_products`, `bb_categories`, `bb_returns`, prep draft
 - Label atelier, prepress, `bb_label_templates` — Design
 - Stock ledger, prep approve, P&L, catalog writes, returns write — Finance
 - A second customer database or a second invoice list
+- **T14** year-shard of `bb_invoices` (1 MiB ceiling, ~730 typical invoices) — deferred; CAS first. Map: [DATA.md](DATA.md).

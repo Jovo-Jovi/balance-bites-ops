@@ -37,7 +37,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
 - [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
 - [x] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
-- [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; all three apps are native React instead)
+- [x] HTML wrap dropped — three native React apps; deleted `public/bb-cloud-store.js` (localStorage-only `Store.remove`) and unauthenticated `/api/firebase-config`
 
 ### Keys imported from disk today
 
@@ -205,6 +205,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
+- **T14 deferred:** `bb_invoices` stays one document. Year shards when the 1 MiB ceiling is near (~730 typical invoices). CAS (`prevWriteId`) is already in; do not shard on top of an unenforced conflict token. Reports (`reports.ts`) and finance analytics must read across shards when that work starts. Spark read/write quotas are not the reason.
 
 ---
 

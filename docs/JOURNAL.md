@@ -376,6 +376,18 @@ Staff can download live Firestore keys **and** R2 `label_assets/` as `bb-saved-d
 
 ---
 
+## 2026-08-27 — T14 bb_invoices sharding (deferred)
+
+Not this round. `bb_invoices` remains one document (~730 typical 6-line Arabic invoices before the 1 MiB ceiling). `formatWriteError` already shows the failure. When it is time: year keys `bb_invoices_2026`, extend `isKnownKey`, migrate `enrichInvoice` plus `invoices/reports.ts` and `finance/analytics.ts`. After T7 only — sharding multiplies CAS documents; doing it without `prevWriteId` multiplies the clobber. Quotas are not the reason (~68 hydrate/watch reads per sign-in).
+
+---
+
+## 2026-08-27 — T13 cleanup batch
+
+Deleted `public/bb-cloud-store.js` and unauthenticated `/api/firebase-config`. Dropped deprecated `preferredRegion` (Vercel `regions: [fra1]` stays). `--bb-warn` `#9a5a26` for AA on `--bb-panel`. Local zip download passes the existing `Uint8Array` to `Blob` (no second copy). Error boundary shows a fixed Arabic line + `digest`; raw `error.message` only in development. `npm update firebase-admin` stays at 14.3.0; six moderate advisories remain in the `uuid@9` tree under `@google-cloud/storage` (GHSA-w5hq-g745-h8pq). `npm audit fix --force` would install firebase-admin@10.3.0. Zero high/critical; import script only, not the deployed bundle.
+
+---
+
 ## 2026-08-27 — T12 design-preset re-trace
 
 Polygon vtracer dumps in `hub/public/design-presets/` (≈18 MB, up to 22k `<path>`s) re-traced spline + speckle 12. Studio / Library on-screen preview loads `/design-presets/preview/*.webp` (512px). Prepress + PNG pack still embed the SVG (`physical: true`). Popcorn-blue / popcorn-red stay print-pack excluded. Same 12 `PRESET_FILES` keys.
@@ -386,3 +398,4 @@ Polygon vtracer dumps in `hub/public/design-presets/` (≈18 MB, up to 22k `<pat
 
 - Zip of every commercial character; Jelly Kids Firestore dump
 - Merge `feat/finance` → `main` when Waves A–E are confirmed
+- **T14** year-shard `bb_invoices` when the 1 MiB document is near (~730 invoices) — after T7 CAS; not Spark quotas

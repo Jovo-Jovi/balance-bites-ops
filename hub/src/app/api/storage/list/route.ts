@@ -4,7 +4,6 @@ import { requireStaff, StaffAuthError } from "@/lib/server/require-staff";
 import { isR2Configured, listR2Prefix } from "@/lib/server/r2";
 
 export const runtime = "nodejs";
-export const preferredRegion = "fra1";
 
 export async function GET(req: Request) {
   try {

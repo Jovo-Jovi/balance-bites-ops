@@ -3,7 +3,6 @@ import { requireStaff, StaffAuthError } from "@/lib/server/require-staff";
 import { isR2Configured, signedR2GetUrl } from "@/lib/server/r2";
 
 export const runtime = "nodejs";
-export const preferredRegion = "fra1";
 
 export async function POST(req: Request) {
   try {

@@ -3,7 +3,6 @@ import { characterPngUrl, isCharacterStyle, sanitizeCharacterSeed } from "@/lib/
 import { StaffAuthError, requireStaff } from "@/lib/server/require-staff";
 
 export const runtime = "nodejs";
-export const preferredRegion = "fra1";
 
 /** Staff-only proxy so Studio can inline DiceBear PNGs. Style/seed are allowlisted. */
 export async function GET(req: Request) {

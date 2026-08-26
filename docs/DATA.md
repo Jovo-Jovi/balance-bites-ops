@@ -33,6 +33,8 @@ Live files live in the Desktop folder `saved data` as `{key}.json`. Cloud v1 sto
 
 Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore (`READ_KEYS`) except prep-invoice **approve**, which writes invoices through `writeAnyKey` on purpose. Hub Finance does **not** put `bb_invoices` on `FINANCE_WRITE_KEYS`; the only sanctioned write is `commitPrepInvoice`, which may only touch `FINANCE_PREP_APPEND_KEYS` (`bb_invoices`).
 
+**T14 (deferred):** `bb_invoices` is one Firestore document. A typical 6-line Arabic invoice is ~1,435 bytes UTF-8, so the 1 MiB ceiling is about **730 invoices**. `formatWriteError` already surfaces that failure. Year shards (`bb_invoices_2026`, …) plus `isKnownKey` / `enrichInvoice` / reports / finance analytics are **not** this round — CAS (`prevWriteId`) first, shards second. Read/write quotas are not the constraint (~68 reads per sign-in vs Spark 50k/20k).
+
 ## Derived vs stored
 
 | Number | Stored? | Formula |
