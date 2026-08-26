@@ -348,6 +348,8 @@ UX polish vs live Stock Costs: purchases as a compact filtered table; stock repo
 
 On `feat/finance`. التحضير prints the current calculator board (`bb_prep_print_mode`: both / total / each) and invoice-draft sheet + aggregated BOM (`findRecipeForItem`, full qty). Draft «طباعة» previews with Invoices Look keys (does not approve). Finance الفواتير shows the current Look name, page size, and margins as read-only — no Theme tab, no writes to `bb_inv_print_*`.
 
+Print uses an in-app overlay with **إغلاق** so mobile can leave the preview after the system print sheet. Production lists can **حذف** unsent and awaiting prep orders (live ✕).
+
 ---
 
 ## Still not done (do not tick as shipped)

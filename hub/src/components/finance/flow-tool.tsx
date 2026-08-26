@@ -282,6 +282,15 @@ function ProdSection() {
                 <ActionBtn tone="ghost" onClick={() => app.updateDraft(p.id, { status: "pending" })}>
                   إرجاع للتحضير
                 </ActionBtn>
+                <ActionBtn
+                  tone="danger"
+                  onClick={() => {
+                    if (!window.confirm(`حذف «${p.title || "طلب التحضير"}»؟`)) return;
+                    app.removePending(p.id);
+                  }}
+                >
+                  حذف
+                </ActionBtn>
               </div>
             </li>
           ))}
@@ -298,6 +307,15 @@ function ProdSection() {
               <li key={p.id} className="bb-glass flex flex-wrap items-center gap-2 p-3">
                 <span className="flex-1">{p.title}</span>
                 <ActionBtn onClick={() => app.sendOrderToProduction(p.id)}>إرسال للإنتاج</ActionBtn>
+                <ActionBtn
+                  tone="danger"
+                  onClick={() => {
+                    if (!window.confirm(`حذف «${p.title || "طلب التحضير"}»؟`)) return;
+                    app.removePending(p.id);
+                  }}
+                >
+                  حذف
+                </ActionBtn>
               </li>
             ))}
         </ul>

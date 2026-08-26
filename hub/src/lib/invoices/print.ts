@@ -1,3 +1,4 @@
+import { openPrintHtml } from "@/lib/open-print";
 import { calcTotals, esc, fmt } from "./helpers";
 import { buildInvoicePageHtml, buildInvoicePrintHtml, invoiceProCss } from "./print-layout";
 import { enrichInvoice } from "./returns";
@@ -17,16 +18,12 @@ import type { PrintMargins, PrintPageSize } from "./print-layout";
 
 export function openPrintWindow(title: string, css: string, body: string) {
   const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;600&family=Syne:wght@700&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
 <style>${css}</style></head><body>${body}
 <script>window.onload=function(){window.print();};<\/script></body></html>`;
-  const w = window.open("", "_blank", "width=820,height=960");
-  if (!w) return false;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  return true;
+  return openPrintHtml(html);
 }
 
 function paymentStatus(payments: InvoicePayments, invoiceId: string) {
@@ -50,12 +47,7 @@ export function printInvoiceDocument(opts: {
     items: liveItems,
     autoPrint: true,
   });
-  const w = window.open("", "_blank", "width=820,height=960");
-  if (!w) return false;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  return true;
+  return openPrintHtml(html);
 }
 
 export function printInvoiceDocuments(opts: {
@@ -86,12 +78,7 @@ export function printInvoiceDocuments(opts: {
 <style>${css}</style></head>
 <body><div class="inv-doc"><div class="inv-pattern"></div>${pages}</div>
 <script>window.onload=function(){window.print();};<\/script></body></html>`;
-  const w = window.open("", "_blank", "width=820,height=960");
-  if (!w) return false;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  return true;
+  return openPrintHtml(html);
 }
 
 export function groupProducts(

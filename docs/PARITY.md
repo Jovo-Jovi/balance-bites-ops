@@ -133,7 +133,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | بطاقات المنتج | BOM cards | [x] |
 | الوصفات | BOM, batch, product link | [x] |
 | التحضير | Per-customer items; drafts; شراء shortfall; board / sheet / BOM print | [x] |
-| الإنتاج | Runs; usage fallback if **no invoices**; not `invoice_draft` | [x] |
+| الإنتاج | Runs; usage fallback if **no invoices**; not `invoice_draft`; delete unsent / awaiting orders | [x] |
 | المرتجعات | Restock vs expired / hawalek | [x] |
 | تكاليف التشغيل | Rent, wages, compensation (negative OK) | [x] |
 

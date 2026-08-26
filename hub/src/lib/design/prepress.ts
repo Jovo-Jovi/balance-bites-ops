@@ -1,4 +1,5 @@
 import { esc } from "@/lib/invoices/helpers";
+import { openPrintHtml } from "@/lib/open-print";
 import { artboardCm, CUT_STROKE_COLOR, CUT_STROKE_MM, cutStrokeOf, labelPreviewSvg } from "./preview";
 import type { LabelState, LabelTemplate } from "./types";
 
@@ -77,10 +78,5 @@ export function printPreview(template: LabelTemplate, state: LabelState) {
   svg { width: ${pageW}cm; height: ${pageH}cm; display: block; overflow: visible; }
 </style></head><body><div class="sheet">${svg}</div>
 <script>window.onload=function(){window.print();};<\/script></body></html>`;
-  const w = window.open("", "_blank", "width=820,height=960");
-  if (!w) return false;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  return true;
+  return openPrintHtml(html);
 }
