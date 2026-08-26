@@ -54,7 +54,9 @@ Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore 
 
 ## Import rule
 
-Never commit live `bb_invoices.json` or customer files. Zip `saved data` privately, import into Firestore with a one-off script, then keep the zip offline. **2026-08-22:** JSON keys from Desktop were written (`bb-saved-data-2026-08-22.zip` on Desktop). Further applies must use `--only=` or `--all` (`npm --keys` is stolen by npm).
+Never commit live `bb_invoices.json` or customer files. Zip `saved data` privately, import into Firestore with a one-off script, then keep the zip offline. **2026-08-22:** full JSON set (`bb-saved-data-2026-08-22.zip`). **2026-08-26:** finance keys only (`bb-saved-data-2026-08-26.zip` on Desktop) — no templates, Look, invoices, or R2. Further applies must use `--only=` or `--all` (`npm --keys` is stolen by npm).
+
+Staff can download a local zip of **existing** Firestore keys **and** R2 `label_assets/` from the hub footer, any workspace footer, or Finance → التشغيل → نسخ احتياطية (`bb-saved-data-YYYY-MM-DD.zip`). Missing keys are skipped (no empty dumps). Named R2 `bb_backups/` stay in the cloud.
 
 ## CloudStore extras (hub v1)
 

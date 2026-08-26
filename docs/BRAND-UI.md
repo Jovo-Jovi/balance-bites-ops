@@ -50,7 +50,7 @@ Full-viewport linen screen, RTL. Three equal frosted-glass cards:
 2. **التصميم** — Design — subtitle: ملصقات · قوالب · مطبعة  
 3. **المالية والمخزون** — Finance & Inventory — subtitle: تكاليف · مخزون · أرباح  
 
-Cards: semi-glass, large ink type, whole card is the hit target. Footer: connected tenant name, sign out.
+Cards: semi-glass, large ink type, whole card is the hit target. Footer: connected tenant name, **تحميل نسخة محلية** (zip of existing Firestore keys + R2 `label_assets/`), sign out.
 
 **Responsive (hub is not the old HTML desktop layout)**  
 The live `costs` HTML files are a **behavior** reference (keys, formulas, print). They are not a layout to copy. Hub chrome is fluid:
