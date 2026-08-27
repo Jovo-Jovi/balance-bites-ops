@@ -175,7 +175,7 @@ function partShape(part: CompositePart, lite = false, paint: PartPaint = "fill")
         : "none";
     return partLocalGroup(
       part,
-      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="${par}" />`,
+      svgImage(src, `x="0" y="0" width="100" height="100" preserveAspectRatio="${par}"`),
     );
   }
   if (part.pathLocal) {
@@ -262,7 +262,7 @@ function bgLayers(state: LabelState, lite = false) {
       const cy = num(state, pan.y, 50);
       const x = cx - size / 2;
       const y = cy - size / 2;
-      return `<image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice" />`;
+      return svgImage(href, `x="${x}" y="${y}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice"`);
     })
     .join("");
 }
@@ -274,7 +274,7 @@ function productLayer(state: LabelState, circular: boolean, lite = false) {
   const box = productPhotoBox(state, circular);
   const x = box.x - box.w / 2;
   const y = box.y - box.h / 2;
-  return `<image href="${esc(href)}" x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet" />`;
+  return svgImage(href, `x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet"`);
 }
 
 function qrLayer(state: LabelState, lite = false) {
@@ -284,7 +284,7 @@ function qrLayer(state: LabelState, lite = false) {
   const w = Math.max(8, num(state, "sQRSize", 16));
   const x = num(state, "sQRX", 86);
   const y = num(state, "sQRY", 86);
-  return `<image href="${esc(href)}" x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet" />`;
+  return svgImage(href, `x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet"`);
 }
 
 function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; borderColor?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string) {
@@ -298,7 +298,7 @@ function stampMark(s: { iconId: string; x: number; y: number; w: number; h: numb
       Number.isFinite(bw) && bw > 0
         ? `<circle cx="${s.x}" cy="${s.y}" r="${side / 2}" fill="none" stroke="${esc(s.borderColor || s.color || "#ffffff")}" stroke-width="${bw}" />`
         : "";
-    const img = `<image href="${esc(href)}" x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />${ring}`;
+    const img = `${svgImage(href, `x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet"`)}${ring}`;
     if (!s.rot) return img;
     return `<g transform="rotate(${s.rot} ${s.x} ${s.y})">${img}</g>`;
   }
@@ -463,7 +463,7 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     if (!src) return "";
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
-    const img = `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />`;
+    const img = svgImage(src, `x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet"`);
     return zoneRot(z, img);
   }
   if (z.kind === "logo") {
@@ -498,6 +498,12 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
 
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+}
+
+/** SVG-as-image often ignores `href` without the xlink twin. */
+function svgImage(href: string, attrs: string) {
+  const h = esc(href);
+  return `<image href="${h}" xlink:href="${h}" ${attrs} />`;
 }
 
 export const CUT_STROKE_MM = 0.25;
@@ -690,12 +696,12 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
     ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
     : "";
   if (!showCut) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
   }
   const wMm = wCm * 10;
   const hMm = hCm * 10;
   const under = `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm * 2}" stroke-linejoin="round" stroke-linecap="round">${cutGeomMm(template, state, wMm, hMm)}</g>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-padMm} ${-padMm} ${wMm + 2 * padMm} ${hMm + 2 * padMm}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-padMm} ${-padMm} ${wMm + 2 * padMm} ${hMm + 2 * padMm}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}
     ${under}
     <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none" overflow="visible">${inner}</svg>
   </svg>`;

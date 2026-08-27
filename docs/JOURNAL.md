@@ -448,6 +448,12 @@ Dropped original kawaii assets for المقرمشات / سوداني ألوان 
 
 ---
 
+## 2026-08-27 — Library snap shows pack art
+
+Pack PNG zones live as `<image href="/design-presets/bb-….png">`. Save rasterizes that SVG as an `<img>`, which will not fetch nested PNGs — and `fetch(..., credentials: "omit")` blanked the href on protected previews, so Library cards stayed a colour-only die. Hub now inlines pack PNGs the same way as nested preset SVGs (Image → canvas data URL, never wipe the href), sets `xlink:href`, and paints raster image zones onto the **Library** snap after the SVG (Cut PNG z-order stays the SVG). Cards without a saved `libraryThumb` draw those PNGs on the Path2D die. Re-save an older card to replace a die-only WebP. Popcorn SVGs stay off the first-open grid.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
