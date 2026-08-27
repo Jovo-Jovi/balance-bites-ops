@@ -394,6 +394,12 @@ Stock qty (product + materials), product save, and production-run persist show D
 
 ---
 
+## 2026-08-27 — Classify permission-denied with a read probe
+
+`formatWriteError` no longer treats a non-empty CAS token as “another device”. On `permission-denied` persist, a `getDoc` probe tells staff/rules vs missing doc vs genuine CAS vs unpublished/stale rules (`القواعد غير منشورة أو قديمة`). `persistDelete` stays a sync formatter. Ignored Finance/Invoices writes use `fireAndForget` so the toast is not followed by `Uncaught (in promise)`.
+
+---
+
 ## 2026-08-27 — T13 cleanup batch
 
 Deleted `public/bb-cloud-store.js` and unauthenticated `/api/firebase-config`. Dropped deprecated `preferredRegion` (Vercel `regions: [fra1]` stays). `--bb-warn` `#9a5a26` for AA on `--bb-panel`. Local zip download passes the existing `Uint8Array` to `Blob` (no second copy). Error boundary shows a fixed Arabic line + `digest`; raw `error.message` only in development. `npm update firebase-admin` stays at 14.3.0; six moderate advisories remain in the `uuid@9` tree under `@google-cloud/storage` (GHSA-w5hq-g745-h8pq). `npm audit fix --force` would install firebase-admin@10.3.0. Zero high/critical; import script only, not the deployed bundle.

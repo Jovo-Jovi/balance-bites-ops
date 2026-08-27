@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
-import { CloudStore } from "@/lib/cloud-store";
+import { CloudStore, fireAndForget } from "@/lib/cloud-store";
 import { useCloudKey } from "@/hooks/use-cloud-key";
 import { useToast } from "@/components/toast";
 import type { LabelTemplate } from "@/lib/design/types";
@@ -390,7 +390,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const awaitingProduction = useMemo(() => getAwaitingProduction(pending), [pending]);
 
   const writeList = useCallback((type: ItemKind, next: StockItem[]) => {
-    void writeFinanceKey(type, next);
+    fireAndForget(writeFinanceKey(type, next));
   }, []);
 
   const currentList = useCallback(
@@ -570,7 +570,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (linkedTo) {
           const patched = ensureStickerInProductRecipe(saved, readArr<Recipe>("bb_recipes"));
           if (patched) {
-            void writeFinanceKey("bb_recipes", patched.recipes);
+            fireAndForget(writeFinanceKey("bb_recipes", patched.recipes));
             if (patched.sticker.recipeId !== saved.recipeId || patched.sticker.productId !== saved.productId) {
               writeList(type, currentList(type).map((i) => (i.id === saved.id ? patched.sticker : i)));
             }
@@ -592,7 +592,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         currentList(type).filter((i) => i.id !== id),
       );
       if (type === "bb_stickers") {
-        void writeFinanceKey("bb_recipes", removeStickerFromRecipes(id, readArr<Recipe>("bb_recipes")));
+        fireAndForget(writeFinanceKey("bb_recipes", removeStickerFromRecipes(id, readArr<Recipe>("bb_recipes"))));
       }
       toast.push("حُذف الصنف", "ok");
     },
@@ -680,22 +680,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((r) => r.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
-    void writeFinanceKey("bb_recipes", arr);
+    fireAndForget(writeFinanceKey("bb_recipes", arr));
     toast.push("حُفظت الوصفة", "ok");
   }, [toast]);
 
   const removeRecipe = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_recipes",
       readArr<Recipe>("bb_recipes").filter((r) => r.id !== id),
-    );
+    ));
   }, []);
 
   const removePurchase = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_purchases",
       readArr<Purchase>("bb_purchases").filter((p) => p.id !== id),
-    );
+    ));
   }, []);
 
   const saveProduct = useCallback((data: Omit<Product, "id"> & { id?: string }) => {
@@ -714,19 +714,19 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
     flushSync(() => beginBusy("جاري الحفظ…"));
-    void writeFinanceKey("bb_products", arr)
+    fireAndForget(writeFinanceKey("bb_products", arr)
       .then(
         () => toast.push("حُفظ المنتج", "ok"),
         () => undefined,
       )
-      .finally(endBusy);
+      .finally(endBusy));
   }, [beginBusy, endBusy, toast]);
 
   const removeProduct = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_products",
       readArr<Product>("bb_products").filter((p) => p.id !== id),
-    );
+    ));
   }, []);
 
   const saveCategory = useCallback((data: Omit<Category, "id"> & { id?: string }) => {
@@ -739,14 +739,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((c) => c.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.push(rec);
-    void writeFinanceKey("bb_categories", arr);
+    fireAndForget(writeFinanceKey("bb_categories", arr));
   }, []);
 
   const removeCategory = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_categories",
       readArr<Category>("bb_categories").filter((c) => c.id !== id),
-    );
+    ));
   }, []);
 
   const saveReturn = useCallback((data: Omit<ReturnRecord, "id"> & { id?: string }) => {
@@ -770,24 +770,24 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((r) => r.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
-    void writeFinanceKey("bb_returns", arr);
-    if (rec.customerId) void writeFinanceKey("bb_ret_last_customer", rec.customerId);
+    fireAndForget(writeFinanceKey("bb_returns", arr));
+    if (rec.customerId) fireAndForget(writeFinanceKey("bb_ret_last_customer", rec.customerId));
     toast.push("حُفظ المرتجع", "ok");
   }, [toast]);
 
   const removeReturn = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_returns",
       readArr<ReturnRecord>("bb_returns").filter((r) => r.id !== id),
-    );
+    ));
   }, []);
 
   const setPayment = useCallback((invoiceId: string, status: "paid" | "pending") => {
     const all = asRecord<InvoicePayments>(CloudStore.get("bb_invoice_payments", {}));
-    void writeFinanceKey("bb_invoice_payments", {
+    fireAndForget(writeFinanceKey("bb_invoice_payments", {
       ...all,
       [invoiceId]: { status, updatedAt: todayISO() },
-    });
+    }));
   }, []);
 
   const applyCustomerPayment = useCallback(
@@ -828,7 +828,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           status: payments[row.inv.id]?.status || "pending",
         })),
       };
-      void writeFinanceKey("bb_customer_payments", [rec, ...readArr<CustomerPayment>("bb_customer_payments")]);
+      fireAndForget(writeFinanceKey("bb_customer_payments", [rec, ...readArr<CustomerPayment>("bb_customer_payments")]));
       const led2 = buildCustomerLedger(
         readArr<Invoice>("bb_invoices"),
         readArr<ReturnRecord>("bb_returns"),
@@ -846,7 +846,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         if (data.invoiceId && data.mode === "invoice_paid") {
           next[data.invoiceId] = { status: "paid", updatedAt: todayISO() };
         }
-        void writeFinanceKey("bb_invoice_payments", next);
+        fireAndForget(writeFinanceKey("bb_invoice_payments", next));
       }
       toast.push(
         remaining < 0.009
@@ -864,16 +864,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const all = asRecord<InvoicePayments>(CloudStore.get("bb_invoice_payments", {}));
       const current = all[invoiceId]?.status === "paid" ? "paid" : "pending";
       if (current === "paid") {
-        void writeFinanceKey(
+        fireAndForget(writeFinanceKey(
           "bb_customer_payments",
           readArr<CustomerPayment>("bb_customer_payments").filter(
             (p) => !(p.mode === "invoice_paid" && p.invoiceId === invoiceId),
           ),
-        );
-        void writeFinanceKey("bb_invoice_payments", {
+        ));
+        fireAndForget(writeFinanceKey("bb_invoice_payments", {
           ...all,
           [invoiceId]: { status: "pending", updatedAt: todayISO() },
-        });
+        }));
         toast.push("عُلّقت الفاتورة", "ok");
         return { ok: true };
       }
@@ -903,17 +903,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const removeCustomerPayment = useCallback((id: string) => {
     const arr = readArr<CustomerPayment>("bb_customer_payments");
     const rec = arr.find((p) => p.id === id);
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_customer_payments",
       arr.filter((p) => p.id !== id),
-    );
+    ));
     if (rec?.prevStatuses?.length) {
       const all = asRecord<InvoicePayments>(CloudStore.get("bb_invoice_payments", {}));
       const next = { ...all };
       rec.prevStatuses.forEach((s) => {
         if (s?.id) next[s.id] = { status: (s.status as "paid" | "pending") || "pending", updatedAt: todayISO() };
       });
-      void writeFinanceKey("bb_invoice_payments", next);
+      fireAndForget(writeFinanceKey("bb_invoice_payments", next));
     }
     toast.push("حُذفت الدفعة", "ok");
   }, [toast]);
@@ -931,14 +931,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((o) => o.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
-    void writeFinanceKey("bb_operation_costs", arr);
+    fireAndForget(writeFinanceKey("bb_operation_costs", arr));
   }, []);
 
   const removeOpCost = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_operation_costs",
       readArr<OpCost>("bb_operation_costs").filter((o) => o.id !== id),
-    );
+    ));
   }, []);
 
   const saveInvestor = useCallback((data: Omit<Investor, "id"> & { id?: string }) => {
@@ -954,40 +954,40 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((p) => p.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
-    void writeFinanceKey("bb_investors", arr);
+    fireAndForget(writeFinanceKey("bb_investors", arr));
   }, []);
 
   const removeInvestor = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_investors",
       readArr<Investor>("bb_investors").filter((p) => p.id !== id),
-    );
+    ));
   }, []);
 
   const saveInvestorTarget = useCallback((patch: Partial<InvestorTarget>) => {
     const cur = parseInvestorPlan(
       CloudStore.get("bb_investor_target", EMPTY_DEFAULTS.bb_investor_target),
     );
-    void writeFinanceKey("bb_investor_target", parseInvestorPlan({ ...cur, ...patch }));
+    fireAndForget(writeFinanceKey("bb_investor_target", parseInvestorPlan({ ...cur, ...patch })));
   }, []);
 
   const assignInvestorAmounts = useCallback((amounts: Record<string, number>) => {
     const arr = readArr<Investor>("bb_investors").map((p) =>
       amounts[p.id] != null ? { ...p, amount: num(amounts[p.id]) } : p,
     );
-    void writeFinanceKey("bb_investors", arr);
+    fireAndForget(writeFinanceKey("bb_investors", arr));
   }, []);
 
   const setPrepLines = useCallback((lines: PrepLine[]) => {
-    void writeFinanceKey("bb_prep_lines", lines);
+    fireAndForget(writeFinanceKey("bb_prep_lines", lines));
   }, []);
 
   const setPrepProdMode = useCallback((mode: "all" | "net") => {
-    void writeFinanceKey("bb_prep_prod_mode", mode);
+    fireAndForget(writeFinanceKey("bb_prep_prod_mode", mode));
   }, []);
 
   const setPrepPrintMode = useCallback((mode: PrepPrintMode) => {
-    void writeFinanceKey("bb_prep_print_mode", mode);
+    fireAndForget(writeFinanceKey("bb_prep_print_mode", mode));
   }, []);
 
   const addToCustomerDraft = useCallback((customer: Customer, item: InvoiceLine) => {
@@ -1001,21 +1001,21 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const next = all.map((p) =>
       p.id === draft!.id ? { ...p, items, updatedAt: new Date().toISOString() } : p,
     );
-    void writeFinanceKey("bb_pending_invoices", next);
+    fireAndForget(writeFinanceKey("bb_pending_invoices", next));
   }, []);
 
   const updateDraft = useCallback((id: string, patch: Partial<FinancePending>) => {
     const next = readArr<FinancePending>("bb_pending_invoices").map((p) =>
       p.id === id ? { ...p, ...patch, updatedAt: new Date().toISOString() } : p,
     );
-    void writeFinanceKey("bb_pending_invoices", next);
+    fireAndForget(writeFinanceKey("bb_pending_invoices", next));
   }, []);
 
   const removePending = useCallback((id: string) => {
-    void writeFinanceKey(
+    fireAndForget(writeFinanceKey(
       "bb_pending_invoices",
       readArr<FinancePending>("bb_pending_invoices").filter((p) => p.id !== id),
-    );
+    ));
   }, []);
 
   const approveDraft = useCallback(
@@ -1053,7 +1053,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
             }
           : p,
       );
-      void writeFinanceKey("bb_pending_invoices", nextPend);
+      fireAndForget(writeFinanceKey("bb_pending_invoices", nextPend));
       if (!silent) toast.push(`أُضيفت ${invNum} لـ ${pend.customerName || ""}`, "ok");
       return true;
     },
@@ -1104,8 +1104,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         title: title || `طلب تحضير · ${todayISO()}`,
         prepSummary: { stockOk: agg.stockOk },
       });
-      void writeFinanceKey("bb_pending_invoices", [order, ...readArr<FinancePending>("bb_pending_invoices")]);
-      void writeFinanceKey("bb_prep_lines", []);
+      fireAndForget(writeFinanceKey("bb_pending_invoices", [order, ...readArr<FinancePending>("bb_pending_invoices")]));
+      fireAndForget(writeFinanceKey("bb_prep_lines", []));
       if (status === "awaiting_production") {
         toast.push("أُرسل للإنتاج", "ok");
       } else {
@@ -1146,7 +1146,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       ) {
         return false;
       }
-      void writeFinanceKey("bb_prep_lines", lines);
+      fireAndForget(writeFinanceKey("bb_prep_lines", lines));
       toast.push(`${lines.length} منتج على اللوحة`, "ok");
       return true;
     },
@@ -1164,7 +1164,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       return false;
     }
     const extra: PrepLine[] = gaps.map((r) => ({ recipeId: r.recipeId, units: roundQty(r.gap) }));
-    void writeFinanceKey("bb_prep_lines", mergePrepLines([readArr<PrepLine>("bb_prep_lines"), extra]));
+    fireAndForget(writeFinanceKey("bb_prep_lines", mergePrepLines([readArr<PrepLine>("bb_prep_lines"), extra])));
     toast.push(`${gaps.length} منتج للتحضير`, "ok");
     return true;
   }, [productSummary, products, toast]);
@@ -1173,10 +1173,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     (recipeId: string, units: number) => {
       const u = roundQty(units);
       if (!recipeId || u <= 0) return false;
-      void writeFinanceKey(
+      fireAndForget(writeFinanceKey(
         "bb_prep_lines",
         mergePrepLines([readArr<PrepLine>("bb_prep_lines"), [{ recipeId, units: u }]]),
-      );
+      ));
       toast.push(`أُضيف للتحضير: ${u} وحدة`, "ok");
       return true;
     },
@@ -1246,10 +1246,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         productionApprovedAt: new Date().toISOString(),
       });
       const doneIds = new Set((pend.prepLines || []).map((l) => l.recipeId));
-      void writeFinanceKey(
+      fireAndForget(writeFinanceKey(
         "bb_prep_lines",
         readArr<PrepLine>("bb_prep_lines").filter((l) => !doneIds.has(l.recipeId)),
-      );
+      ));
       toast.push(`تمت الموافقة · ${runs} دورة · ${produced} وحدة`, "ok");
       return true;
     },
@@ -1275,13 +1275,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     (stickerId: string) => {
       const item = stickers.find((s) => s.id === stickerId);
       const tmpl = resolveStickerTemplate(item, templates);
-      void writeFinanceKey("bb_label_open", {
+      fireAndForget(writeFinanceKey("bb_label_open", {
         stickerId: stickerId || "",
         templateId: tmpl?.id || item?.templateKey || "",
         productId: item?.productId || "",
         recipeId: item?.recipeId || "",
         ts: Date.now(),
-      });
+      }));
     },
     [stickers, templates],
   );
@@ -1447,7 +1447,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         await uploadBackupJson(backupFileName(snap.id), JSON.stringify(snap));
         const meta: BackupMeta = { id: snap.id, createdAt: snap.createdAt, label: snap.label };
         const index = [meta, ...readArr<BackupMeta>("bb_backup_index")].slice(0, 25);
-        void writeFinanceKey("bb_backup_index", index);
+        fireAndForget(writeFinanceKey("bb_backup_index", index));
         toast.push("حُفظت النسخة على السحابة", "ok");
         return true;
       } catch (err) {
@@ -1492,7 +1492,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   );
 
   const setLastCustomer = useCallback((id: string) => {
-    void writeFinanceKey("bb_ret_last_customer", id || "");
+    fireAndForget(writeFinanceKey("bb_ret_last_customer", id || ""));
   }, []);
 
   const itemStatus = useCallback(

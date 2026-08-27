@@ -67,6 +67,11 @@ export function configureCloudStoreUi(next: Partial<UiHooks>) {
   hooks = { ...hooks, ...next };
 }
 
+/** Persist already toasted via `onError`. Swallow so ignored promises are not Uncaught. */
+export function fireAndForget(p: Promise<unknown>): void {
+  void p.catch(() => undefined);
+}
+
 export function keyDocRef(key: string) {
   return doc(getFirebaseDb(), "tenants", TENANT_ID, "keys", key);
 }
@@ -340,7 +345,7 @@ async function persist(key: string, value: unknown, _prevWriteId = ""): Promise<
       lastAppliedWriteId.set(key, clientWriteId);
     } catch (err) {
       pendingWriteIds.delete(clientWriteId);
-      const message = formatWriteError(err, { docExists: Boolean(basedOn) });
+      const message = await classifyPersistError(err, key, basedOn);
       hooks.onError(message, key);
       throw err instanceof Error ? err : new Error(message);
     }
@@ -359,13 +364,60 @@ async function persistDelete(key: string): Promise<void> {
   }
 }
 
-function formatWriteError(err: unknown, ctx?: { docExists?: boolean }): string {
-  const code =
-    typeof err === "object" && err && "code" in err
-      ? String((err as { code: string }).code)
-      : "";
+function firebaseCode(err: unknown): string {
+  return typeof err === "object" && err && "code" in err
+    ? String((err as { code: string }).code)
+    : "";
+}
+
+function isPermissionDenied(err: unknown): boolean {
+  const code = firebaseCode(err);
   const message = err instanceof Error ? err.message : String(err);
-  if (code.includes("permission-denied") || message.includes("permission")) {
+  return code.includes("permission-denied") || message.includes("permission");
+}
+
+function genericWriteError(err: unknown, key?: string): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return key
+    ? `فشل الحفظ في السحابة (${key}): ${message}`
+    : `فشل الحفظ في السحابة: ${message}`;
+}
+
+/**
+ * permission-denied is not always a CAS miss. `prevWriteId` is the token we
+ * sent, not proof the server rejected a version mismatch. Probe the doc
+ * (reads use a separate rule) only on that error when we sent a token.
+ */
+async function classifyPersistError(
+  err: unknown,
+  key: string,
+  prevWriteId: string,
+): Promise<string> {
+  if (!isPermissionDenied(err) || !prevWriteId) {
+    return formatWriteError(err, { docExists: Boolean(prevWriteId) });
+  }
+  try {
+    const snap = await getDoc(keyDocRef(key));
+    if (!snap.exists()) {
+      return `فشل الحفظ في السحابة (${key})`;
+    }
+    const stored = String((snap.data() as CloudKeyDoc).clientWriteId || "");
+    if (stored !== prevWriteId) {
+      return formatWriteError(err, { docExists: true });
+    }
+    return "رُفض الحفظ: القواعد غير منشورة أو قديمة";
+  } catch (probeErr) {
+    if (isPermissionDenied(probeErr)) {
+      return formatWriteError(err);
+    }
+    return genericWriteError(err);
+  }
+}
+
+function formatWriteError(err: unknown, ctx?: { docExists?: boolean }): string {
+  const code = firebaseCode(err);
+  const message = err instanceof Error ? err.message : String(err);
+  if (isPermissionDenied(err)) {
     if (ctx?.docExists) {
       return "تغيرت البيانات على جهاز آخر ولم يُحفظ التعديل — أعد المحاولة";
     }
@@ -377,7 +429,7 @@ function formatWriteError(err: unknown, ctx?: { docExists?: boolean }): string {
   if (message.toLowerCase().includes("exceed") || message.includes("1 MiB")) {
     return "المستند أكبر من حد Firestore (1 ميغابايت) — يجب تقسيم المفتاح";
   }
-  return `فشل الحفظ في السحابة: ${message}`;
+  return genericWriteError(err);
 }
 
 /** Live-app shaped Store: get is sync; set writes local then cloud. */
