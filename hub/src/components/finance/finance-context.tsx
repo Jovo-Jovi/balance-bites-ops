@@ -5,8 +5,11 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
+  useState,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { CloudStore } from "@/lib/cloud-store";
 import { useCloudKey } from "@/hooks/use-cloud-key";
 import { useToast } from "@/components/toast";
@@ -212,6 +215,8 @@ type FinanceContextValue = {
   createNamedBackup: (label: string) => Promise<boolean>;
   restoreNamedBackup: (id: string, load: (id: string) => Promise<unknown>) => Promise<boolean>;
   itemStatus: (item: StockItem, type: ItemKind) => "ok" | "low" | "crit";
+  busy: boolean;
+  busyMessage: string;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -222,6 +227,24 @@ function readArr<T>(key: Parameters<typeof CloudStore.get>[0]) {
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [busyMessage, setBusyMessage] = useState("");
+  const busyDepth = useRef(0);
+
+  const beginBusy = useCallback((message: string) => {
+    busyDepth.current += 1;
+    setBusyMessage(message);
+    setBusy(true);
+  }, []);
+
+  const endBusy = useCallback(() => {
+    busyDepth.current = Math.max(0, busyDepth.current - 1);
+    if (busyDepth.current === 0) {
+      setBusy(false);
+      setBusyMessage("");
+    }
+  }, []);
+
   const invoices = asArray<Invoice>(useCloudKey("bb_invoices"));
   const customers = asArray<Customer>(useCloudKey("bb_customers"));
   const products = asArray<Product>(useCloudKey("bb_products"));
@@ -468,23 +491,31 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         returns: readArr<ReturnRecord>("bb_returns"),
       });
       const delta = roundQty(truth - led.balance);
-      if (Math.abs(delta) > 0.0001) {
-        savePurchase({
-          itemType: type,
-          itemId: id,
-          itemName: item.name,
-          qty: delta,
-          costPerUnit: num(item.costPerUnit),
-          supplier: "تسوية جرد",
-          date: todayISO(),
-          notes: `تعديل مخزون يدوي: ${led.balance} → ${truth}`,
-        });
-      }
       const next = currentList(type).map((i) => (i.id === id ? { ...i, currentStock: truth } : i));
-      writeList(type, next);
+      flushSync(() => beginBusy("جاري الحفظ…"));
+      try {
+        const writes: Promise<unknown>[] = [writeFinanceKey(type, next)];
+        if (Math.abs(delta) > 0.0001) {
+          writes.push(
+            savePurchase({
+              itemType: type,
+              itemId: id,
+              itemName: item.name,
+              qty: delta,
+              costPerUnit: num(item.costPerUnit),
+              supplier: "تسوية جرد",
+              date: todayISO(),
+              notes: `تعديل مخزون يدوي: ${led.balance} → ${truth}`,
+            }),
+          );
+        }
+        await Promise.all(writes);
+      } finally {
+        endBusy();
+      }
       return true;
     },
-    [currentList, savePurchase, writeList],
+    [beginBusy, currentList, endBusy, savePurchase],
   );
 
   const saveItem = useCallback(
@@ -594,45 +625,48 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const current = row.onHand;
       const delta = num(truthOnHand) - current;
       if (Math.abs(delta) < 0.0001) return true;
-      const prep = calcPrep(rec, Math.abs(delta), (t, id) => findItem(t, id), ledger);
-      const writes: Promise<unknown>[] = [];
-      const added = addRun(rec.id, delta, `مخزون يدوي · ${row.name}: ${current} → ${truthOnHand}`);
-      if (added) writes.push(added.written);
-      for (const l of prep.lines) {
-        const ing = findItem(l.type, l.itemId);
-        const cpu = ing ? num(ing.costPerUnit) : 0;
-        const led = computeItemLedger({
-          itemType: l.type as ItemKind,
-          itemId: l.itemId,
-          purchases: readArr<Purchase>("bb_purchases"),
-          invoices: readArr<Invoice>("bb_invoices"),
-          recipes: readArr<Recipe>("bb_recipes"),
-          production: readArr<ProductionRun>("bb_production"),
-          returns: readArr<ReturnRecord>("bb_returns"),
-        });
-        const qtyAdj = delta > 0 ? -l.needed : l.needed;
-        writes.push(
-          savePurchase({
+      flushSync(() => beginBusy("جاري الحفظ…"));
+      try {
+        const prep = calcPrep(rec, Math.abs(delta), (t, id) => findItem(t, id), ledger);
+        const writes: Promise<unknown>[] = [];
+        const added = addRun(rec.id, delta, `مخزون يدوي · ${row.name}: ${current} → ${truthOnHand}`);
+        if (added) writes.push(added.written);
+        for (const l of prep.lines) {
+          const ing = findItem(l.type, l.itemId);
+          const cpu = ing ? num(ing.costPerUnit) : 0;
+          const led = computeItemLedger({
             itemType: l.type as ItemKind,
             itemId: l.itemId,
-            itemName: l.name,
-            qty: qtyAdj,
-            costPerUnit: cpu,
-            supplier: "تسوية جرد",
-            date: todayISO(),
-            notes: `استخدام إنتاج · ${row.name} · دفتر ${led.balance}`,
-          }),
-        );
-      }
-      try {
+            purchases: readArr<Purchase>("bb_purchases"),
+            invoices: readArr<Invoice>("bb_invoices"),
+            recipes: readArr<Recipe>("bb_recipes"),
+            production: readArr<ProductionRun>("bb_production"),
+            returns: readArr<ReturnRecord>("bb_returns"),
+          });
+          const qtyAdj = delta > 0 ? -l.needed : l.needed;
+          writes.push(
+            savePurchase({
+              itemType: l.type as ItemKind,
+              itemId: l.itemId,
+              itemName: l.name,
+              qty: qtyAdj,
+              costPerUnit: cpu,
+              supplier: "تسوية جرد",
+              date: todayISO(),
+              notes: `استخدام إنتاج · ${row.name} · دفتر ${led.balance}`,
+            }),
+          );
+        }
         await Promise.all(writes);
         toast.push("تم تحديث مخزون المنتج", "ok");
       } catch {
         /* persist already toasts the write error */
+      } finally {
+        endBusy();
       }
       return true;
     },
-    [findItem, ledger, savePurchase, toast],
+    [beginBusy, endBusy, findItem, ledger, savePurchase, toast],
   );
 
   const saveRecipe = useCallback((data: Recipe) => {
@@ -679,11 +713,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((p) => p.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
-    void writeFinanceKey("bb_products", arr).then(
-      () => toast.push("حُفظ المنتج", "ok"),
-      () => undefined,
-    );
-  }, [toast]);
+    flushSync(() => beginBusy("جاري الحفظ…"));
+    void writeFinanceKey("bb_products", arr)
+      .then(
+        () => toast.push("حُفظ المنتج", "ok"),
+        () => undefined,
+      )
+      .finally(endBusy);
+  }, [beginBusy, endBusy, toast]);
 
   const removeProduct = useCallback((id: string) => {
     void writeFinanceKey(
@@ -1224,13 +1261,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const added = addRun(recipeId, units, notes, date);
       if (!added) toast.push("تعذر تسجيل الإنتاج", "warn");
       else {
+        flushSync(() => beginBusy("جاري الحفظ…"));
         void added.written.then(
           () => toast.push("سُجّلت دورة الإنتاج", "ok"),
           () => undefined,
-        );
+        ).finally(endBusy);
       }
     },
-    [toast],
+    [beginBusy, endBusy, toast],
   );
 
   const prepareLabelOpen = useCallback(
@@ -1559,6 +1597,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       createNamedBackup,
       restoreNamedBackup,
       itemStatus,
+      busy,
+      busyMessage,
     }),
     [
       invoices,
@@ -1652,6 +1692,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       createNamedBackup,
       restoreNamedBackup,
       itemStatus,
+      busy,
+      busyMessage,
     ],
   );
 
