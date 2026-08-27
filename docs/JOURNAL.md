@@ -436,6 +436,12 @@ Composite text / logo / image Layers Border used a centered SVG stroke inside th
 
 ---
 
+## 2026-08-27 — Text rim hugs type; shape stroke stays on its layer
+
+Unfilled text Layers Border followed the drag frame while type overflowed a 10% cap. Hub now fits type like live `zoneTextFontPx` and rings the glyph block. Part/zone fill is still clipped to the die; each decorative stroke is painted with that item’s z so jelly-blob on jelly-new stays under later icons and “A FRUITY ADVENTURE!”.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump

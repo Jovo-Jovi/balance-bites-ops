@@ -104,7 +104,8 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
 - [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
 - [x] Composite Round sq / Round rect borders match live: physical square on non-square boards (`syncEqualAspectPart`), cut-polygon corners (`partFillPathLocal`, 18% not 11%), stroke outside the die clip so it is not eaten inward
-- [x] Composite text / logo / image Layers Border sits fully outside the box (outset stroke, outside die clip); wrap Nutrition ring is on an overflow-visible wrapper; taper FO does not clip `box-shadow` rings
+- [x] Composite text / logo / image Layers Border sits fully outside the fill (outset stroke); unfilled text rings hug the type, not the drag frame; wrap Nutrition ring is on an overflow-visible wrapper; taper FO does not clip `box-shadow` rings
+- [x] Composite fill + decorative stroke share Layers z (jelly-blob rim no longer paints above later icons / type)
 - [x] Design Save / Delete / New / Duplicate show an indeterminate progress bar (snap + cloud wait)
 - [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)

@@ -359,6 +359,53 @@ function outsetRect(x: number, y: number, w: number, h: number, rx: number, bw: 
   return `<rect x="${x - o}" y="${y - o}" width="${w + bw}" height="${h + bw}" rx="${rx + o}" ${attrs} />`;
 }
 
+function zoneIsPaddedBox(z: CompositeZone) {
+  const label = String(z.label || "");
+  return (
+    label === "Net Wt" ||
+    label === "Exp" ||
+    /^exp/i.test(label) ||
+    Boolean(z.fill && z.fill !== "none" && z.fill !== "transparent")
+  );
+}
+
+function zoneCharEm(z: CompositeZone) {
+  const wt = Number(z.fontWeight) || 800;
+  return wt >= 800 ? 0.72 : wt >= 600 ? 0.65 : 0.58;
+}
+
+/** Live `zoneTextFontPx` in artboard % so type stays inside the zone. */
+function zoneTextFontPct(z: CompositeZone) {
+  const w = Math.max(1, Number(z.w) || 40);
+  const h = Math.max(1, Number(z.h) || 14);
+  const lines = String(z.text || "").split("\n");
+  const lineCount = Math.max(1, lines.length);
+  let longest = 1;
+  for (const line of lines) longest = Math.max(longest, line.length);
+  const isBox = zoneIsPaddedBox(z);
+  const padX = Math.max(0.8, Math.min(w * 0.08, w * 0.25));
+  const padY = Math.max(0.5, Math.min(h * 0.1, h * 0.25));
+  const maxW = Math.max(1, w - padX);
+  const maxH = Math.max(1, h - padY);
+  const fsByH = (maxH * (isBox ? 0.68 : 0.78)) / lineCount;
+  const fsByW = maxW / (longest * zoneCharEm(z));
+  const minFs = isBox ? 0.8 : 1;
+  const maxFs = Math.min(isBox ? 18 : 28, maxH);
+  return Math.max(minFs, Math.min(maxFs, fsByH, fsByW));
+}
+
+function zoneTextLayout(z: CompositeZone) {
+  const lines = String(z.text || "").split("\n");
+  const size = zoneTextFontPct(z);
+  const gap = size * 1.08;
+  const startY = z.y - ((lines.length - 1) * gap) / 2;
+  let longest = 1;
+  for (const line of lines) longest = Math.max(longest, line.length);
+  const contentW = Math.max(size, longest * size * zoneCharEm(z)) * 1.06;
+  const contentH = Math.max(size, lines.length * gap) * 1.04;
+  return { lines, size, startY, gap, contentW, contentH };
+}
+
 function zoneStrokeMarkup(z: CompositeZone) {
   if (z.kind === "icon") return "";
   if (z.kind === "image") {
@@ -383,9 +430,14 @@ function zoneStrokeMarkup(z: CompositeZone) {
   }
   const bw = Number(z.borderWidth);
   if (!(Number.isFinite(bw) && bw > 0)) return "";
-  const rx = Math.min(z.w, z.h) * 0.12;
   const ink = `fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
-  return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, rx, bw, ink));
+  if (z.fill && z.fill !== "none" && z.fill !== "transparent") {
+    const rx = Math.min(z.w, z.h) * 0.12;
+    return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, rx, bw, ink));
+  }
+  const { contentW, contentH } = zoneTextLayout(z);
+  const rx = Math.min(contentW, contentH) * 0.12;
+  return zoneRot(z, outsetRect(z.x - contentW / 2, z.y - contentH / 2, contentW, contentH, rx, bw, ink));
 }
 
 function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false) {
@@ -422,10 +474,8 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     </g>`;
     return zoneRot(z, body);
   }
-  const lines = String(z.text || "").split("\n");
+  const { lines, size, startY, gap } = zoneTextLayout(z);
   const color = z.color || z.textColor || fallback;
-  const size = Math.max(2.2, Math.min(10, z.h / Math.max(lines.length, 1) * 0.7));
-  const startY = z.y - ((lines.length - 1) * size * 0.55);
   const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
   const weight = z.fontWeight || "700";
   const rx = Math.min(z.w, z.h) * 0.12;
@@ -436,7 +486,7 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
   const text = lines
     .map(
       (line, i) =>
-        `<text x="${z.x}" y="${startY + i * size * 1.12}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}">${esc(line)}</text>`,
+        `<text x="${z.x}" y="${startY + i * gap}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}" letter-spacing="0.02em">${esc(line)}</text>`,
     )
     .join("");
   return zoneRot(z, `${plate}${text}`);
@@ -667,37 +717,37 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     const exactArt = parts.some((p) => p.showImage);
     const boardFill =
       lite || !exactArt ? `<rect width="100" height="100" fill="${esc(comp.bg || fill)}" />` : "";
-    const stack: { z: number; html: string }[] = [];
-    const strokes: { z: number; html: string }[] = [];
+    const layers: { z: number; fill: string; stroke: string }[] = [];
     for (const p of parts) {
-      stack.push({ z: p.z || 0, html: partShape(p, lite, "fill") });
-      const stroke = partShape(p, lite, "stroke");
-      if (stroke) strokes.push({ z: p.z || 0, html: stroke });
+      layers.push({ z: p.z || 0, fill: partShape(p, lite, "fill"), stroke: partShape(p, lite, "stroke") });
     }
     for (const z of zones) {
-      stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
-      const frame = zoneStrokeMarkup(z);
-      if (frame) strokes.push({ z: z.z || 0, html: frame });
-    }
-    for (const s of stamps) {
-      stack.push({
-        z: s.z || 0,
-        html: stampMark(s, txt),
+      layers.push({
+        z: z.z || 0,
+        fill: zoneMarkup(z, comp.txt || txt, state, lite),
+        stroke: zoneStrokeMarkup(z),
       });
     }
+    for (const s of stamps) {
+      layers.push({ z: s.z || 0, fill: stampMark(s, txt), stroke: "" });
+    }
     const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);
-    if (photo) stack.push({ z: 0.5, html: photo });
-    stack.sort((a, b) => a.z - b.z);
-    strokes.sort((a, b) => a.z - b.z);
+    if (photo) layers.push({ z: 0.5, fill: photo, stroke: "" });
+    layers.sort((a, b) => a.z - b.z);
+    const painted = layers
+      .map((item) => {
+        const fill = item.fill ? `<g clip-path="url(#${clipId})">${item.fill}</g>` : "";
+        return `${fill}${item.stroke || ""}`;
+      })
+      .join("");
     const inner = `
       <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
         ${boardFill}
         ${bgLayers(state, lite)}
-        ${stack.map((item) => item.html).join("")}
-        ${qrLayer(state, lite)}
       </g>
-      <g>${strokes.map((item) => item.html).join("")}</g>`;
+      ${painted}
+      <g clip-path="url(#${clipId})">${qrLayer(state, lite)}</g>`;
     return wrapPreviewSvg(inner, template, state, opts);
   }
 
