@@ -3,6 +3,7 @@
 import {
   doc,
   getDoc,
+  getDocFromServer,
   setDoc,
   deleteDoc,
   onSnapshot,
@@ -37,6 +38,7 @@ type UiHooks = {
 
 const pendingWriteIds = new Set<string>();
 const lastAppliedWriteId = new Map<string, string>();
+const persistChain = new Map<string, Promise<void>>();
 const unsubscribers = new Map<string, Unsubscribe>();
 const firstSnapDone = new Set<string>();
 const listeners = new Set<(key: string) => void>();
@@ -252,7 +254,7 @@ export const CloudStore = {
         if (writeId && pendingWriteIds.has(writeId) && !snap.metadata.hasPendingWrites) {
           pendingWriteIds.delete(writeId);
         }
-        if (writeId) lastAppliedWriteId.set(key, writeId);
+        if (writeId && !snap.metadata.hasPendingWrites) lastAppliedWriteId.set(key, writeId);
         applyRemote(key, payload.data);
         firstSnapDone.add(key);
         if (kind === "conflict") hooks.onConflict(key);
@@ -286,7 +288,32 @@ export const CloudStore = {
   },
 };
 
-async function persist(key: string, value: unknown, prevWriteId = ""): Promise<void> {
+function queuePersist(key: string, job: () => Promise<void>): Promise<void> {
+  const prev = persistChain.get(key) ?? Promise.resolve();
+  const next = prev.then(job, job);
+  persistChain.set(
+    key,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return next;
+}
+
+async function readStoredWriteId(key: string): Promise<string> {
+  try {
+    const snap = await getDocFromServer(keyDocRef(key));
+    if (!snap.exists()) return "";
+    return String((snap.data() as CloudKeyDoc).clientWriteId || "");
+  } catch {
+    const snap = await getDoc(keyDocRef(key));
+    if (!snap.exists()) return "";
+    return String((snap.data() as CloudKeyDoc).clientWriteId || "");
+  }
+}
+
+async function persist(key: string, value: unknown, _prevWriteId = ""): Promise<void> {
   if (!isFirebaseConfigured()) {
     hooks.onError("Firebase غير مضبوط — الحفظ محلي فقط", key);
     return;
@@ -295,32 +322,29 @@ async function persist(key: string, value: unknown, prevWriteId = ""): Promise<v
     hooks.onError(`مفتاح غير مدرج في السحابة — حُفظ محلياً فقط: ${key}`, key);
     return;
   }
-  const clientWriteId = newWriteId();
-  let basedOn = prevWriteId;
-  try {
-    const uid = requireUid();
-    if (!basedOn) {
-      const snap = await getDoc(keyDocRef(key));
-      if (snap.exists()) {
-        basedOn = String((snap.data() as CloudKeyDoc).clientWriteId || "");
-        if (basedOn) lastAppliedWriteId.set(key, basedOn);
-      }
+  return queuePersist(key, async () => {
+    const clientWriteId = newWriteId();
+    let basedOn = "";
+    try {
+      const uid = requireUid();
+      basedOn = await readStoredWriteId(key);
+      if (basedOn) lastAppliedWriteId.set(key, basedOn);
+      pendingWriteIds.add(clientWriteId);
+      await setDoc(keyDocRef(key), {
+        data: value,
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        clientWriteId,
+        prevWriteId: basedOn,
+      });
+      lastAppliedWriteId.set(key, clientWriteId);
+    } catch (err) {
+      pendingWriteIds.delete(clientWriteId);
+      const message = formatWriteError(err, { docExists: Boolean(basedOn) });
+      hooks.onError(message, key);
+      throw err instanceof Error ? err : new Error(message);
     }
-    pendingWriteIds.add(clientWriteId);
-    await setDoc(keyDocRef(key), {
-      data: value,
-      updatedAt: serverTimestamp(),
-      updatedBy: uid,
-      clientWriteId,
-      prevWriteId: basedOn,
-    });
-    lastAppliedWriteId.set(key, clientWriteId);
-  } catch (err) {
-    pendingWriteIds.delete(clientWriteId);
-    const message = formatWriteError(err, { docExists: Boolean(basedOn) });
-    hooks.onError(message, key);
-    throw err instanceof Error ? err : new Error(message);
-  }
+  });
 }
 
 async function persistDelete(key: string): Promise<void> {

@@ -160,7 +160,7 @@ type FinanceContextValue = {
   applyProductStock: (productId: string, recipeId: string, truthOnHand: number) => Promise<boolean>;
   saveRecipe: (data: Recipe) => void;
   removeRecipe: (id: string) => void;
-  savePurchase: (data: Omit<Purchase, "id" | "totalCost"> & { id?: string }) => Purchase | null;
+  savePurchase: (data: Omit<Purchase, "id" | "totalCost"> & { id?: string }) => Promise<Purchase>;
   removePurchase: (id: string) => void;
   saveProduct: (data: Omit<Product, "id"> & { id?: string }) => void;
   removeProduct: (id: string) => void;
@@ -405,8 +405,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       deductions,
       isAdjustment: true,
     };
-    void writeFinanceKey("bb_production", [run, ...readArr<ProductionRun>("bb_production")]);
-    return run;
+    return {
+      run,
+      written: writeFinanceKey("bb_production", [run, ...readArr<ProductionRun>("bb_production")]),
+    };
   }
 
   const syncItemCost = useCallback((pur: Purchase) => {
@@ -440,11 +442,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const idx = arr.findIndex((p) => p.id === pur.id);
       if (idx >= 0) arr[idx] = pur;
       else arr.unshift(pur);
-      void writeFinanceKey("bb_purchases", arr);
-      if (!adjSupplier(pur.supplier) || Math.abs(qty) > 0.0001) {
-        syncItemCost(pur);
-      }
-      return pur;
+      const written = writeFinanceKey("bb_purchases", arr).then(() => {
+        if (!adjSupplier(pur.supplier) || Math.abs(qty) > 0.0001) {
+          syncItemCost(pur);
+        }
+        return pur;
+      });
+      return written;
     },
     [syncItemCost],
   );
@@ -591,8 +595,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const delta = num(truthOnHand) - current;
       if (Math.abs(delta) < 0.0001) return true;
       const prep = calcPrep(rec, Math.abs(delta), (t, id) => findItem(t, id), ledger);
-      addRun(rec.id, delta, `مخزون يدوي · ${row.name}: ${current} → ${truthOnHand}`);
-      prep.lines.forEach((l) => {
+      const writes: Promise<unknown>[] = [];
+      const added = addRun(rec.id, delta, `مخزون يدوي · ${row.name}: ${current} → ${truthOnHand}`);
+      if (added) writes.push(added.written);
+      for (const l of prep.lines) {
         const ing = findItem(l.type, l.itemId);
         const cpu = ing ? num(ing.costPerUnit) : 0;
         const led = computeItemLedger({
@@ -605,18 +611,25 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           returns: readArr<ReturnRecord>("bb_returns"),
         });
         const qtyAdj = delta > 0 ? -l.needed : l.needed;
-        savePurchase({
-          itemType: l.type as ItemKind,
-          itemId: l.itemId,
-          itemName: l.name,
-          qty: qtyAdj,
-          costPerUnit: cpu,
-          supplier: "تسوية جرد",
-          date: todayISO(),
-          notes: `استخدام إنتاج · ${row.name} · دفتر ${led.balance}`,
-        });
-      });
-      toast.push("تم تحديث مخزون المنتج", "ok");
+        writes.push(
+          savePurchase({
+            itemType: l.type as ItemKind,
+            itemId: l.itemId,
+            itemName: l.name,
+            qty: qtyAdj,
+            costPerUnit: cpu,
+            supplier: "تسوية جرد",
+            date: todayISO(),
+            notes: `استخدام إنتاج · ${row.name} · دفتر ${led.balance}`,
+          }),
+        );
+      }
+      try {
+        await Promise.all(writes);
+        toast.push("تم تحديث مخزون المنتج", "ok");
+      } catch {
+        /* persist already toasts the write error */
+      }
       return true;
     },
     [findItem, ledger, savePurchase, toast],
@@ -1165,12 +1178,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       agg.productRows.forEach((row) => {
         const qty = row.unitsToProduce > 0 ? row.unitsToProduce : 0;
         if (!qty) return;
-        const run = addRun(
+        const added = addRun(
           row.recipeId,
           qty,
           `طلب: ${pend.title || id}${pend.customerName ? ` · ${pend.customerName}` : ""} · pend:${pend.id}`,
         );
-        if (run) {
+        if (added) {
           runs += 1;
           produced += qty;
         }
@@ -1183,8 +1196,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           pend.prepLines.forEach((line) => {
             const qty = roundQty(line.units);
             if (!qty) return;
-            const run = addRun(line.recipeId, qty, `طلب: ${pend.title || id} · pend:${pend.id}`);
-            if (run) {
+            const added = addRun(line.recipeId, qty, `طلب: ${pend.title || id} · pend:${pend.id}`);
+            if (added) {
               runs += 1;
               produced += qty;
             }
@@ -1208,9 +1221,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const addProductionRun = useCallback(
     (recipeId: string, units: number, notes: string, date?: string) => {
-      const run = addRun(recipeId, units, notes, date);
-      if (!run) toast.push("تعذر تسجيل الإنتاج", "warn");
-      else toast.push("سُجّلت دورة الإنتاج", "ok");
+      const added = addRun(recipeId, units, notes, date);
+      if (!added) toast.push("تعذر تسجيل الإنتاج", "warn");
+      else {
+        void added.written.then(
+          () => toast.push("سُجّلت دورة الإنتاج", "ok"),
+          () => undefined,
+        );
+      }
     },
     [toast],
   );
