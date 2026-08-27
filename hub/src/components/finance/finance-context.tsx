@@ -666,8 +666,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const idx = arr.findIndex((p) => p.id === rec.id);
     if (idx >= 0) arr[idx] = rec;
     else arr.unshift(rec);
-    void writeFinanceKey("bb_products", arr);
-    toast.push("حُفظ المنتج", "ok");
+    void writeFinanceKey("bb_products", arr).then(
+      () => toast.push("حُفظ المنتج", "ok"),
+      () => undefined,
+    );
   }, [toast]);
 
   const removeProduct = useCallback((id: string) => {

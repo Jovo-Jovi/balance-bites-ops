@@ -275,11 +275,12 @@ export const CloudStore = {
     unsubscribers.clear();
     firstSnapDone.clear();
     pendingWriteIds.clear();
-    lastAppliedWriteId.clear();
   },
 
   /** Drop every `bb_*` cache entry. Does not touch other origin keys. */
   clearLocalCache() {
+    lastAppliedWriteId.clear();
+    pendingWriteIds.clear();
     for (const key of BB_KEYS) clearLocal(key);
     for (const key of BB_KEYS) notify(key);
   },
@@ -295,20 +296,28 @@ async function persist(key: string, value: unknown, prevWriteId = ""): Promise<v
     return;
   }
   const clientWriteId = newWriteId();
+  let basedOn = prevWriteId;
   try {
     const uid = requireUid();
+    if (!basedOn) {
+      const snap = await getDoc(keyDocRef(key));
+      if (snap.exists()) {
+        basedOn = String((snap.data() as CloudKeyDoc).clientWriteId || "");
+        if (basedOn) lastAppliedWriteId.set(key, basedOn);
+      }
+    }
     pendingWriteIds.add(clientWriteId);
     await setDoc(keyDocRef(key), {
       data: value,
       updatedAt: serverTimestamp(),
       updatedBy: uid,
       clientWriteId,
-      prevWriteId,
+      prevWriteId: basedOn,
     });
     lastAppliedWriteId.set(key, clientWriteId);
   } catch (err) {
     pendingWriteIds.delete(clientWriteId);
-    const message = formatWriteError(err, { docExists: Boolean(prevWriteId) });
+    const message = formatWriteError(err, { docExists: Boolean(basedOn) });
     hooks.onError(message, key);
     throw err instanceof Error ? err : new Error(message);
   }
