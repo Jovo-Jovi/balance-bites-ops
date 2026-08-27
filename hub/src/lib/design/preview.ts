@@ -1,9 +1,10 @@
 import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
 import { isCharacterPresetArt } from "./art-presets";
-import { partFillPath } from "./boolean-cut";
+import { partFillPath, partFillPathLocal } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
-import { artboardOf, circlePx, previewFace } from "./layout";
+import { artboardOf, circlePx, compositeAspect, previewFace } from "./layout";
+import { isEqualAspectPart, syncCompositePhysicalAspect } from "./part-types";
 import { getDesignSpec } from "./specs";
 import { stampOnFace } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
@@ -112,11 +113,7 @@ function partLocalGroup(part: CompositePart, inner: string) {
   const left = part.x - part.w / 2;
   const top = part.y - part.h / 2;
   const rot = part.rot ? ` transform="rotate(${part.rot} ${part.x} ${part.y})"` : "";
-  const stroke =
-    part.pathLocal && partBorderWidth(part) > 0
-      ? `<path d="${esc(part.pathLocal)}" fill="none"${strokePaint(part)}/>`
-      : "";
-  return `<g${rot}><g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">${inner}${stroke}</g></g>`;
+  return `<g${rot}><g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">${inner}</g></g>`;
 }
 
 function partRot(part: CompositePart, inner: string) {
@@ -124,7 +121,22 @@ function partRot(part: CompositePart, inner: string) {
   return `<g transform="rotate(${part.rot} ${part.x} ${part.y})">${inner}</g>`;
 }
 
-function partShape(part: CompositePart, lite = false) {
+function partOutlineLocal(part: CompositePart) {
+  if (part.pathLocal) return part.pathLocal;
+  if (part.type === "rounded_sq" || part.type === "rounded_rect") {
+    return partFillPathLocal({ ...part, rot: 0 });
+  }
+  return "";
+}
+
+function partStrokeLocal(part: CompositePart, d: string) {
+  if (!d || partBorderWidth(part) <= 0) return "";
+  return `<path d="${esc(d)}" fill="none"${strokePaint(part)}/>`;
+}
+
+type PartPaint = "fill" | "stroke";
+
+function partShape(part: CompositePart, lite = false, paint: PartPaint = "fill") {
   const fill = part.color || "#2e7d32";
   const x = part.x;
   const y = part.y;
@@ -132,6 +144,29 @@ function partShape(part: CompositePart, lite = false) {
   const ry = part.h / 2;
   const src = previewImage(part.src || part.srcUrl, part.artKey, lite);
   const wantImage = Boolean(src) && part.showImage === true;
+  const outline = partOutlineLocal(part);
+
+  if (paint === "stroke") {
+    if (partBorderWidth(part) <= 0) return "";
+    if (outline) return partLocalGroup(part, partStrokeLocal(part, outline));
+    const ink = `fill="none"${strokePaint(part)}`;
+    const t = part.type;
+    if (t === "circle" || t === "oval") {
+      return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+    }
+    if (t === "square" || t === "rectangle") {
+      return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" ${ink} />`);
+    }
+    if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`);
+    if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`);
+    if (t === "pentagon") return partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" ${ink} />`);
+    if (t === "octagon") return partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" ${ink} />`);
+    if (t === "star") return partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" ${ink} />`);
+    const d = partFillPath({ ...part, rot: 0 });
+    if (d) return partRot(part, `<path d="${esc(d)}" ${ink} />`);
+    return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+  }
+
   if (wantImage) {
     const par = isCharacterPresetArt(src, part.artKey) ? "xMidYMid slice" : "none";
     return partLocalGroup(
@@ -143,13 +178,17 @@ function partShape(part: CompositePart, lite = false) {
     return partLocalGroup(part, `<path d="${esc(part.pathLocal)}" fill="${esc(fill)}" />`);
   }
   const t = part.type;
-  const ink = `fill="${esc(fill)}"${strokePaint(part)}`;
+  const ink = `fill="${esc(fill)}" stroke="none"`;
   if (t === "circle" || t === "oval") {
     return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
   }
-  if (t === "square" || t === "rectangle" || t === "rounded_sq" || t === "rounded_rect") {
-    const rr = t.startsWith("rounded") ? Math.min(rx, ry) * 0.22 : 0;
-    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" rx="${rr}" ${ink} />`);
+  if (t === "rounded_sq" || t === "rounded_rect") {
+    const d = partFillPathLocal({ ...part, rot: 0 });
+    if (!d) return "";
+    return partLocalGroup(part, `<path d="${esc(d)}" fill="${esc(fill)}" />`);
+  }
+  if (t === "square" || t === "rectangle") {
+    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" ${ink} />`);
   }
   if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`);
   if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`);
@@ -168,7 +207,28 @@ export function compositeDiePath(comp: CompositeBlob) {
   const union = String(comp.unionPath || "").trim();
   if (union) return union;
   if (parts[0]?.pathLocal) return partFillPath(parts[0]);
+  if (parts[0]) return partFillPath(parts[0]);
   return "";
+}
+
+/** Live `buildLabel` geometry for preview / cut / PNG — percent w/h compensated for artboard aspect. */
+export function liveComposite(state: LabelState): CompositeBlob | undefined {
+  const comp = state._composite;
+  if (!comp) return undefined;
+  const live = syncCompositePhysicalAspect(comp, compositeAspect(state));
+  const parts = live.parts || [];
+  const sole = parts[0];
+  if (
+    parts.length === 1 &&
+    sole &&
+    !sole.pathLocal &&
+    !live.cutGroupId &&
+    !live.cutZoneId &&
+    (isEqualAspectPart(sole) || sole.type === "half_circle")
+  ) {
+    return { ...live, unionPath: partFillPath(sole) };
+  }
+  return live;
 }
 
 function compositeClip(comp: CompositeBlob) {
@@ -535,7 +595,7 @@ function compositeCutMm(comp: CompositeBlob, wMm: number, hMm: number) {
 function cutGeomMm(template: LabelTemplate, state: LabelState, wMm: number, hMm: number) {
   const spec = getDesignSpec(template.designType);
   const face = previewFace(template);
-  if (spec.composite && state._composite) return compositeCutMm(state._composite, wMm, hMm);
+  if (spec.composite && state._composite) return compositeCutMm(liveComposite(state) || state._composite, wMm, hMm);
   return familyCutMm(
     face === "taper" ? "taper" : face === "back" ? "rect" : circleShape(state, spec.outline),
     wMm,
@@ -565,7 +625,7 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
   const under = `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm * 2}" stroke-linejoin="round" stroke-linecap="round">${cutGeomMm(template, state, wMm, hMm)}</g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-padMm} ${-padMm} ${wMm + 2 * padMm} ${hMm + 2 * padMm}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}
     ${under}
-    <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none">${inner}</svg>
+    <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none" overflow="visible">${inner}</svg>
   </svg>`;
 }
 
@@ -578,7 +638,8 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
 
   const fill = str(state, "cLabel", "#2e7d32");
   const txt = str(state, "cTxtMain", "#ffffff");
-  const comp = state._composite;
+  const stored = state._composite;
+  const comp = liveComposite(state) || stored;
   const clipId = clipIdOf(template);
   const stamps = [...(state._stamps || [])].filter((s) => stampOnFace(s, "composite"));
 
@@ -589,7 +650,12 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     const boardFill =
       lite || !exactArt ? `<rect width="100" height="100" fill="${esc(comp.bg || fill)}" />` : "";
     const stack: { z: number; html: string }[] = [];
-    for (const p of parts) stack.push({ z: p.z || 0, html: partShape(p, lite) });
+    const strokes: { z: number; html: string }[] = [];
+    for (const p of parts) {
+      stack.push({ z: p.z || 0, html: partShape(p, lite, "fill") });
+      const stroke = partShape(p, lite, "stroke");
+      if (stroke) strokes.push({ z: p.z || 0, html: stroke });
+    }
     for (const z of zones) stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
     for (const s of stamps) {
       stack.push({
@@ -600,6 +666,7 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);
     if (photo) stack.push({ z: 0.5, html: photo });
     stack.sort((a, b) => a.z - b.z);
+    strokes.sort((a, b) => a.z - b.z);
     const inner = `
       <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
@@ -607,7 +674,8 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
         ${bgLayers(state, lite)}
         ${stack.map((item) => item.html).join("")}
         ${qrLayer(state, lite)}
-      </g>`;
+      </g>
+      <g>${strokes.map((item) => item.html).join("")}</g>`;
     return wrapPreviewSvg(inner, template, state, opts);
   }
 

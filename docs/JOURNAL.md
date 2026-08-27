@@ -400,6 +400,18 @@ Stock qty (product + materials), product save, and production-run persist show D
 
 ---
 
+## 2026-08-27 — Drop tautological prep-append guard
+
+`commitPrepInvoice` keeps `satisfies FINANCE_PREP_APPEND_KEYS` (compile-time). The runtime `includes` check and unused `isFinancePrepAppendKey` are gone. `bb_invoices` stays off `FINANCE_WRITE_KEYS`.
+
+---
+
+## 2026-08-27 — Firestore rules tests in CI
+
+CI runs `firebase emulators:exec --only firestore "npm run test:rules"` after `npm ci` (Temurin 17 + `firebase-tools@15`). The seven CAS cases cannot regress with a green build.
+
+---
+
 ## 2026-08-27 — T13 cleanup batch
 
 Deleted `public/bb-cloud-store.js` and unauthenticated `/api/firebase-config`. Dropped deprecated `preferredRegion` (Vercel `regions: [fra1]` stays). `--bb-warn` `#9a5a26` for AA on `--bb-panel`. Local zip download passes the existing `Uint8Array` to `Blob` (no second copy). Error boundary shows a fixed Arabic line + `digest`; raw `error.message` only in development. `npm update firebase-admin` stays at 14.3.0; six moderate advisories remain in the `uuid@9` tree under `@google-cloud/storage` (GHSA-w5hq-g745-h8pq). `npm audit fix --force` would install firebase-admin@10.3.0. Zero high/critical; import script only, not the deployed bundle.
@@ -409,6 +421,12 @@ Deleted `public/bb-cloud-store.js` and unauthenticated `/api/firebase-config`. D
 ## 2026-08-27 — T12 design-preset re-trace
 
 Polygon vtracer dumps in `hub/public/design-presets/` (≈18 MB, up to 22k `<path>`s) re-traced spline + speckle 12. Studio / Library on-screen preview loads `/design-presets/preview/*.webp` (512px). Prepress + PNG pack still embed the SVG (`physical: true`). Popcorn-blue / popcorn-red stay print-pack excluded. Same 12 `PRESET_FILES` keys. **Rolled back the same day** — original SVGs restored for Studio and print.
+
+---
+
+## 2026-08-27 — Composite round-square borders
+
+Round sq on a tall artboard (Chicopon 6.3×7) was a percent-square, so the die stretched, corners used `rx = 0.22 × half` (11%) instead of live’s 18% cut polygon, and the die `clip-path` ate the outer half of a centered stroke. Hub now compensates `w%`/`h%` like live `syncEqualAspectPart`, draws fill/stroke from `partFillPathLocal` in the part box, and paints the border outside the clip.
 
 ---
 

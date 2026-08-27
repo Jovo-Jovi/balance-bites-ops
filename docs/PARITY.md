@@ -103,6 +103,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy and character kernels; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
 - [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
+- [x] Composite Round sq / Round rect borders match live: physical square on non-square boards (`syncEqualAspectPart`), cut-polygon corners (`partFillPathLocal`, 18% not 11%), stroke outside the die clip so it is not eaten inward
 - [x] Design Save / Delete / New / Duplicate show an indeterminate progress bar (snap + cloud wait)
 - [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)

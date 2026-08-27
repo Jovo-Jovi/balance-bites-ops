@@ -8,7 +8,7 @@ import {
   exportFileBase,
   pxFromMm,
 } from "./prepress";
-import { artboardCm, compositeDiePath, labelPreviewSvg } from "./preview";
+import { artboardCm, compositeDiePath, labelPreviewSvg, liveComposite } from "./preview";
 import type { CompositeBlob, LabelState, LabelTemplate } from "./types";
 
 export type PngKind = "cut" | "exact" | "bleed";
@@ -668,7 +668,7 @@ function applyCutMask(canvas: HTMLCanvasElement, template: LabelTemplate, state:
   if (!ctx) return;
   const face = previewFace(template);
   if (face === "composite" && state._composite) {
-    applyCompositeCut(ctx, state._composite, canvas.width, canvas.height);
+    applyCompositeCut(ctx, liveComposite(state) || state._composite, canvas.width, canvas.height);
     return;
   }
   applyFamilyCut(ctx, template, state, canvas.width, canvas.height);

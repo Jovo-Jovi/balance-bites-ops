@@ -14,9 +14,9 @@ import {
   unionPathFromPartsList,
   zoneOutlinePathPct,
 } from "./boolean-cut";
-import { MAX_OUTLINE_PARTS, makePart } from "./part-types";
+import { MAX_OUTLINE_PARTS, makePart, syncPartPhysicalAspect, syncLogoCircleSize } from "./part-types";
 import { presetSrcForKey } from "./art-presets";
-import type { PreviewFace } from "./layout";
+import { compositeAspect, type PreviewFace } from "./layout";
 import { stampFaceOf } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
@@ -127,7 +127,7 @@ export function addShape(state: LabelState, type: string): StudioOp {
     return fail(state, `Max ${MAX_OUTLINE_PARTS} outline parts.`);
   }
   bumpZ(blob);
-  const part = makePart(type, blob.parts!.length, blob.bg || "#2e7d32");
+  const part = syncPartPhysicalAspect(makePart(type, blob.parts!.length, blob.bg || "#2e7d32"), compositeAspect(state));
   blob.parts!.push(part);
   recomputeUnion(blob);
   return {
@@ -600,6 +600,7 @@ export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
       fontScale: 0.42,
       rot: 0,
     };
+    zone = syncLogoCircleSize(zone, compositeAspect(state));
   } else if (kind === "image") {
     zone = {
       id: genId("z"),

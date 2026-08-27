@@ -1,5 +1,5 @@
 import { genId } from "@/lib/invoices/helpers";
-import type { CompositePart } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone } from "./types";
 
 /** Live `BBComposite.PART_TYPES` — code catalog, not Firestore. */
 export const PART_TYPES = [
@@ -99,4 +99,90 @@ export function makePart(type: string, index: number, fill: string): CompositePa
     else part.color = "#b8e986";
   }
   return part;
+}
+
+/** Live `isEqualAspectPart` — circle / square / round sq stay physically round or square. */
+export function isEqualAspectPart(part: { type?: string } | null | undefined) {
+  const t = part?.type;
+  return t === "circle" || t === "square" || t === "rounded_sq";
+}
+
+function pairForAspect(w: number, h: number, asp: number, prefer: "w" | "h") {
+  const ratio = Math.max(0.01, asp);
+  if (prefer === "h") {
+    const hh = Math.max(1, h);
+    return { w: Math.max(1, hh / ratio), h: hh };
+  }
+  const ww = Math.max(1, w);
+  return { w: ww, h: Math.max(1, ww * ratio) };
+}
+
+/** Live `syncEqualAspectPart` — `h% = w% × (boardW / boardH)` so the box is a true square in cm. */
+export function syncEqualAspectPart<T extends { type?: string; w: number; h: number; lockAspect?: boolean }>(
+  part: T,
+  asp: number,
+  prefer: "w" | "h" = "w",
+): T {
+  if (!isEqualAspectPart(part)) return part;
+  const next = pairForAspect(Number(part.w) || 36, Number(part.h) || 36, asp, prefer);
+  return { ...part, ...next, lockAspect: true };
+}
+
+/** Live `syncHalfCirclePartSize` — physical width = 2 × height. */
+export function syncHalfCirclePartSize<T extends { type?: string; w: number; h: number; lockAspect?: boolean }>(
+  part: T,
+  asp: number,
+  prefer: "w" | "h" = "w",
+): T {
+  if (part.type !== "half_circle") return part;
+  const ratio = Math.max(0.01, asp);
+  if (prefer === "h") {
+    const h = Math.max(1, Number(part.h) || 18);
+    return { ...part, h, w: Math.max(1, (2 * h) / ratio), lockAspect: true };
+  }
+  const w = Math.max(1, Number(part.w) || 36);
+  return { ...part, w, h: Math.max(1, (w * ratio) / 2), lockAspect: true };
+}
+
+/** Live `syncLogoCircleSize`. */
+export function syncLogoCircleSize<T extends { kind?: string; w: number; h: number; lockAspect?: boolean; shape?: string }>(
+  zone: T,
+  asp: number,
+  prefer: "w" | "h" = "w",
+): T {
+  if (zone.kind !== "logo") return zone;
+  const next = pairForAspect(Number(zone.w) || 22, Number(zone.h) || 22, asp, prefer);
+  return { ...zone, ...next, lockAspect: true, shape: "circle" };
+}
+
+/** Live `syncIconSquareSize`. */
+export function syncIconSquareSize<T extends { kind?: string; w: number; h: number; lockAspect?: boolean }>(
+  zone: T,
+  asp: number,
+  prefer: "w" | "h" = "w",
+): T {
+  if (zone.kind !== "icon") return zone;
+  const next = pairForAspect(Number(zone.w) || 16, Number(zone.h) || 16, asp, prefer);
+  return { ...zone, ...next, lockAspect: true };
+}
+
+export function syncPartPhysicalAspect<T extends CompositePart>(part: T, asp: number, prefer: "w" | "h" = "w"): T {
+  if (isEqualAspectPart(part)) return syncEqualAspectPart(part, asp, prefer);
+  if (part.type === "half_circle") return syncHalfCirclePartSize(part, asp, prefer);
+  return part;
+}
+
+export function syncZonePhysicalAspect<T extends CompositeZone>(zone: T, asp: number, prefer: "w" | "h" = "w"): T {
+  if (zone.kind === "logo") return syncLogoCircleSize(zone, asp, prefer);
+  if (zone.kind === "icon") return syncIconSquareSize(zone, asp, prefer);
+  return zone;
+}
+
+/** Live `buildLabel` pass — compensate percent w/h for the current artboard. Does not write Firestore. */
+export function syncCompositePhysicalAspect(blob: CompositeBlob, asp: number): CompositeBlob {
+  return {
+    ...blob,
+    parts: (blob.parts || []).map((p) => syncPartPhysicalAspect(p, asp)),
+    zones: (blob.zones || []).map((z) => syncZonePhysicalAspect(z, asp)),
+  };
 }
