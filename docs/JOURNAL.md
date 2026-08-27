@@ -466,6 +466,12 @@ Pack PNG zones live as `<image href="/design-presets/bb-….png">`. Save rasteri
 
 ---
 
+## 2026-08-27 — HF2 CSP connect-src for Google Fonts
+
+Report-Only CSP allowed `fonts.gstatic.com` on `font-src` but not on `connect-src`, so Design Studio typeface CSS/woff2 fetches (Fredoka, Baloo 2, Nunito, Bubblegum Sans, Sniglet, Bitter, Montserrat, DM Sans, Tajawal) would break when the policy is enforced. `connect-src` now includes `https://fonts.googleapis.com` and `https://fonts.gstatic.com`. Other directives unchanged; enforcing `frame-ancestors 'none'` stays on its own header.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
