@@ -67,6 +67,7 @@ import {
   addLibraryCharacter,
   addNamedTextZone,
   addShape,
+  dropPackArt,
   addZone,
   applyClipJoin,
   approveCutPreview,
@@ -154,6 +155,7 @@ type DesignContextValue = {
   patchNamedField: (blockId: string, fieldId: string, patch: Partial<Pick<DesignBlockField, "label" | "en" | "ar">>) => void;
   setNamedBlockFirstEn: (blockId: string, en: string) => void;
   applyStudioCharacter: (style: string, seed: string) => Promise<void>;
+  applyStudioPackArt: (artKey: string) => void;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -834,6 +836,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       setNamedBlockFirstEn: (blockId, en) => {
         if (!current) return;
         replaceCurrent({ ...current, state: setBlockFirstEn(current.state, blockId, en) });
+      },
+      applyStudioPackArt: (artKey) => {
+        if (!current) return;
+        const face = previewFace(current);
+        const op = dropPackArt(current.state, artKey, face === "composite", face);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
       },
       applyStudioCharacter: async (style, seed) => {
         if (!current) return;

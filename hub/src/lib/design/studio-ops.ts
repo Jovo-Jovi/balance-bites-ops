@@ -15,7 +15,7 @@ import {
   zoneOutlinePathPct,
 } from "./boolean-cut";
 import { MAX_OUTLINE_PARTS, makePart, syncPartPhysicalAspect, syncLogoCircleSize } from "./part-types";
-import { presetSrcForKey } from "./art-presets";
+import { presetSrcForKey, studioPackArtLabel } from "./art-presets";
 import { compositeAspect, type PreviewFace } from "./layout";
 import { stampFaceOf } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
@@ -706,6 +706,16 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
   part.showImage = true;
   blob.presetId = key;
   return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
+}
+
+/** Drop compact pack art as `artref:` (image zone / wrap stamp). Never write SVG bytes. */
+export function dropPackArt(state: LabelState, artKey: string, ontoComposite: boolean, face?: PreviewFace): StudioOp {
+  const key = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  if (!key || !presetSrcForKey(key)) return fail(state, "Unknown pack art.");
+  return addLibraryCharacter(state, `artref:${key}`, studioPackArtLabel(key), ontoComposite, face);
 }
 
 /** Drop a fetched library PNG as a removable image zone (composite) or stamp (wrap / circle / lid). */

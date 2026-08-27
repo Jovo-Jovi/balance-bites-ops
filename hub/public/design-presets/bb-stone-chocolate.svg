@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <title>Balance Bites  Stone chocolate</title>
+  <g stroke="#1a1a1a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path fill="#5c2e1f" d="M22 72c-4 2-8 8-6 12 3 5 10 6 14 3 2 4 8 7 14 6 6 4 16 5 22 1 6 3 14 1 18-4 5 1 10-3 11-9 4-1 6-8 3-13 3-4 1-10-3-13 1-6-4-12-10-13 0-5-6-9-12-8-2-5-10-8-16-6-4-4-12-4-17 0-5-2-12 1-14 7-5 1-9 6-8 12-4 3-5 9-2 15z"/>
+    <circle cx="32" cy="44" r="5.2" fill="#ffe566"/>
+    <circle cx="50" cy="34" r="4.4" fill="#5ec8e8"/>
+    <circle cx="68" cy="42" r="5" fill="#7ed957"/>
+    <circle cx="40" cy="58" r="3.6" fill="#ff8a3d"/>
+    <circle cx="62" cy="56" r="3.2" fill="#f5a0c8"/>
+    <circle cx="74" cy="60" r="2.6" fill="#ffe566"/>
+    <circle cx="28" cy="62" r="2.4" fill="#5ec8e8"/>
+    <ellipse cx="42" cy="48" rx="7.2" ry="8.4" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+    <ellipse cx="58" cy="48" rx="7.2" ry="8.4" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+    <ellipse cx="43.2" cy="50" rx="3.4" ry="4.2" fill="#1a1a1a" stroke="none"/>
+    <ellipse cx="59.2" cy="50" rx="3.4" ry="4.2" fill="#1a1a1a" stroke="none"/>
+    <circle cx="44.4" cy="48.2" r="1.1" fill="#fff" stroke="none"/>
+    <circle cx="60.4" cy="48.2" r="1.1" fill="#fff" stroke="none"/>
+    <path fill="#3a1c14" d="M40 64c3 8 8 12 10.2 12S57 72 60 64c-4 2-8 3-10 3s-6-1-10-3z"/>
+    <ellipse cx="50" cy="70" rx="5.4" ry="3.4" fill="#f5a0c8"/>
+    <ellipse cx="18" cy="78" rx="7" ry="6" fill="#6b3a28"/>
+    <ellipse cx="82" cy="76" rx="6.4" ry="5.6" fill="#6b3a28"/>
+    <ellipse cx="12" cy="62" rx="5.2" ry="4.6" fill="#7a4330"/>
+    <ellipse cx="88" cy="58" rx="4.8" ry="4.2" fill="#7a4330"/>
+    <circle cx="16" cy="76" r="1.05" fill="#1a1a1a" stroke="none"/>
+    <circle cx="21" cy="76" r="1.05" fill="#1a1a1a" stroke="none"/>
+    <path d="M17 79c.7.8 1.5 1.1 2.2 1.1s1.5-.3 2.2-1.1" fill="none" stroke="#1a1a1a" stroke-width="1.1"/>
+    <circle cx="80" cy="74" r="1" fill="#1a1a1a" stroke="none"/>
+    <circle cx="85" cy="74" r="1" fill="#1a1a1a" stroke="none"/>
+    <path d="M80.8 77c.6.7 1.3 1 2 1s1.4-.3 2-1.1" fill="none" stroke="#1a1a1a" stroke-width="1.1"/>
+  </g>
+</svg>

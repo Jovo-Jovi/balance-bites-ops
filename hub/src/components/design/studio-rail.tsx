@@ -8,6 +8,7 @@ import {
   characterThumbUrl,
   type CharacterStyleId,
 } from "@/lib/design/character-library";
+import { presetSrcForKey, studioPackArtKeys, studioPackArtLabel } from "@/lib/design/art-presets";
 import { blockLayerId, listBlocks } from "@/lib/design/blocks";
 import { previewFace } from "@/lib/design/layout";
 import { PART_TYPES } from "@/lib/design/part-types";
@@ -232,6 +233,27 @@ export function StudioRail() {
             >
               Drop BB disc
             </ActionBtn>
+            <div className="grid gap-1.5 border-t border-[var(--bb-line)] pt-3">
+              <p className="text-[11px] uppercase tracking-wide text-[var(--bb-muted)]">Pack art</p>
+              <p className="text-xs text-[var(--bb-muted)]">
+                Original kawaii for the three new stickers. Tap to drop. Flavor faces are Icons → Kids. Not popcorn.
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {studioPackArtKeys().map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="grid min-h-11 gap-1 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-2 text-left hover:border-[var(--bb-gold)]"
+                    onClick={() => app.applyStudioPackArt(key)}
+                  >
+                    <span className="flex h-16 items-center justify-center bg-[color-mix(in_srgb,var(--bb-line)_22%,var(--bb-panel))]">
+                      <img src={presetSrcForKey(key)} alt="" className="max-h-14 max-w-full object-contain" />
+                    </span>
+                    <span className="text-[11px] text-[var(--bb-text)]">{studioPackArtLabel(key)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="text-xs text-[var(--bb-muted)]">
               Flavor packs stay in code. Logos you upload live on R2 — pick them in Uploads.
             </p>

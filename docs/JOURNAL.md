@@ -442,6 +442,12 @@ Unfilled text Layers Border followed the drag frame while type overflowed a 10% 
 
 ---
 
+## 2026-08-27 — Pack art for three new stickers
+
+Dropped original kawaii assets for المقرمشات / سوداني ألوان / شوكولاتة حجر. Kids catalog adds pizza face, chicken face, ketchup, toy cup, roll toy, pebble, BB bowl (tintable 24×24, fill + outline). Four compact full-colour SVGs in `hub/public/design-presets/` (`lockup`, `sudani-beans`, `stone-chocolate`, `surprise-toys`) — not vtracer dumps, not Firestore. Brand → Pack art drops them as `artref:` image zones. Popcorn stays off the Characters rail. No templates seeded.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump

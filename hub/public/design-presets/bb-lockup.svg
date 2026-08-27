@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <title>Balance Bites  BB lockup</title>
+  <defs>
+    <clipPath id="bb-lockup-left-top"><rect x="0" y="0" width="58" height="50"/></clipPath>
+    <clipPath id="bb-lockup-left-bot"><rect x="0" y="50" width="58" height="50"/></clipPath>
+  </defs>
+  <g stroke="#1a1a1a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <g clip-path="url(#bb-lockup-left-top)" fill="#f4a0c8">
+      <rect x="8" y="18" width="15" height="64" rx="7.5"/>
+      <circle cx="30" cy="36" r="16.5"/>
+      <circle cx="32" cy="66" r="18.5"/>
+    </g>
+    <g clip-path="url(#bb-lockup-left-bot)" fill="#ffe566">
+      <rect x="8" y="18" width="15" height="64" rx="7.5"/>
+      <circle cx="30" cy="36" r="16.5"/>
+      <circle cx="32" cy="66" r="18.5"/>
+    </g>
+    <g fill="none">
+      <rect x="8" y="18" width="15" height="64" rx="7.5"/>
+      <circle cx="30" cy="36" r="16.5"/>
+      <circle cx="32" cy="66" r="18.5"/>
+    </g>
+    <g fill="#7ec8e8">
+      <rect x="36" y="16" width="15" height="66" rx="7.5"/>
+      <circle cx="58" cy="34" r="16.5"/>
+      <circle cx="60" cy="66" r="19"/>
+    </g>
+    <ellipse cx="22" cy="28" rx="5" ry="3.2" fill="#fff" stroke="none" opacity="0.45"/>
+    <ellipse cx="50" cy="26" rx="5" ry="3.2" fill="#fff" stroke="none" opacity="0.45"/>
+    <circle cx="26" cy="66" r="2.4" fill="#1a1a1a" stroke="none"/>
+    <circle cx="38" cy="66" r="2.4" fill="#1a1a1a" stroke="none"/>
+    <circle cx="54" cy="66" r="2.5" fill="#1a1a1a" stroke="none"/>
+    <circle cx="67" cy="66" r="2.5" fill="#1a1a1a" stroke="none"/>
+    <circle cx="26.7" cy="65.2" r="0.7" fill="#fff" stroke="none"/>
+    <circle cx="38.7" cy="65.2" r="0.7" fill="#fff" stroke="none"/>
+    <circle cx="54.7" cy="65.2" r="0.7" fill="#fff" stroke="none"/>
+    <circle cx="67.7" cy="65.2" r="0.7" fill="#fff" stroke="none"/>
+  </g>
+</svg>

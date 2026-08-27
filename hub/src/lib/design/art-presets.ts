@@ -13,7 +13,14 @@ const PRESET_FILES: Record<string, string> = {
   "popcorn-orange": "bb-popcorn-orange.svg",
   "popcorn-green": "bb-popcorn-green.svg",
   marshmallows: "bb-marshmallows.svg",
+  lockup: "bb-lockup.svg",
+  "sudani-beans": "bb-sudani-beans.svg",
+  "stone-chocolate": "bb-stone-chocolate.svg",
+  "surprise-toys": "bb-surprise-toys.svg",
 };
+
+/** Compact original kawaii for the three new stickers. Not popcorn / Jelly Kids. Brand rail only. */
+const STUDIO_PACK_ART_KEYS = ["lockup", "sudani-beans", "stone-chocolate", "surprise-toys"] as const;
 
 /** Library-only die fill when the saved part color is white-on-white. Not used in Studio/print. */
 const PRESET_THUMB_FILL: Record<string, string> = {
@@ -29,6 +36,10 @@ const PRESET_THUMB_FILL: Record<string, string> = {
   "popcorn-orange": "#f08a00",
   "popcorn-green": "#3d8c40",
   marshmallows: "#f3c6d8",
+  lockup: "#7ec8e8",
+  "sudani-beans": "#c8e85a",
+  "stone-chocolate": "#5c2e1f",
+  "surprise-toys": "#fdd835",
 };
 
 export function presetThumbFill(artKey?: string) {
@@ -55,6 +66,25 @@ export function presetSrcForKey(artKey: string) {
 
 export function characterPresetKeys() {
   return Object.keys(PRESET_FILES);
+}
+
+export function studioPackArtKeys() {
+  return [...STUDIO_PACK_ART_KEYS];
+}
+
+const PACK_ART_LABELS: Record<(typeof STUDIO_PACK_ART_KEYS)[number], string> = {
+  lockup: "BB lockup",
+  "sudani-beans": "Sudani beans",
+  "stone-chocolate": "Stone chocolate",
+  "surprise-toys": "Surprise toys",
+};
+
+export function studioPackArtLabel(artKey: string) {
+  const k = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  return PACK_ART_LABELS[k as (typeof STUDIO_PACK_ART_KEYS)[number]] || characterPresetLabel(k);
 }
 
 export function characterPresetLabel(artKey: string) {
