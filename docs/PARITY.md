@@ -209,7 +209,8 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
-- **T14 deferred:** `bb_invoices` stays one document. Year shards when the 1 MiB ceiling is near (~730 typical invoices). CAS (`prevWriteId`) is already in; do not shard on top of an unenforced conflict token. Reports (`reports.ts`) and finance analytics must read across shards when that work starts. Spark read/write quotas are not the reason.
+- **T14 deferred:** `bb_invoices` stays one document. Year shards when the 1 MiB ceiling is near (~730 typical invoices). CAS (`prevWriteId`) is already in; do not shard on top of an unenforced conflict token. Reports (`reports.ts`) and finance analytics must read across shards when that work starts. Spark read/write quotas are not the reason. **Rules vs client:** transitional ruleset published (Console) → new client → tighten. File ≠ live. See [JOURNAL.md](JOURNAL.md#standing--firestore-rules-deploy-order).
+- **O1 / O2 (audit 2026-08-27, not blocking):** CSP `script-src` stays Report-Only (Next bootstrap + optional `apis.google.com`); Pack art rail can lazy-load 160 px thumbs later. Map: [FINAL-REPORT-2026-08-27.md](FINAL-REPORT-2026-08-27.md).
 
 ---
 
