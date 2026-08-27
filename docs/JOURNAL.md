@@ -19,7 +19,25 @@ Related maps:
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
 | [MODULES.md](MODULES.md) | Live HTML module map (Finance source; Design gaps) |
 | [BRAND-UI.md](BRAND-UI.md) | Linen desk, diamond mark, RTL |
+| [FINAL-REPORT-2026-08-27.md](FINAL-REPORT-2026-08-27.md) | Audit close-out 2026-08-27 (gates, CAS, CSP, pack art) |
 | `.cursor/rules/` | Workflow, responsive chrome, no duplicate modules |
+
+---
+
+## Standing — Firestore rules deploy order
+
+Read this **before the next schema or rules change** (new required fields, CAS, key allowlist, year-shard `bb_invoices`, …). N1 nearly bit twice: the rules **file** being correct is not the same as the rules being **published**.
+
+1. **Transitional rules first.** Publish a ruleset that accepts **both** the old client payload and the new one. Production tabs still on the previous Vercel deploy must be able to save.
+2. **Confirm published, not just committed.** Git + CI green is not Console. Firebase Console → Firestore → Rules must show the transitional set. `firebase deploy --only firestore:rules` (or Console publish) is a separate step from the hub deploy.
+3. **Then ship the client** (Vercel) that writes the new shape (`prevWriteId`, extra keys, …).
+4. **Wait until production is on that client** (old tabs that omit the field are gone, or overlap is still allowed).
+5. **Then tighten** rules to require the new shape only. Publish again. Confirm Console again.
+6. **Never** tighten live rules before the new client is live (every save denied — `القواعد غير منشورة أو قديمة`). **Never** ship a client that requires a field the **published** rules still reject.
+
+`hub/scripts/test-firestore-rules.mjs` tests the file in the emulator. It does not prove production is on that file.
+
+CAS gates compilation cannot replace (R-1 / R-2): **two-tab invoice save**, and a **multi-line Finance write to one key** (purchases / stock truth). A CAS that matches by construction still typechecks.
 
 ---
 
@@ -472,8 +490,24 @@ Report-Only CSP allowed `fonts.gstatic.com` on `font-src` but not on `connect-sr
 
 ---
 
+## 2026-08-27 — Final audit notes
+
+Full write-up: [FINAL-REPORT-2026-08-27.md](FINAL-REPORT-2026-08-27.md) (`main` @ `7d83624`, baseline `8e2f5dd`). Verdict **shipped and sound**: 24 closed, 3 accepted (H3 SVG quality, L5 ~730-invoice ceiling, N4 re-trace deleted), 2 open non-blocking.
+
+Remediation bugs, then fixed: **R-1** (`dcad8a6`) persist discarded the caller CAS token; **R-2** (`e3dcf3f`) `set()` captured `lastAppliedWriteId` before `queuePersist`. Rules tests and CI were correct both times; only the two-tab test and a failed toast next to “correct” numbers caught them. HF2 added Google Fonts to Report-Only `connect-src`.
+
+**O1** — leave CSP Report-Only for `script-src`. Inline sha reports are Next App Router bootstrap (needs a nonce / dynamic render to silence). `apis.google.com/js/api.js` is Firebase `signInWithPopup`; add `https://apis.google.com` to Report-Only `script-src` before ever enforcing, or Google sign-in breaks. `background.js` TypeError is an extension. Enforcing `frame-ancestors 'none'` already ships on its own header.
+
+**O2** — Pack art rail: 33 PNGs / 12.1 MB, no `loading="lazy"` (`studio-rail.tsx`). `art-panel` already lazy-loads. Not urgent: lazy attribute plus 160 px thumbs; full PNG only after drop.
+
+Carry-forward: when the bug *is* the vulnerability, the gate is a manual threat test, not `tsc`. Rules vs client: standing procedure at the top of this file.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
 - Merge `feat/finance` → `main` when Waves A–E are confirmed
-- **T14** year-shard `bb_invoices` when the 1 MiB document is near (~730 invoices) — after T7 CAS; not Spark quotas
+- **T14** year-shard `bb_invoices` when the 1 MiB document is near (~730 invoices) — after T7 CAS; not Spark quotas. Follow **Standing — Firestore rules deploy order** (transitional rules published → client → tighten).
+- **O1** CSP: keep `script-src` Report-Only; optional `https://apis.google.com` in that policy; do not enforce `'self'` until Next bootstrap has a nonce
+- **O2** Pack art rail lazy thumbs (33 PNG / 12.1 MB; `loading="lazy"` + 160 px previews)

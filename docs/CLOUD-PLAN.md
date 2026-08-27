@@ -55,6 +55,8 @@ In Firebase Console (not MCP):
 4. Add a Web app; copy config into Vercel env.
 5. Allowlist emails in a `staff/{uid}` doc or Auth blocking function.
 
+A correct `firestore.rules` in git is **not** live. Publish (`firebase deploy --only firestore:rules` or Console), then confirm Console. Client + rules changes need a **transitional** ruleset first. Standing procedure: [JOURNAL.md](JOURNAL.md#standing--firestore-rules-deploy-order).
+
 ### Firestore shape (v1, lift JSON as-is)
 
 ```
