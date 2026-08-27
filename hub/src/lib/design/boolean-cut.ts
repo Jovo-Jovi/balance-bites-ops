@@ -843,6 +843,7 @@ export function intersectPartsPathPct(clipper: CompositePart, subject: Composite
 
 export function isCutOutlineZone(z: CompositeZone | null | undefined) {
   if (!z) return false;
+  if (z.shape === "pack") return false;
   if (z.kind === "icon" || z.kind === "logo" || z.kind === "image") return true;
   if (z.iconId) return true;
   return false;

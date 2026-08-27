@@ -47,7 +47,7 @@ export function LayersPanel() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  className="flex min-w-0 flex-1 items-start gap-2 text-left"
                   onClick={(e) => {
                     if (app.selectedId === layer.id && !e.shiftKey && !app.clipPick) app.selectLayer(null);
                     else app.selectLayer(layer.id, { shift: e.shiftKey });
@@ -66,7 +66,12 @@ export function LayersPanel() {
                       style={{ background: layer.color || "var(--bb-panel)" }}
                     />
                   )}
-                  <span className="min-w-0 flex-1 truncate text-sm text-[var(--bb-text)]">{layer.label}</span>
+                  <span
+                    className="min-w-0 flex-1 whitespace-normal break-words text-sm leading-snug text-[var(--bb-text)]"
+                    title={layer.label}
+                  >
+                    {layer.label}
+                  </span>
                 </button>
                 {layer.color && !cut ? (
                   <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">

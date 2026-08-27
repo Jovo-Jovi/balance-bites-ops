@@ -1,5 +1,5 @@
 import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
-import { isCharacterPresetArt } from "./art-presets";
+import { isCharacterPresetArt, isPackArtKey } from "./art-presets";
 import { partFillPath, partFillPathLocal } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
@@ -168,7 +168,11 @@ function partShape(part: CompositePart, lite = false, paint: PartPaint = "fill")
   }
 
   if (wantImage) {
-    const par = isCharacterPresetArt(src, part.artKey) ? "xMidYMid slice" : "none";
+    const par = isPackArtKey(part.artKey)
+      ? "xMidYMid meet"
+      : isCharacterPresetArt(src, part.artKey)
+        ? "xMidYMid slice"
+        : "none";
     return partLocalGroup(
       part,
       `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="${par}" />`,

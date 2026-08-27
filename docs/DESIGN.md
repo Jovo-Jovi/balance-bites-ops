@@ -87,12 +87,12 @@ hub/src/lib/design/
   icons.ts          repo catalog + LETTER_STYLES. Not Firestore.
   icon-catalog.json
   art.ts            bg slots, stamps, addProductPhotos, fill-cut-with-paper
-  art-presets.ts    artref: / assets/presets/ → /design-presets/*.{svg,png}; Pack art rail drops compact kawaii PNGs
+  art-presets.ts    artref: / assets/presets/ → /design-presets/*.{svg,png}; Pack art rail drops trimmed RGBA PNGs
   product-match.ts  template name → current bb_products when productId is empty
   layers.ts         layer list / move / rotate / recolor / drag; grouped parts move together
   part-types.ts     live PART_TYPES + add-shape factory
   boolean-cut.ts    live raster union / intersect / Moore contour
-  studio-ops.ts     merge / group / trim / cut / addZone / named text zone / library character drop / pack art `artref:`
+  studio-ops.ts     merge / group / trim / cut / addZone / named text zone / library character drop / pack art named image zone
   studio-library.ts wrap recipe block ids + named-section rail copy
   character-library.ts DiceBear style/seed catalog (not product stickers)
   preview.ts        composite SVG or family face; cut stroke overlay
@@ -105,7 +105,7 @@ hub/src/lib/storage.ts                  listLabelAssets
 hub/src/lib/storage-paths.ts            parseLabelAssetKey
 hub/src/lib/server/r2.ts                Get / Put / Delete / ListObjectsV2
 hub/src/lib/keys.ts                     DESIGN_WRITE_KEYS
-hub/public/design-presets/              repo character SVGs (not Firestore). Compact pack PNGs: lockup, sudani-beans, stone-chocolate, surprise-toys, pizza-face, chicken-face, ketchup, toy-cup, roll-toy, pebble
+hub/public/design-presets/              repo character SVGs (not Firestore). Trimmed RGBA pack PNGs: lockup, sudani-beans, stone-chocolate, surprise-toys, pizza-face, chicken-face, ketchup, toy-cup, roll-toy, pebble
 ```
 
 Shared hub (do not fork): `app-workspace.tsx`, `brand-lockup.tsx`, `auth-provider.tsx`, `cloud-store.ts`, `globals.css`, invoice `ui.tsx` primitives.
@@ -149,7 +149,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image. Save still writes the 256 px WebP. Re-save a family card to replace a colour-only die.
-- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** drops the compact kawaii PNGs as a new Composite circle (`artref:` only). Family must be Composite. A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG.
+- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** drops trimmed RGBA PNGs as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists **BB lockup** / **Pizza face** / … (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG.
 - **Blank die + named sections (Wave D).** New template defaults to die only (Library checkbox **Include starter recipes** is off). Wrap/taper: `chkS1–6` false. Composite: empty zones. **Named section** on wrap/taper writes `state._blocks` and extends `eSecOrd`; Copy edits title / fields / width; Remove deletes it. Recipes stay `chkS*`. Legacy Custom column still opens. Composite named section is a text zone. No new `bb_*` key.
 
 ## Print house

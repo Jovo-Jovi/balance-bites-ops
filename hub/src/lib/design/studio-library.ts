@@ -45,9 +45,17 @@ export function isCharacterZone(zone: CompositeZone) {
   return zone.shape === "character" || String(zone.label || "").startsWith("Character");
 }
 
+export function isPackArtZone(zone: CompositeZone) {
+  return zone.shape === "pack" || (zone.kind === "image" && String(zone.src || "").startsWith("artref:"));
+}
+
 export function placedCompositeBlocks(state: LabelState) {
   return (state._composite?.zones || []).filter(
-    (z) => (z.kind === "text" || z.kind === "logo" || z.kind === "image") && !isCharacterZone(z) && !z.lock,
+    (z) =>
+      (z.kind === "text" || z.kind === "logo" || z.kind === "image") &&
+      !isCharacterZone(z) &&
+      !isPackArtZone(z) &&
+      !z.lock,
   );
 }
 

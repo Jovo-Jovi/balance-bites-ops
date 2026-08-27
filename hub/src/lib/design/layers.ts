@@ -4,6 +4,7 @@ import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut"
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys, compositeAspect } from "./layout";
 import {
+  PART_TYPES,
   isEqualAspectPart,
   syncEqualAspectPart,
   syncHalfCirclePartSize,
@@ -12,6 +13,7 @@ import {
   syncPartPhysicalAspect,
   syncZonePhysicalAspect,
 } from "./part-types";
+import { studioPackArtLabel } from "./art-presets";
 import { stampOnFace } from "./studio-library";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
@@ -69,6 +71,13 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
   return kind || "Layer";
 }
 
+function partLayerLabel(part: { name?: string; type?: string; artKey?: string }) {
+  if (part.name) return part.name;
+  if (part.artKey) return studioPackArtLabel(part.artKey);
+  if (part.type === "silhouette") return "Cut shape";
+  return PART_TYPES.find((t) => t.id === part.type)?.label || part.type || "Shape";
+}
+
 export function canvasEditText(template: LabelTemplate, id: string): { value: string; multiline: boolean } | null {
   const named = parseBlockLayerId(id);
   if (named) {
@@ -119,7 +128,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
       layers.push({
         id: part.id,
         kind: "part",
-        label: part.name || (part.type === "silhouette" ? "Cut shape" : part.type || "Shape"),
+        label: partLayerLabel(part),
         z: part.z || 0,
         color: part.color,
         lock: Boolean(part.lock),

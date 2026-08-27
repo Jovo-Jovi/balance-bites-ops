@@ -25,18 +25,18 @@ const PRESET_FILES: Record<string, string> = {
   pebble: "bb-pebble.png",
 };
 
-/** Full-colour kawaii for the three new stickers. Studio Pack art rail. Not popcorn / Jelly Kids. */
-const STUDIO_PACK_ART: { key: string; label: string; size: number }[] = [
-  { key: "lockup", label: "BB lockup", size: 34 },
-  { key: "sudani-beans", label: "Sudani beans", size: 48 },
-  { key: "stone-chocolate", label: "Stone chocolate", size: 52 },
-  { key: "surprise-toys", label: "Surprise toys", size: 42 },
-  { key: "pizza-face", label: "Pizza face", size: 22 },
-  { key: "chicken-face", label: "Chicken face", size: 24 },
-  { key: "ketchup", label: "Ketchup", size: 22 },
-  { key: "toy-cup", label: "Toy cup", size: 26 },
-  { key: "roll-toy", label: "Roll toy", size: 22 },
-  { key: "pebble", label: "Pebble", size: 18 },
+/** Full-colour kawaii for the three new stickers. Studio Pack art rail. Not popcorn / Jelly Kids. `ratio` is PNG width/height after trim. */
+const STUDIO_PACK_ART: { key: string; label: string; size: number; ratio: number }[] = [
+  { key: "lockup", label: "BB lockup", size: 34, ratio: 1.165 },
+  { key: "sudani-beans", label: "Sudani beans", size: 48, ratio: 1.491 },
+  { key: "stone-chocolate", label: "Stone chocolate", size: 52, ratio: 1.329 },
+  { key: "surprise-toys", label: "Surprise toys", size: 42, ratio: 0.932 },
+  { key: "pizza-face", label: "Pizza face", size: 22, ratio: 0.994 },
+  { key: "chicken-face", label: "Chicken face", size: 24, ratio: 0.919 },
+  { key: "ketchup", label: "Ketchup", size: 22, ratio: 0.516 },
+  { key: "toy-cup", label: "Toy cup", size: 26, ratio: 1.091 },
+  { key: "roll-toy", label: "Roll toy", size: 22, ratio: 0.643 },
+  { key: "pebble", label: "Pebble", size: 18, ratio: 1.115 },
 ];
 
 /** Library-only die fill when the saved part color is white-on-white. Not used in Studio/print. */
@@ -103,12 +103,32 @@ export function studioPackArtLabel(artKey: string) {
   return STUDIO_PACK_ART.find((item) => item.key === k)?.label || characterPresetLabel(k);
 }
 
+export function isPackArtKey(artKey?: string) {
+  const k = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  return STUDIO_PACK_ART.some((item) => item.key === k);
+}
+
 export function studioPackArtSize(artKey: string) {
   const k = String(artKey || "")
     .trim()
     .replace(/^bb-/, "")
     .replace(/_/g, "-");
   return STUDIO_PACK_ART.find((item) => item.key === k)?.size || 36;
+}
+
+/** Percent box matching the trimmed PNG, so meet does not pad a white plate. */
+export function studioPackArtBox(artKey: string) {
+  const k = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  const sz = studioPackArtSize(k);
+  const ratio = STUDIO_PACK_ART.find((row) => row.key === k)?.ratio || 1;
+  if (ratio >= 1) return { w: sz, h: Number((sz / ratio).toFixed(2)) };
+  return { w: Number((sz * ratio).toFixed(2)), h: sz };
 }
 
 export function characterPresetLabel(artKey: string) {
