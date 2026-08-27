@@ -15,13 +15,7 @@ export function writeFinanceKey(key: BbKey, value: unknown) {
 
 /** Prep approve only: append a finished invoice. Not a second invoice editor. */
 export function commitPrepInvoice(invoices: Invoice[], basedOn: string) {
+  // `satisfies` is the enforcement: compile fails if bb_invoices leaves FINANCE_PREP_APPEND_KEYS.
   const key = "bb_invoices" satisfies (typeof FINANCE_PREP_APPEND_KEYS)[number];
-  if (!(FINANCE_PREP_APPEND_KEYS as readonly string[]).includes(key)) {
-    return Promise.reject(
-      new Error(
-        `المالية لا تكتب ${key} — القوالب من التصميم والمظهر من الفواتير`,
-      ),
-    );
-  }
   return CloudStore.setFrom(key, invoices, basedOn);
 }
