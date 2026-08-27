@@ -32,7 +32,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] Same `bb_*` keys → `tenants/balance-bites/keys/{key}` (`data`, `updatedAt`, `updatedBy`, `clientWriteId`)
 - [x] Firestore preferred on hydrate (empty localStorage cannot wipe cloud)
 - [x] `Store.set` / `CloudStore.set` surfaces write errors (no silent fail)
-- [x] `onSnapshot` + `clientWriteId` so another tab toasts instead of silent clobber. `persist` sends the caller’s read-time `prevWriteId` (empty token only then re-reads the stored id)
+- [x] `onSnapshot` + `clientWriteId` so another tab toasts instead of silent clobber. Strong CAS: caller `prevWriteId`. Weak `set()`: resolve `lastAppliedWriteId` inside the persist queue (empty token then stored id)
 - [x] Prep / print keys that were localStorage-only now listed as Firestore keys
 - [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
 - [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)

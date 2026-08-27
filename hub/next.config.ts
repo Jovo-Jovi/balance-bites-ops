@@ -51,6 +51,8 @@ const contentSecurityPolicyReportOnly = csp({
     "'self'",
     "https://*.googleapis.com",
     "wss://*.googleapis.com",
+    "https://fonts.googleapis.com",
+    "https://fonts.gstatic.com",
     ...R2_HOSTS,
   ],
   "frame-src": frameSrc,
