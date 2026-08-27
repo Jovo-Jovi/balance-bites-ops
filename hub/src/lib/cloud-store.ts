@@ -148,10 +148,12 @@ export const CloudStore = {
 
   /**
    * Drop-in for live `Store.set`: cache locally, then write Firestore.
-   * Callers that ignore the promise still get a visible error via `onError`.
+   * Empty CAS token: resolve `lastAppliedWriteId` inside the persist queue
+   * so queued writes to the same key chain. Callers that ignore the promise
+   * still get a visible error via `onError`.
    */
   set(key: string, value: unknown): Promise<void> {
-    return CloudStore.setFrom(key, value, lastAppliedWriteId.get(key) || "");
+    return CloudStore.setFrom(key, value, "");
   },
 
   setFrom(key: string, value: unknown, basedOn: string): Promise<void> {
@@ -332,10 +334,12 @@ async function persist(key: string, value: unknown, prevWriteId = ""): Promise<v
     let basedOn = "";
     try {
       const uid = requireUid();
-      // Caller token is the CAS check. Re-read the stored id only when that
-      // token is empty (unhydrated stock). Replacing a real token with the
-      // live server id made prevWriteId == clientWriteId by construction.
-      basedOn = prevWriteId || (await readStoredWriteId(key));
+      // Strong path: caller token from getVersioned (invoices). Weak path:
+      // lastAppliedWriteId inside this queued job so serial writes to one key
+      // chain after each success. Server read is last resort only (unhydrated
+      // stock). Never replace a real token with the live server id — that
+      // made prevWriteId == clientWriteId by construction (H5).
+      basedOn = prevWriteId || lastAppliedWriteId.get(key) || (await readStoredWriteId(key));
       pendingWriteIds.add(clientWriteId);
       await setDoc(keyDocRef(key), {
         data: value,

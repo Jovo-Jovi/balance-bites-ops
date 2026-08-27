@@ -460,6 +460,12 @@ Pack PNG zones live as `<image href="/design-presets/bb-….png">`. Save rasteri
 
 ---
 
+## 2026-08-27 — HF1 weak CAS token resolves inside the write queue
+
+`CloudStore.set` captured `lastAppliedWriteId` at call time, then `queuePersist` ran later. Finance loops (purchases, stock truth, production runs, draft payments) queued several writes to one key with the same `W0`, so write 2+ were denied and the next snapshot wiped the local rows. `set()` now passes an empty token; persist resolves `lastAppliedWriteId` inside the queued job after each success. Caller `getVersioned` tokens stay first; server read stays last. Rules unchanged.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
