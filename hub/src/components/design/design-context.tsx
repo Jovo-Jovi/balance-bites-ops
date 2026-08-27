@@ -839,8 +839,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       applyStudioPackArt: (artKey) => {
         if (!current) return;
-        const face = previewFace(current);
-        const op = dropPackArt(current.state, artKey, face === "composite", face);
+        if (previewFace(current) !== "composite") {
+          toast.push("Switch Family to Composite, then tap Pack art.", "warn");
+          return;
+        }
+        const op = dropPackArt(current.state, artKey);
         if (!op.ok) {
           toast.push(op.message, "warn");
           return;

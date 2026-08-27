@@ -13,14 +13,31 @@ const PRESET_FILES: Record<string, string> = {
   "popcorn-orange": "bb-popcorn-orange.svg",
   "popcorn-green": "bb-popcorn-green.svg",
   marshmallows: "bb-marshmallows.svg",
-  lockup: "bb-lockup.svg",
-  "sudani-beans": "bb-sudani-beans.svg",
-  "stone-chocolate": "bb-stone-chocolate.svg",
-  "surprise-toys": "bb-surprise-toys.svg",
+  lockup: "bb-lockup.png",
+  "sudani-beans": "bb-sudani-beans.png",
+  "stone-chocolate": "bb-stone-chocolate.png",
+  "surprise-toys": "bb-surprise-toys.png",
+  "pizza-face": "bb-pizza-face.png",
+  "chicken-face": "bb-chicken-face.png",
+  ketchup: "bb-ketchup.png",
+  "toy-cup": "bb-toy-cup.png",
+  "roll-toy": "bb-roll-toy.png",
+  pebble: "bb-pebble.png",
 };
 
-/** Compact original kawaii for the three new stickers. Not popcorn / Jelly Kids. Brand rail only. */
-const STUDIO_PACK_ART_KEYS = ["lockup", "sudani-beans", "stone-chocolate", "surprise-toys"] as const;
+/** Full-colour kawaii for the three new stickers. Studio Pack art rail. Not popcorn / Jelly Kids. */
+const STUDIO_PACK_ART: { key: string; label: string; size: number }[] = [
+  { key: "lockup", label: "BB lockup", size: 34 },
+  { key: "sudani-beans", label: "Sudani beans", size: 48 },
+  { key: "stone-chocolate", label: "Stone chocolate", size: 52 },
+  { key: "surprise-toys", label: "Surprise toys", size: 42 },
+  { key: "pizza-face", label: "Pizza face", size: 22 },
+  { key: "chicken-face", label: "Chicken face", size: 24 },
+  { key: "ketchup", label: "Ketchup", size: 22 },
+  { key: "toy-cup", label: "Toy cup", size: 26 },
+  { key: "roll-toy", label: "Roll toy", size: 22 },
+  { key: "pebble", label: "Pebble", size: 18 },
+];
 
 /** Library-only die fill when the saved part color is white-on-white. Not used in Studio/print. */
 const PRESET_THUMB_FILL: Record<string, string> = {
@@ -40,6 +57,12 @@ const PRESET_THUMB_FILL: Record<string, string> = {
   "sudani-beans": "#c8e85a",
   "stone-chocolate": "#5c2e1f",
   "surprise-toys": "#fdd835",
+  "pizza-face": "#f4c430",
+  "chicken-face": "#f5f5f0",
+  ketchup: "#c62828",
+  "toy-cup": "#fdd835",
+  "roll-toy": "#fb8c00",
+  pebble: "#6b3a28",
 };
 
 export function presetThumbFill(artKey?: string) {
@@ -69,22 +92,23 @@ export function characterPresetKeys() {
 }
 
 export function studioPackArtKeys() {
-  return [...STUDIO_PACK_ART_KEYS];
+  return STUDIO_PACK_ART.map((item) => item.key);
 }
-
-const PACK_ART_LABELS: Record<(typeof STUDIO_PACK_ART_KEYS)[number], string> = {
-  lockup: "BB lockup",
-  "sudani-beans": "Sudani beans",
-  "stone-chocolate": "Stone chocolate",
-  "surprise-toys": "Surprise toys",
-};
 
 export function studioPackArtLabel(artKey: string) {
   const k = String(artKey || "")
     .trim()
     .replace(/^bb-/, "")
     .replace(/_/g, "-");
-  return PACK_ART_LABELS[k as (typeof STUDIO_PACK_ART_KEYS)[number]] || characterPresetLabel(k);
+  return STUDIO_PACK_ART.find((item) => item.key === k)?.label || characterPresetLabel(k);
+}
+
+export function studioPackArtSize(artKey: string) {
+  const k = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  return STUDIO_PACK_ART.find((item) => item.key === k)?.size || 36;
 }
 
 export function characterPresetLabel(artKey: string) {

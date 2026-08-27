@@ -14,9 +14,9 @@ import {
   unionPathFromPartsList,
   zoneOutlinePathPct,
 } from "./boolean-cut";
-import { MAX_OUTLINE_PARTS, makePart, syncPartPhysicalAspect, syncLogoCircleSize } from "./part-types";
-import { presetSrcForKey, studioPackArtLabel } from "./art-presets";
+import { presetSrcForKey, studioPackArtLabel, studioPackArtSize } from "./art-presets";
 import { compositeAspect, type PreviewFace } from "./layout";
+import { MAX_OUTLINE_PARTS, makePart, syncPartPhysicalAspect, syncLogoCircleSize } from "./part-types";
 import { stampFaceOf } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
@@ -708,14 +708,38 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
   return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
 }
 
-/** Drop compact pack art as `artref:` (image zone / wrap stamp). Never write SVG bytes. */
-export function dropPackArt(state: LabelState, artKey: string, ontoComposite: boolean, face?: PreviewFace): StudioOp {
+/** Drop pack PNG as a new Composite circle with `artref:` (same path as popcorn). Never write bytes. */
+export function dropPackArt(state: LabelState, artKey: string): StudioOp {
   const key = String(artKey || "")
     .trim()
     .replace(/^bb-/, "")
     .replace(/_/g, "-");
   if (!key || !presetSrcForKey(key)) return fail(state, "Unknown pack art.");
-  return addLibraryCharacter(state, `artref:${key}`, studioPackArtLabel(key), ontoComposite, face);
+  if (!state._composite) return fail(state, "Switch Family to Composite, then tap Pack art.");
+  const added = addShape(state, "circle");
+  if (!added.ok) return added;
+  const applied = applyCharacterArt(added.state, key, added.selectIds[0]);
+  if (!applied.ok) return applied;
+  const packed = withBlob(applied.state);
+  if (!packed) return applied;
+  const part = findPart(packed.blob, applied.selectIds[0]);
+  if (part) {
+    part.borderWidth = 0;
+    const sz = studioPackArtSize(key);
+    part.w = sz;
+    part.h = sz;
+    const synced = syncPartPhysicalAspect(part, compositeAspect(packed.next));
+    part.w = synced.w;
+    part.h = synced.h;
+    part.lockAspect = synced.lockAspect;
+    recomputeUnion(packed.blob);
+  }
+  return {
+    state: packed.next,
+    selectIds: applied.selectIds,
+    message: `${studioPackArtLabel(key)} added — drag it.`,
+    ok: true,
+  };
 }
 
 /** Drop a fetched library PNG as a removable image zone (composite) or stamp (wrap / circle / lid). */

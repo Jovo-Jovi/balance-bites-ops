@@ -444,7 +444,7 @@ Unfilled text Layers Border followed the drag frame while type overflowed a 10% 
 
 ## 2026-08-27 — Pack art for three new stickers
 
-Dropped original kawaii assets for المقرمشات / سوداني ألوان / شوكولاتة حجر. Kids catalog adds pizza face, chicken face, ketchup, toy cup, roll toy, pebble, BB bowl (tintable 24×24, fill + outline). Four compact full-colour SVGs in `hub/public/design-presets/` (`lockup`, `sudani-beans`, `stone-chocolate`, `surprise-toys`) — not vtracer dumps, not Firestore. Brand → Pack art drops them as `artref:` image zones. Popcorn stays off the Characters rail. No templates seeded.
+Dropped original kawaii assets for المقرمشات / سوداني ألوان / شوكولاتة حجر. Studio **Pack art** rail drops full-colour PNGs (BB lockup, sudani beans, stone chocolate, surprise toys, pizza / chicken / ketchup faces, toy cup, roll toy, pebble) as a Composite circle with `artref:` — same paint path as popcorn, not the crude Kids icons. Family must be Composite. Not vtracer dumps, not Firestore. Popcorn stays off the Characters rail. No templates seeded.
 
 ---
 

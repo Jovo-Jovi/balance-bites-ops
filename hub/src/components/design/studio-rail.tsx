@@ -24,10 +24,11 @@ import { ImagesPanel, IconsPanel } from "./art-panel";
 import { useDesignApp } from "./design-context";
 import { FlavorPacks } from "./flavor-packs";
 
-type RailId = "shapes" | "blocks" | "icons" | "uploads" | "brand" | "characters";
+type RailId = "shapes" | "pack" | "blocks" | "icons" | "uploads" | "brand" | "characters";
 
 const RAILS: { id: RailId; label: string }[] = [
   { id: "shapes", label: "Shapes" },
+  { id: "pack", label: "Pack art" },
   { id: "blocks", label: "Blocks" },
   { id: "icons", label: "Icons" },
   { id: "uploads", label: "Uploads" },
@@ -99,6 +100,35 @@ export function StudioRail() {
             <p className="text-sm text-[var(--bb-muted)]">
               Shapes are for Composite. Wrap and taper keep their geometry recipes — switch Family to Composite to draw a
               freeform cut.
+            </p>
+          )
+        ) : null}
+
+        {rail === "pack" ? (
+          composite ? (
+            <div className="grid gap-2">
+              <p className="text-xs text-[var(--bb-muted)]">
+                Full-colour art for the three new stickers. Tap to drop on the die, then drag. Not popcorn.
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {studioPackArtKeys().map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="grid min-h-11 gap-1 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-2 text-left hover:border-[var(--bb-gold)]"
+                    onClick={() => app.applyStudioPackArt(key)}
+                  >
+                    <span className="flex h-20 items-center justify-center bg-[color-mix(in_srgb,var(--bb-line)_22%,var(--bb-panel))]">
+                      <img src={presetSrcForKey(key)} alt="" className="max-h-[4.5rem] max-w-full object-contain" />
+                    </span>
+                    <span className="text-[11px] text-[var(--bb-text)]">{studioPackArtLabel(key)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--bb-muted)]">
+              Pack art drops on Composite. Switch Family to Composite, then tap a piece.
             </p>
           )
         ) : null}
@@ -233,27 +263,6 @@ export function StudioRail() {
             >
               Drop BB disc
             </ActionBtn>
-            <div className="grid gap-1.5 border-t border-[var(--bb-line)] pt-3">
-              <p className="text-[11px] uppercase tracking-wide text-[var(--bb-muted)]">Pack art</p>
-              <p className="text-xs text-[var(--bb-muted)]">
-                Original kawaii for the three new stickers. Tap to drop. Flavor faces are Icons → Kids. Not popcorn.
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {studioPackArtKeys().map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className="grid min-h-11 gap-1 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-2 text-left hover:border-[var(--bb-gold)]"
-                    onClick={() => app.applyStudioPackArt(key)}
-                  >
-                    <span className="flex h-16 items-center justify-center bg-[color-mix(in_srgb,var(--bb-line)_22%,var(--bb-panel))]">
-                      <img src={presetSrcForKey(key)} alt="" className="max-h-14 max-w-full object-contain" />
-                    </span>
-                    <span className="text-[11px] text-[var(--bb-text)]">{studioPackArtLabel(key)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
             <p className="text-xs text-[var(--bb-muted)]">
               Flavor packs stay in code. Logos you upload live on R2 — pick them in Uploads.
             </p>
