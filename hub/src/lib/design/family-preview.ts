@@ -584,9 +584,9 @@ function drawTaper(
     const innerH = d.fH * 0.82;
     parts.push(`<g clip-path="url(#${d.clipId})">
       <g transform="rotate(${d.mid + n(state, `sSec${d.k}Rot`, 0)},${g.cx},${g.cy})">
-        <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}" overflow="hidden">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-            <div style="width:${innerW}px;height:${innerH}px;overflow:hidden">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
+        <foreignObject x="${g.cx - d.fW / 2}" y="${g.cy - Rmid - d.fH / 2}" width="${d.fW}" height="${d.fH}" overflow="visible">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${d.fW}px;height:${d.fH}px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative;direction:ltr;unicode-bidi:isolate;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+            <div style="width:${innerW}px;height:${innerH}px;overflow:visible">${sectionHtml(d.k, state, innerW, innerH, lite)}</div>
           </div>
         </foreignObject>
       </g>

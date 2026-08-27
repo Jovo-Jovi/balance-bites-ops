@@ -430,6 +430,12 @@ Round sq on a tall artboard (Chicopon 6.3×7) was a percent-square, so the die s
 
 ---
 
+## 2026-08-27 — Text-box borders sit outside the fill
+
+Composite text / logo / image Layers Border used a centered SVG stroke inside the die clip, so half the rim covered the fill. Preview now paints an outset stroke (centerline at `bw/2` outside the box) after the clip. Wrap Nutrition’s outward `box-shadow` is on an overflow-visible wrapper. Taper foreignObject wrappers are `overflow:visible` so those rings are not clipped to the fan cell. Studio hit-boxes use outline, not inset `border`.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump

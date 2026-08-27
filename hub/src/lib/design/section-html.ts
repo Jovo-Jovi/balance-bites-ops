@@ -187,8 +187,9 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
     const sBody = sBody0 * scale;
     const sCal = sCal0 * scale;
     return wrap(
-      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);${PRINT_INK};display:flex;align-items:stretch;justify-content:center;box-sizing:border-box">
-        <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:3px 4px;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;transform:translate(${x}px,${y}px);${outBorder(state, FAM.nut)}">
+      `<div style="width:100%;height:100%;padding:${pad}px ${padS}px;background:rgba(0,0,0,.15);${PRINT_INK};display:flex;align-items:stretch;justify-content:center;box-sizing:border-box;overflow:visible">
+        <div style="width:100%;height:100%;overflow:visible;transform:translate(${x}px,${y}px);${outBorder(state, FAM.nut)}">
+        <div style="border:1px solid rgba(255,255,255,.3);border-radius:2px;padding:3px 4px;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box">
           <div style="font-family:${esc(FH)};font-weight:800;font-size:${sTitle}px;color:${ink};border-bottom:2px solid ${ink};line-height:1.05;flex:0 0 auto">Nutrition Facts</div>
           <div style="font-size:${sBody * 0.9}px;color:${mut};padding:1px 0;line-height:1.1;flex:0 0 auto">${html(s(state, "nSrv"))}</div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid ${ink};padding:1px 0;flex:0 0 auto">
@@ -205,6 +206,7 @@ export function sectionHtml(k: string, state: LabelState, w: number, h: number, 
           <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0 6px;font-family:${esc(FB)};color:${mut};padding-top:1px;font-size:${sBody * 0.72}px;line-height:1.15;border-top:1.5px solid rgba(255,255,255,.3);flex:0 0 auto">
             <span>Vit D ${n(state, "nVitD", 0)}mcg</span><span>Ca ${n(state, "nCalc", 20)}mg</span><span>Fe ${n(state, "nIron", 1.5)}mg</span><span>K ${n(state, "nPot", 80)}mg</span>
           </div>
+        </div>
         </div>
       </div>`,
     );

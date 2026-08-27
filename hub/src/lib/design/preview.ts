@@ -348,6 +348,46 @@ function fontOf(state: LabelState, keys: string[], fallback: string) {
   return fallback;
 }
 
+function zoneRot(z: CompositeZone, inner: string) {
+  if (!z.rot) return inner;
+  return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${inner}</g>`;
+}
+
+/** Centerline sits `bw/2` outside the box so a stroke of `bw` is fully outward (wrap `box-shadow: 0 0 0`). */
+function outsetRect(x: number, y: number, w: number, h: number, rx: number, bw: number, attrs: string) {
+  const o = bw / 2;
+  return `<rect x="${x - o}" y="${y - o}" width="${w + bw}" height="${h + bw}" rx="${rx + o}" ${attrs} />`;
+}
+
+function zoneStrokeMarkup(z: CompositeZone) {
+  if (z.kind === "icon") return "";
+  if (z.kind === "image") {
+    const bw = Number(z.borderWidth);
+    if (!(Number.isFinite(bw) && bw > 0)) return "";
+    const ink = `fill="none" stroke="${esc(z.borderColor || z.color || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
+    const isChar = z.shape === "character" || String(z.label || "").startsWith("Character");
+    if (isChar) {
+      const r = Math.min(z.w, z.h) / 2;
+      return zoneRot(z, `<circle cx="${z.x}" cy="${z.y}" r="${r + bw / 2}" ${ink} />`);
+    }
+    return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, 0, bw, ink));
+  }
+  if (z.kind === "logo") {
+    const sw = z.strokeWidth ?? Number(z.borderWidth);
+    if (!(Number.isFinite(sw) && sw > 0)) return "";
+    const r = Math.min(z.w, z.h) / 2;
+    return zoneRot(
+      z,
+      `<circle cx="${z.x}" cy="${z.y}" r="${r + sw / 2}" fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${sw}" />`,
+    );
+  }
+  const bw = Number(z.borderWidth);
+  if (!(Number.isFinite(bw) && bw > 0)) return "";
+  const rx = Math.min(z.w, z.h) * 0.12;
+  const ink = `fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
+  return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, rx, bw, ink));
+}
+
 function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false) {
   if (z.kind === "icon" && z.iconId) {
     return iconMark(
@@ -367,17 +407,8 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     if (!src) return "";
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
-    const bw = Number(z.borderWidth);
-    const isChar = z.shape === "character" || String(z.label || "").startsWith("Character");
-    const stroke =
-      Number.isFinite(bw) && bw > 0
-        ? isChar
-          ? `<circle cx="${z.x}" cy="${z.y}" r="${Math.min(z.w, z.h) / 2}" fill="none" stroke="${esc(z.borderColor || z.color || "#1a1a1a")}" stroke-width="${bw}" />`
-          : `<rect x="${left}" y="${top}" width="${z.w}" height="${z.h}" fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" />`
-        : "";
-    const img = `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />${stroke}`;
-    if (!z.rot) return img;
-    return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${img}</g>`;
+    const img = `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />`;
+    return zoneRot(z, img);
   }
   if (z.kind === "logo") {
     const r = Math.min(z.w, z.h) / 2;
@@ -385,17 +416,11 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     const ink = z.textColor || "#1a1a1a";
     const fs = Math.max(3, r * (z.fontScale || 0.7));
     const family = z.fontFamily || fontOf(state, ["fntHead", "fntH"], "Bitter, serif");
-    const sw = z.strokeWidth ?? Number(z.borderWidth);
-    const ring =
-      Number.isFinite(sw) && sw > 0
-        ? ` stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${sw}"`
-        : ` stroke="none"`;
     const body = `<g>
-      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}"${ring} />
+      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}" stroke="none" />
       <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="${esc(family)}">${esc(String(z.text || "BB"))}</text>
     </g>`;
-    if (!z.rot) return body;
-    return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${body}</g>`;
+    return zoneRot(z, body);
   }
   const lines = String(z.text || "").split("\n");
   const color = z.color || z.textColor || fallback;
@@ -403,15 +428,10 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
   const startY = z.y - ((lines.length - 1) * size * 0.55);
   const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
   const weight = z.fontWeight || "700";
-  const bw = Number(z.borderWidth);
-  const boxStroke =
-    Number.isFinite(bw) && bw > 0
-      ? ` stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}"`
-      : "";
-  const plate = z.fill && z.fill !== "none"
-    ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${Math.min(z.w, z.h) * 0.12}" fill="${esc(z.fill)}"${boxStroke} />`
-    : Number.isFinite(bw) && bw > 0
-      ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${Math.min(z.w, z.h) * 0.12}" fill="none"${boxStroke} />`
+  const rx = Math.min(z.w, z.h) * 0.12;
+  const plate =
+    z.fill && z.fill !== "none"
+      ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${rx}" fill="${esc(z.fill)}" stroke="none" />`
       : "";
   const text = lines
     .map(
@@ -419,9 +439,7 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
         `<text x="${z.x}" y="${startY + i * size * 1.12}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}">${esc(line)}</text>`,
     )
     .join("");
-  const body = `${plate}${text}`;
-  if (!z.rot) return body;
-  return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${body}</g>`;
+  return zoneRot(z, `${plate}${text}`);
 }
 
 function esc(s: string) {
@@ -656,7 +674,11 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
       const stroke = partShape(p, lite, "stroke");
       if (stroke) strokes.push({ z: p.z || 0, html: stroke });
     }
-    for (const z of zones) stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
+    for (const z of zones) {
+      stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
+      const frame = zoneStrokeMarkup(z);
+      if (frame) strokes.push({ z: z.z || 0, html: frame });
+    }
     for (const s of stamps) {
       stack.push({
         z: s.z || 0,
