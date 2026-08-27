@@ -17,7 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
 import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
+import { CUT_LAYER, moveLayer as moveLayerInState, moveLayerTo as moveLayerToInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -141,6 +141,7 @@ type DesignContextValue = {
   removeArt: (id: string) => void;
   patchLayer: (id: string, patch: { color?: string; text?: string; borderWidth?: number; borderColor?: string; size?: number }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
+  moveLayerTo: (id: string, toId: string) => void;
   selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
   moveItem: (id: string, x: number, y: number) => void;
   resizeItem: (id: string, w: number, h: number) => void;
@@ -712,7 +713,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       moveLayer: (id, dir) => {
         if (!current) return;
+        pushUndo(current.state);
         replaceCurrent({ ...current, state: moveLayerInState(current, id, dir) });
+      },
+      moveLayerTo: (id, toId) => {
+        if (!current) return;
+        const next = moveLayerToInState(current, id, toId);
+        if (next === current.state) return;
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: next });
       },
       selectLayer: (id, opts) => {
         if (clipPick && id && current?.state._composite?.parts?.some((p) => p.id === id)) {

@@ -89,7 +89,7 @@ hub/src/lib/design/
   art.ts            bg slots, stamps, addProductPhotos, fill-cut-with-paper
   art-presets.ts    artref: / assets/presets/ → /design-presets/*.{svg,png}; Pack art rail drops trimmed RGBA PNGs
   product-match.ts  template name → current bb_products when productId is empty
-  layers.ts         layer list / move / rotate / recolor / drag; grouped parts move together
+  layers.ts         layer list / move / drag-reorder / rotate / recolor; grouped parts move together
   part-types.ts     live PART_TYPES + add-shape factory
   boolean-cut.ts    live raster union / intersect / Moore contour
   studio-ops.ts     merge / group / trim / cut / addZone / named text zone / library character drop / pack art named image zone
@@ -105,7 +105,7 @@ hub/src/lib/storage.ts                  listLabelAssets
 hub/src/lib/storage-paths.ts            parseLabelAssetKey
 hub/src/lib/server/r2.ts                Get / Put / Delete / ListObjectsV2
 hub/src/lib/keys.ts                     DESIGN_WRITE_KEYS
-hub/public/design-presets/              repo character SVGs (not Firestore). Trimmed RGBA pack PNGs: lockup, sudani-beans, stone-chocolate, surprise-toys, pizza-face, chicken-face, ketchup, toy-cup, roll-toy, pebble
+hub/public/design-presets/              repo character SVGs (not Firestore). Trimmed RGBA pack PNGs: Kids (faces/toys/treats) + Adults (product/garnish) + BB lockup
 ```
 
 Shared hub (do not fork): `app-workspace.tsx`, `brand-lockup.tsx`, `auth-provider.tsx`, `cloud-store.ts`, `globals.css`, invoice `ui.tsx` primitives.
@@ -142,14 +142,14 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Taper / wrap **QR** and **weight** are separate from dates (`sQrPosX/Y`, `sQrSz`, `sWtPosX/Y`). Taper boxes follow the fan so inner items move in the sector.
 - Composite: `rot` on parts, zones, stamps. Family faces: live offset keys (`sCLogoX` / `sCBrandX` / …) plus `sC*Rot` / `sT*Rot` / `sSec*Rot`. Composite Studio maps 0–100 onto the artboard rectangle (`preserveAspectRatio="none"`), matching live percent boxes, so Layers Size scales a part about its center without sliding on portrait dies.
 - **Print cut** (`__cut__`) is listed and can show the overlay; it is not draggable. The black rim on character art (popcorn) is this die, not a decorative part stroke. Each layer has a **size** control plus an **outward** border (wrap Dates / QR / Weight are separate; not the whole column).
-- Wrap / taper Layers **Up / Down** reorder `eSecOrd` columns. Composite Up / Down still restack z-order.
+- Wrap / taper Layers **Up / Down** (or drag the ⋮⋮ handle) reorder `eSecOrd` columns. Composite drag / Up / Down restack z-order.
 - Studio inspector Copy / Nutrition follow the selected wrap column only while you are already on a content tab. **Layers / Layout / Type / Size / Color stay put** until the designer clicks another inspector tab.
 - Composite Size / resize / move of a sole silhouette **rebuilds Print cut from `pathLocal`** (same mapping as the art). Do not scale a raster-traced `unionPath` — that halo sits outside the sticker. Multi-part unions still recompute; Size slider pointer-up calls `syncCutPath`.
 - Character preset SVGs (`/design-presets/`) have a square `viewBox` inside a tall or wide canvas, so default SVG meet letterboxes the kernels. Studio / print paint those files with `preserveAspectRatio="xMidYMid slice"` so the art fills the part and Print cut sits on the silhouette. Device photos still use `none` (live fill). PNG cut uses the same `compositeDiePath` as the overlay.
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image. Save still writes the 256 px WebP. Re-save a family card to replace a colour-only die.
-- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** drops trimmed RGBA PNGs as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists **BB lockup** / **Pizza face** / … (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG.
+- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** is **Kids** / **Adults** (faces, toys, treats, product, garnish, brand). Trimmed RGBA PNGs drop as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists pack names (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG.
 - **Blank die + named sections (Wave D).** New template defaults to die only (Library checkbox **Include starter recipes** is off). Wrap/taper: `chkS1–6` false. Composite: empty zones. **Named section** on wrap/taper writes `state._blocks` and extends `eSecOrd`; Copy edits title / fields / width; Remove deletes it. Recipes stay `chkS*`. Legacy Custom column still opens. Composite named section is a text zone. No new `bb_*` key.
 
 ## Print house

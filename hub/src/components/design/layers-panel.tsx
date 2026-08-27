@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ActionBtn, Field } from "@/components/invoices/ui";
 import { familySectionKey, layerBorder, layerSize, listCanvasItems, listLayers } from "@/lib/design/layers";
 import { iconSvg } from "@/lib/design/icons";
@@ -9,6 +10,8 @@ import { useDesignApp } from "./design-context";
 export function LayersPanel() {
   const app = useDesignApp();
   const t = app.current;
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   if (!t) return null;
   const layers = listLayers(t);
   const selectedItem = listCanvasItems(t).find((item) => item.id === app.selectedId);
@@ -22,8 +25,8 @@ export function LayersPanel() {
   return (
     <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        Print cut is the die-cut stroke (the black rim on characters like popcorn). Each layer has its own
-        size and decorative border. On wrap, Up / Down reorder the columns.
+        Print cut is the die-cut stroke (the black rim on characters like popcorn). Drag a layer to restack it, or use
+        Up / Down. Each layer has its own size and decorative border. On wrap, that reorders the columns.
       </p>
       <ul className="flex flex-col gap-2">
         {layers.map((layer) => {
@@ -35,16 +38,55 @@ export function LayersPanel() {
           const inStack = stackAt >= 0;
           const border = selected && !cut ? layerBorder(t, layer.id) : null;
           const size = cut ? null : layerSize(t, layer.id);
+          const dragging = dragId === layer.id;
+          const dropTarget = Boolean(overId === layer.id && dragId && dragId !== layer.id && inStack);
           return (
             <li
               key={layer.id}
+              onDragOver={(e) => {
+                if (!inStack) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setOverId(layer.id);
+              }}
+              onDragLeave={() => {
+                if (overId === layer.id) setOverId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const id = e.dataTransfer.getData("text/plain") || dragId;
+                if (id && id !== layer.id && inStack) app.moveLayerTo(id, layer.id);
+                setDragId(null);
+                setOverId(null);
+              }}
               className={`flex flex-col gap-2 rounded-[var(--bb-radius)] border px-2 py-2 ${
                 selected
                   ? "border-[var(--bb-gold)] bg-[var(--bb-gold)]/10"
-                  : "border-[var(--bb-line)]"
-              }`}
+                  : dropTarget
+                    ? "border-[var(--bb-gold)]"
+                    : "border-[var(--bb-line)]"
+              } ${dragging ? "opacity-50" : ""}`}
             >
               <div className="flex flex-wrap items-center gap-2">
+                {inStack ? (
+                  <span
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", layer.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      setDragId(layer.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverId(null);
+                    }}
+                    className="cursor-grab select-none px-0.5 text-base leading-none text-[var(--bb-muted)] active:cursor-grabbing"
+                    title="Drag to reorder"
+                    aria-hidden
+                  >
+                    ⋮⋮
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 items-start gap-2 text-left"

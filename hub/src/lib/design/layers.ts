@@ -747,6 +747,18 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
   return next;
 }
 
+function moveFamilySectionTo(state: LabelState, fromSec: string, toSec: string): LabelState {
+  const order = parseSecOrd(state);
+  const i = order.indexOf(fromSec);
+  const j = order.indexOf(toSec);
+  if (i < 0 || j < 0 || i === j) return state;
+  const next = order.slice();
+  const [moved] = next.splice(i, 1);
+  if (!moved) return state;
+  next.splice(j, 0, moved);
+  return { ...state, eSecOrd: next.join(",") };
+}
+
 export function moveLayer(template: LabelTemplate, id: string, dir: -1 | 1): LabelState {
   const sec = familySectionKey(id);
   const face = previewFace(template);
@@ -765,7 +777,37 @@ export function moveLayer(template: LabelTemplate, id: string, dir: -1 | 1): Lab
   const ordered = items.slice();
   const [moved] = ordered.splice(index, 1);
   ordered.splice(next, 0, moved);
-  const zOf = new Map(ordered.map((item, i) => [item.id, i]));
+  return applyStackOrder(state, ordered.map((item) => item.id));
+}
+
+/** Drop `id` onto `toId` (same stack). Print cut is not a drop target. */
+export function moveLayerTo(template: LabelTemplate, id: string, toId: string): LabelState {
+  if (!id || !toId || id === toId) return template.state;
+  const sec = familySectionKey(id);
+  const face = previewFace(template);
+  if (sec && (face === "back" || face === "taper")) {
+    const toSec = familySectionKey(toId);
+    if (!toSec) return template.state;
+    return moveFamilySectionTo(template.state, sec, toSec);
+  }
+  const state = template.state;
+  const items: { id: string; z: number }[] = [];
+  for (const part of state._composite?.parts || []) items.push({ id: part.id, z: part.z || 0 });
+  for (const zone of state._composite?.zones || []) items.push({ id: zone.id, z: zone.z || 0 });
+  for (const stamp of state._stamps || []) items.push({ id: stamp.id, z: stamp.z || 0 });
+  items.sort((a, b) => a.z - b.z || a.id.localeCompare(b.id));
+  const from = items.findIndex((item) => item.id === id);
+  const to = items.findIndex((item) => item.id === toId);
+  if (from < 0 || to < 0) return state;
+  const ordered = items.slice();
+  const [moved] = ordered.splice(from, 1);
+  if (!moved) return state;
+  ordered.splice(to, 0, moved);
+  return applyStackOrder(state, ordered.map((item) => item.id));
+}
+
+function applyStackOrder(state: LabelState, ids: string[]): LabelState {
+  const zOf = new Map(ids.map((itemId, i) => [itemId, i]));
   return {
     ...state,
     _stamps: (state._stamps || []).map((st) => ({ ...st, z: zOf.get(st.id) ?? (st.z || 0) })),
