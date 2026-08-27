@@ -454,6 +454,12 @@ Pack PNG zones live as `<image href="/design-presets/bb-….png">`. Save rasteri
 
 ---
 
+## 2026-08-27 — H5 persist CAS uses the caller token
+
+`persist` took `_prevWriteId` and ignored it, then `getDocFromServer`’d the live `clientWriteId` and sent that as `prevWriteId`. Rules `prevWriteId == resource.data.clientWriteId` always matched, so Tab B could clobber Tab A’s `bb_invoices` (and every other key). Hub now sends the caller token; an empty token still re-reads the stored id so unhydrated stock writes are not denied. A CAS miss restores the server blob so the rejected local write does not stick. Invoice/finance `getVersioned` → `setFrom` is live again. No extra read on a normal save.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump

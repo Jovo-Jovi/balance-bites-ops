@@ -318,7 +318,7 @@ async function readStoredWriteId(key: string): Promise<string> {
   }
 }
 
-async function persist(key: string, value: unknown, _prevWriteId = ""): Promise<void> {
+async function persist(key: string, value: unknown, prevWriteId = ""): Promise<void> {
   if (!isFirebaseConfigured()) {
     hooks.onError("Firebase غير مضبوط — الحفظ محلي فقط", key);
     return;
@@ -332,8 +332,10 @@ async function persist(key: string, value: unknown, _prevWriteId = ""): Promise<
     let basedOn = "";
     try {
       const uid = requireUid();
-      basedOn = await readStoredWriteId(key);
-      if (basedOn) lastAppliedWriteId.set(key, basedOn);
+      // Caller token is the CAS check. Re-read the stored id only when that
+      // token is empty (unhydrated stock). Replacing a real token with the
+      // live server id made prevWriteId == clientWriteId by construction.
+      basedOn = prevWriteId || (await readStoredWriteId(key));
       pendingWriteIds.add(clientWriteId);
       await setDoc(keyDocRef(key), {
         data: value,
@@ -401,8 +403,11 @@ async function classifyPersistError(
     if (!snap.exists()) {
       return `فشل الحفظ في السحابة (${key})`;
     }
-    const stored = String((snap.data() as CloudKeyDoc).clientWriteId || "");
+    const payload = snap.data() as CloudKeyDoc;
+    const stored = String(payload.clientWriteId || "");
     if (stored !== prevWriteId) {
+      if (stored) lastAppliedWriteId.set(key, stored);
+      if (payload && "data" in payload) applyRemote(key, payload.data);
       return formatWriteError(err, { docExists: true });
     }
     return "رُفض الحفظ: القواعد غير منشورة أو قديمة";
