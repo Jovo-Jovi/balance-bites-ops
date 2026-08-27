@@ -14,9 +14,9 @@ import {
   unionPathFromPartsList,
   zoneOutlinePathPct,
 } from "./boolean-cut";
-import { MAX_OUTLINE_PARTS, makePart } from "./part-types";
-import { presetSrcForKey } from "./art-presets";
-import type { PreviewFace } from "./layout";
+import { presetSrcForKey, studioPackArtBox, studioPackArtLabel } from "./art-presets";
+import { compositeAspect, type PreviewFace } from "./layout";
+import { MAX_OUTLINE_PARTS, makePart, syncPartPhysicalAspect, syncLogoCircleSize } from "./part-types";
 import { stampFaceOf } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
@@ -127,7 +127,7 @@ export function addShape(state: LabelState, type: string): StudioOp {
     return fail(state, `Max ${MAX_OUTLINE_PARTS} outline parts.`);
   }
   bumpZ(blob);
-  const part = makePart(type, blob.parts!.length, blob.bg || "#2e7d32");
+  const part = syncPartPhysicalAspect(makePart(type, blob.parts!.length, blob.bg || "#2e7d32"), compositeAspect(state));
   blob.parts!.push(part);
   recomputeUnion(blob);
   return {
@@ -600,6 +600,7 @@ export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
       fontScale: 0.42,
       rot: 0,
     };
+    zone = syncLogoCircleSize(zone, compositeAspect(state));
   } else if (kind === "image") {
     zone = {
       id: genId("z"),
@@ -705,6 +706,39 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
   part.showImage = true;
   blob.presetId = key;
   return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
+}
+
+/** Drop trimmed pack PNG as a named image zone (`artref:` only). Not a circle plate. */
+export function dropPackArt(state: LabelState, artKey: string): StudioOp {
+  const key = String(artKey || "")
+    .trim()
+    .replace(/^bb-/, "")
+    .replace(/_/g, "-");
+  if (!key || !presetSrcForKey(key)) return fail(state, "Unknown pack art.");
+  const packed = withBlob(state);
+  if (!packed) return fail(state, "Switch Family to Composite, then tap Pack art.");
+  const { next, blob } = packed;
+  bumpZ(blob);
+  const zTop = Math.max(0, ...(blob.zones || []).map((z) => z.z || 0), ...(blob.parts || []).map((p) => p.z || 0));
+  const label = studioPackArtLabel(key);
+  const box = studioPackArtBox(key);
+  const zone: CompositeZone = {
+    id: genId("z"),
+    kind: "image",
+    x: 50,
+    y: 48,
+    w: box.w,
+    h: box.h,
+    lockAspect: true,
+    label,
+    z: zTop + 1,
+    src: `artref:${key}`,
+    shape: "pack",
+    borderWidth: 0,
+    rot: 0,
+  };
+  blob.zones = [...(blob.zones || []), zone];
+  return { state: next, selectIds: [zone.id], message: `${label} added — drag it.`, ok: true };
 }
 
 /** Drop a fetched library PNG as a removable image zone (composite) or stamp (wrap / circle / lid). */

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
+import { useIsClient } from "@/lib/use-is-client";
 
 export function Field({
   label,
@@ -119,6 +120,15 @@ export function Accordion({
   );
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function dialogFocusables(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => el.getClientRects().length > 0,
+  );
+}
+
 export function Modal({
   open,
   title,
@@ -136,10 +146,14 @@ export function Modal({
   closeLabel?: string;
   wide?: boolean;
 }) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsClient();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
     const html = document.documentElement;
@@ -154,6 +168,51 @@ export function Modal({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !mounted) return;
+
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const root: HTMLElement = dialog;
+
+    (closeBtnRef.current ?? dialogFocusables(root)[0])?.focus();
+
+    function onEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onCloseRef.current();
+    }
+
+    function onTab(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const items = dialogFocusables(root);
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !root.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !root.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    root.addEventListener("keydown", onTab);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      root.removeEventListener("keydown", onTab);
+      document.removeEventListener("keydown", onEscape);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [open, mounted]);
+
   if (!open || !mounted) return null;
 
   return createPortal(
@@ -164,6 +223,7 @@ export function Modal({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -176,6 +236,7 @@ export function Modal({
         <div className="flex items-center justify-between gap-3 border-b border-[var(--bb-line)]/60 px-4 py-3">
           <h2 className="text-base text-[var(--bb-title)]">{title}</h2>
           <button
+            ref={closeBtnRef}
             type="button"
             onClick={onClose}
             className="bb-btn min-h-11 rounded-full px-3 text-sm"

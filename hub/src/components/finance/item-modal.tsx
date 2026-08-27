@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionBtn, Field, Modal, Select, TextArea, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp, type ItemKind } from "./finance-context";
@@ -18,41 +18,39 @@ export function ItemModal({
   item: StockItem | null;
   onClose: () => void;
 }) {
+  if (!open) return null;
+  return <ItemModalForm key={item?.id ?? "new"} type={type} item={item} onClose={onClose} />;
+}
+
+function ItemModalForm({
+  type,
+  item,
+  onClose,
+}: {
+  type: ItemKind;
+  item: StockItem | null;
+  onClose: () => void;
+}) {
   const app = useFinanceApp();
   const router = useRouter();
   const opened = item ? app.qtyOf(type, item.id, item) : 0;
-  const [name, setName] = useState("");
-  const [unit, setUnit] = useState("قطعة");
-  const [cost, setCost] = useState("0");
-  const [stock, setStock] = useState("0");
-  const [minStock, setMin] = useState("0");
-  const [supplier, setSupplier] = useState("");
-  const [notes, setNotes] = useState("");
-  const [productId, setProductId] = useState("");
-  const [recipeId, setRecipeId] = useState("");
-  const [templateKey, setTemplateKey] = useState("");
-  const [openedStock, setOpenedStock] = useState(0);
-
-  useEffect(() => {
-    if (!open) return;
-    setName(item?.name || "");
-    setUnit(item?.unit || "قطعة");
-    setCost(String(item?.costPerUnit ?? 0));
-    setStock(String(opened));
-    setOpenedStock(opened);
-    setMin(String(item?.minStock ?? 0));
-    setSupplier(item?.supplier || "");
-    setNotes(item?.notes || "");
-    setProductId(item?.productId || "");
-    setRecipeId(item?.recipeId || "");
-    setTemplateKey(item?.templateKey || "");
-  }, [open, item, opened]);
+  const [name, setName] = useState(item?.name || "");
+  const [unit, setUnit] = useState(item?.unit || "قطعة");
+  const [cost, setCost] = useState(String(item?.costPerUnit ?? 0));
+  const [stock, setStock] = useState(String(opened));
+  const [minStock, setMin] = useState(String(item?.minStock ?? 0));
+  const [supplier, setSupplier] = useState(item?.supplier || "");
+  const [notes, setNotes] = useState(item?.notes || "");
+  const [productId, setProductId] = useState(item?.productId || "");
+  const [recipeId, setRecipeId] = useState(item?.recipeId || "");
+  const [templateKey, setTemplateKey] = useState(item?.templateKey || "");
+  const [openedStock] = useState(opened);
 
   const label = INV_TYPES.find((t) => t.id === type)?.label || type;
 
   return (
     <Modal
-      open={open}
+      open
       title={item ? `تعديل ${label}` : `إضافة ${label}`}
       onClose={onClose}
       footer={

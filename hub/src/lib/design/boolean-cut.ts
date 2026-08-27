@@ -207,6 +207,21 @@ export function partFillPath(part: CompositePart) {
   return polygonToPathPct(partToPolygon(part, 100, 100));
 }
 
+/** Live `partFillPathLocal` — path in the part box (0–100). Rounded corners are the artboard cut polygon projected into that box so a non-square board does not squash them. */
+export function partFillPathLocal(part: CompositePart) {
+  if (partHasPathLocal(part)) return String(part.pathLocal || "");
+  if (part.type === "rounded_sq" || part.type === "rounded_rect") {
+    const pts = partToPolygon({ ...part, rot: 0 }, 100, 100);
+    const pw = Math.max(0.01, Number(part.w) || 36);
+    const ph = Math.max(0.01, Number(part.h) || 36);
+    const L = (Number(part.x) || 50) - pw / 2;
+    const T = (Number(part.y) || 50) - ph / 2;
+    const localPts = (pts || []).map((pt): Pt => [((pt[0] - L) / pw) * 100, ((pt[1] - T) / ph) * 100]);
+    return polygonToPathPct(localPts);
+  }
+  return polygonToPathPct(partToPolygon({ ...part, x: 50, y: 50, w: 100, h: 100, rot: 0 }, 100, 100));
+}
+
 export function pathPctBBox(dPct: string): BBox | null {
   let L = Infinity;
   let T = Infinity;
@@ -828,6 +843,7 @@ export function intersectPartsPathPct(clipper: CompositePart, subject: Composite
 
 export function isCutOutlineZone(z: CompositeZone | null | undefined) {
   if (!z) return false;
+  if (z.shape === "pack") return false;
   if (z.kind === "icon" || z.kind === "logo" || z.kind === "image") return true;
   if (z.iconId) return true;
   return false;

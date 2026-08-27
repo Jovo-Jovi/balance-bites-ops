@@ -82,14 +82,16 @@ async function collectLabelAssets(): Promise<ZipFile[]> {
   return out;
 }
 
-/** Live Firestore `bb_*` docs + R2 `label_assets/` — Desktop saved-data shape. */
+/** Live Firestore `bb_*` docs + R2 `label_assets/` when storage is on. */
 export async function downloadLocalBackup(): Promise<{
   filename: string;
   keys: string[];
   assets: number;
+  assetsSkipped: boolean;
 }> {
   const rows = await CloudStore.exportExisting();
-  const assets = await collectLabelAssets();
+  const assetsSkipped = !isStorageEnabled();
+  const assets = isStorageEnabled() ? await collectLabelAssets() : [];
   if (!rows.length && !assets.length) {
     throw new Error("لا بيانات في السحابة للتحميل");
   }
@@ -102,11 +104,6 @@ export async function downloadLocalBackup(): Promise<{
   ];
   const zip = zipStore(files);
   const filename = localBackupFileName();
-  const bytes = new Uint8Array(zip.byteLength);
-  bytes.set(zip);
-  downloadBlob(
-    new Blob([bytes.buffer as ArrayBuffer], { type: "application/zip" }),
-    filename,
-  );
-  return { filename, keys: rows.map((r) => r.key), assets: assets.length };
+  downloadBlob(new Blob([zip as BlobPart], { type: "application/zip" }), filename);
+  return { filename, keys: rows.map((r) => r.key), assets: assets.length, assetsSkipped };
 }

@@ -376,7 +376,92 @@ Staff can download live Firestore keys **and** R2 `label_assets/` as `bb-saved-d
 
 ---
 
+## 2026-08-27 — Restore original design-preset SVGs (T12 quality rollback)
+
+Studio and Print house both load `/design-presets/*.svg` again (original polygon traces: jelly-fruit 22,443 paths). The T12 spline re-trace and 512px WebP preview folder are gone — quality in Studio and print was the requirement.
+
+---
+
+## 2026-08-27 — T14 bb_invoices sharding (deferred)
+
+Not this round. `bb_invoices` remains one document (~730 typical 6-line Arabic invoices before the 1 MiB ceiling). `formatWriteError` already shows the failure. When it is time: year keys `bb_invoices_2026`, extend `isKnownKey`, migrate `enrichInvoice` plus `invoices/reports.ts` and `finance/analytics.ts`. After T7 only — sharding multiplies CAS documents; doing it without `prevWriteId` multiplies the clobber. Quotas are not the reason (~68 hydrate/watch reads per sign-in).
+
+---
+
+## 2026-08-27 — Finance save wait overlay
+
+Stock qty (product + materials), product save, and production-run persist show Design’s indeterminate bar with Arabic copy (`جاري الحفظ…` / `قد يستغرق ثوانٍ.`) until Firestore accepts and the toast appears. Toasts sit above the overlay (`z-[100]`).
+
+---
+
+## 2026-08-27 — Classify permission-denied with a read probe
+
+`formatWriteError` no longer treats a non-empty CAS token as “another device”. On `permission-denied` persist, a `getDoc` probe tells staff/rules vs missing doc vs genuine CAS vs unpublished/stale rules (`القواعد غير منشورة أو قديمة`). `persistDelete` stays a sync formatter. Ignored Finance/Invoices writes use `fireAndForget` so the toast is not followed by `Uncaught (in promise)`.
+
+---
+
+## 2026-08-27 — Drop tautological prep-append guard
+
+`commitPrepInvoice` keeps `satisfies FINANCE_PREP_APPEND_KEYS` (compile-time). The runtime `includes` check and unused `isFinancePrepAppendKey` are gone. `bb_invoices` stays off `FINANCE_WRITE_KEYS`.
+
+---
+
+## 2026-08-27 — Firestore rules tests in CI
+
+CI runs `firebase emulators:exec --only firestore "npm run test:rules"` after `npm ci` (Temurin 17 + `firebase-tools@15`). The seven CAS cases cannot regress with a green build.
+
+---
+
+## 2026-08-27 — T13 cleanup batch
+
+Deleted `public/bb-cloud-store.js` and unauthenticated `/api/firebase-config`. Dropped deprecated `preferredRegion` (Vercel `regions: [fra1]` stays). `--bb-warn` `#9a5a26` for AA on `--bb-panel`. Local zip download passes the existing `Uint8Array` to `Blob` (no second copy). Error boundary shows a fixed Arabic line + `digest`; raw `error.message` only in development. `npm update firebase-admin` stays at 14.3.0; six moderate advisories remain in the `uuid@9` tree under `@google-cloud/storage` (GHSA-w5hq-g745-h8pq). `npm audit fix --force` would install firebase-admin@10.3.0. Zero high/critical; import script only, not the deployed bundle.
+
+---
+
+## 2026-08-27 — T12 design-preset re-trace
+
+Polygon vtracer dumps in `hub/public/design-presets/` (≈18 MB, up to 22k `<path>`s) re-traced spline + speckle 12. Studio / Library on-screen preview loads `/design-presets/preview/*.webp` (512px). Prepress + PNG pack still embed the SVG (`physical: true`). Popcorn-blue / popcorn-red stay print-pack excluded. Same 12 `PRESET_FILES` keys. **Rolled back the same day** — original SVGs restored for Studio and print.
+
+---
+
+## 2026-08-27 — Composite round-square borders
+
+Round sq on a tall artboard (Chicopon 6.3×7) was a percent-square, so the die stretched, corners used `rx = 0.22 × half` (11%) instead of live’s 18% cut polygon, and the die `clip-path` ate the outer half of a centered stroke. Hub now compensates `w%`/`h%` like live `syncEqualAspectPart`, draws fill/stroke from `partFillPathLocal` in the part box, and paints the border outside the clip.
+
+---
+
+## 2026-08-27 — Text-box borders sit outside the fill
+
+Composite text / logo / image Layers Border used a centered SVG stroke inside the die clip, so half the rim covered the fill. Preview now paints an outset stroke (centerline at `bw/2` outside the box) after the clip. Wrap Nutrition’s outward `box-shadow` is on an overflow-visible wrapper. Taper foreignObject wrappers are `overflow:visible` so those rings are not clipped to the fan cell. Studio hit-boxes use outline, not inset `border`.
+
+---
+
+## 2026-08-27 — Text rim hugs type; shape stroke stays on its layer
+
+Unfilled text Layers Border followed the drag frame while type overflowed a 10% cap. Hub now fits type like live `zoneTextFontPx` and rings the glyph block. Part/zone fill is still clipped to the die; each decorative stroke is painted with that item’s z so jelly-blob on jelly-new stays under later icons and “A FRUITY ADVENTURE!”.
+
+---
+
+## 2026-08-27 — Pack art for three new stickers
+
+Dropped original kawaii assets for المقرمشات / سوداني ألوان / شوكولاتة حجر. Studio **Pack art** rail is **Kids** / **Adults** with groups (faces, toys, treats, product, garnish, brand). Trimmed RGBA PNGs drop as named Composite image zones with `artref:` — not a circle plate, not the crude Kids icons. Corner white is knocked out; chicken fill stays. Family must be Composite. Layers shows the pack name and can be **dragged** (⋮⋮) or Up / Down to restack. Not vtracer dumps, not Firestore. Popcorn stays off the Characters rail. No templates seeded.
+
+---
+
+## 2026-08-27 — Library snap shows pack art
+
+Pack PNG zones live as `<image href="/design-presets/bb-….png">`. Save rasterizes that SVG as an `<img>`, which will not fetch nested PNGs — and `fetch(..., credentials: "omit")` blanked the href on protected previews, so Library cards stayed a colour-only die. Hub now inlines pack PNGs the same way as nested preset SVGs (Image → canvas data URL, never wipe the href), sets `xlink:href`, and paints raster image zones onto the **Library** snap after the SVG (Cut PNG z-order stays the SVG). Cards without a saved `libraryThumb` draw those PNGs on the Path2D die. Re-save an older card to replace a die-only WebP. Popcorn SVGs stay off the first-open grid.
+
+---
+
+## 2026-08-27 — H5 persist CAS uses the caller token
+
+`persist` took `_prevWriteId` and ignored it, then `getDocFromServer`’d the live `clientWriteId` and sent that as `prevWriteId`. Rules `prevWriteId == resource.data.clientWriteId` always matched, so Tab B could clobber Tab A’s `bb_invoices` (and every other key). Hub now sends the caller token; an empty token still re-reads the stored id so unhydrated stock writes are not denied. A CAS miss restores the server blob so the rejected local write does not stick. Invoice/finance `getVersioned` → `setFrom` is live again. No extra read on a normal save.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
 - Merge `feat/finance` → `main` when Waves A–E are confirmed
+- **T14** year-shard `bb_invoices` when the 1 MiB document is near (~730 invoices) — after T7 CAS; not Spark quotas

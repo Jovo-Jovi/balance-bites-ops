@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CloudStore } from "@/lib/cloud-store";
+import { CloudStore, fireAndForget } from "@/lib/cloud-store";
 import { useCloudKey } from "@/hooks/use-cloud-key";
 import { useToast } from "@/components/toast";
 import {
@@ -131,6 +131,10 @@ const InvoiceContext = createContext<InvoiceContextValue | null>(null);
 function readInvoices() {
   return asArray<Invoice>(CloudStore.get("bb_invoices", []));
 }
+function readInvoicesVersioned() {
+  const { value, writeId } = CloudStore.getVersioned<unknown>("bb_invoices", []);
+  return { invoices: asArray<Invoice>(value), writeId };
+}
 function readCustomers() {
   return asArray<Customer>(CloudStore.get("bb_customers", []));
 }
@@ -185,12 +189,12 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
   const persistInv2 = useCallback(
     (nextTheme = theme, nextStrings = strings, nextItems = draft.items) => {
       const prev = asRecord<Record<string, unknown>>(CloudStore.get("bb_inv2", {}));
-      void writeInvoiceKey("bb_inv2", {
+      fireAndForget(writeInvoiceKey("bb_inv2", {
         ...prev,
         C: nextTheme,
         S: { ...nextStrings, discount: draft.discount },
         items: nextItems,
-      });
+      }));
     },
     [theme, strings, draft.items, draft.discount],
   );
@@ -277,7 +281,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         return false;
       }
       const totals = calcTotals(current.items, current.discount);
-      const arr = readInvoices();
+      const { invoices: arr, writeId } = readInvoicesVersioned();
       const existing = current.loadedInvoiceId
         ? arr.find((i) => i.id === current.loadedInvoiceId)
         : undefined;
@@ -301,9 +305,9 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       let next = arr;
       if (idx >= 0) next = arr.map((i, iAt) => (iAt === idx ? inv : i));
       else next = [inv, ...arr].slice(0, INVOICE_HISTORY_MAX);
-      await writeInvoiceKey("bb_invoices", next);
+      await writeInvoiceKey("bb_invoices", next, writeId);
       if (current.pendingId) {
-        void writeInvoiceKey(
+        fireAndForget(writeInvoiceKey(
           "bb_pending_invoices",
           readPending().map((p) =>
             p.id === current.pendingId
@@ -315,7 +319,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
                 }
               : p,
           ),
-        );
+        ));
       }
       setDraftState((prev) => ({
         ...prev,
@@ -341,7 +345,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       toast.push(`تم تحميل الفاتورة ${inv.invoiceNumber}`, "ok");
     }
     function duplicateInvoice(id: string) {
-      const arr = readInvoices();
+      const { invoices: arr, writeId } = readInvoicesVersioned();
       const inv = arr.find((i) => i.id === id);
       if (!inv) return;
       const copy: Invoice = {
@@ -351,14 +355,16 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         savedAt: new Date().toISOString(),
         date: todayISO(),
       };
-      void writeInvoiceKey("bb_invoices", [copy, ...arr]);
+      fireAndForget(writeInvoiceKey("bb_invoices", [copy, ...arr], writeId));
       toast.push(`تم نسخ الفاتورة → ${copy.invoiceNumber}`, "ok");
     }
     function removeInvoice(id: string) {
-      void writeInvoiceKey(
+      const { invoices: arr, writeId } = readInvoicesVersioned();
+      fireAndForget(writeInvoiceKey(
         "bb_invoices",
-        readInvoices().filter((i) => i.id !== id),
-      );
+        arr.filter((i) => i.id !== id),
+        writeId,
+      ));
       setDraftState((prev) =>
         prev.loadedInvoiceId === id ? { ...prev, loadedInvoiceId: null } : prev,
       );
@@ -371,7 +377,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       setDraftState((prev) => {
         if (prev.pendingId) {
           const arr = readPending();
-          void writeInvoiceKey(
+          fireAndForget(writeInvoiceKey(
             "bb_pending_invoices",
             arr.map((p) =>
               p.id === prev.pendingId
@@ -384,7 +390,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
                   }
                 : p,
             ),
-          );
+          ));
           return {
             ...prev,
             customerId: id,
@@ -414,7 +420,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       const arr = readCustomers();
       if (data.id) {
         const next = arr.map((c) => (c.id === data.id ? { ...c, ...data, name } : c));
-        void writeInvoiceKey("bb_customers", next);
+        fireAndForget(writeInvoiceKey("bb_customers", next));
         const updated = next.find((c) => c.id === data.id)!;
         toast.push("تم حفظ العميل", "ok");
         return updated;
@@ -427,15 +433,15 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         notes: data.notes || "",
         createdAt: new Date().toISOString(),
       };
-      void writeInvoiceKey("bb_customers", [c, ...arr]);
+      fireAndForget(writeInvoiceKey("bb_customers", [c, ...arr]));
       toast.push("تم إضافة العميل", "ok");
       return c;
     }
     function removeCustomer(id: string) {
-      void writeInvoiceKey(
+      fireAndForget(writeInvoiceKey(
         "bb_customers",
         readCustomers().filter((c) => c.id !== id),
-      );
+      ));
       setDraftState((prev) =>
         prev.customerId === id
           ? { ...prev, customerId: null, customerName: "", customerPhone: "" }
@@ -475,10 +481,10 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       return (await saveInvoice()) !== false;
     }
     function removePending(id: string) {
-      void writeInvoiceKey(
+      fireAndForget(writeInvoiceKey(
         "bb_pending_invoices",
         readPending().filter((p) => p.id !== id),
-      );
+      ));
       setDraftState((prev) => (prev.pendingId === id ? { ...prev, pendingId: null } : prev));
     }
     function saveBundle(name: string) {
@@ -496,14 +502,14 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       const existing = arr.find((b) => b.name === trimmed);
       if (existing) {
         if (!window.confirm(`مجموعة «${trimmed}» موجودة. استبدالها؟`)) return;
-        void writeInvoiceKey(
+        fireAndForget(writeInvoiceKey(
           "bb_invoice_bundles",
           arr.map((b) =>
             b.id === existing.id
               ? { ...b, items: cloned, updatedAt: new Date().toISOString() }
               : b,
           ),
-        );
+        ));
         toast.push(`تم تحديث المجموعة · ${cloned.length} صنف`, "ok");
         return;
       }
@@ -514,7 +520,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      void writeInvoiceKey("bb_invoice_bundles", [bundle, ...arr]);
+      fireAndForget(writeInvoiceKey("bb_invoice_bundles", [bundle, ...arr]));
       toast.push(`تم حفظ المجموعة «${trimmed}» · ${cloned.length} صنف`, "ok");
     }
     function applyBundle(id: string, replace: boolean) {
@@ -534,10 +540,10 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       toast.push(`${replace ? "استُبدلت" : "أُضيفت"} · ${cloned.length} صنف من «${b.name}»`, "ok");
     }
     function removeBundle(id: string) {
-      void writeInvoiceKey(
+      fireAndForget(writeInvoiceKey(
         "bb_invoice_bundles",
         readBundles().filter((b) => b.id !== id),
-      );
+      ));
     }
     function multiCopyBundle(bundleId: string, customerIds: string[]) {
       const b = readBundles().find((x) => x.id === bundleId);
@@ -551,7 +557,8 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         toast.push("حدّد عميلاً واحداً على الأقل", "warn");
         return;
       }
-      let arr = readInvoices();
+      const { invoices: start, writeId } = readInvoicesVersioned();
+      let arr = start;
       let created = 0;
       customerIds.forEach((cid) => {
         const c = readCustomers().find((x) => x.id === cid);
@@ -576,7 +583,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         arr = [inv, ...arr];
         created += 1;
       });
-      void writeInvoiceKey("bb_invoices", arr);
+      fireAndForget(writeInvoiceKey("bb_invoices", arr, writeId));
       toast.push(`تم إنشاء ${created} فاتورة من «${b.name}»`, "ok");
     }
     function setPayment(invoiceId: string, status: "paid" | "pending") {
@@ -584,14 +591,14 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         ...readPayments(),
         [invoiceId]: { status, updatedAt: todayISO() },
       };
-      void writeInvoiceKey("bb_invoice_payments", next);
+      fireAndForget(writeInvoiceKey("bb_invoice_payments", next));
     }
     function applyPreset(id: string) {
       const p = readPresets().find((x) => x.id === id);
       if (!p) return;
       const next = themeFromPreset(p);
       setThemeState(next);
-      void writeInvoiceKey("bb_active_color_preset_id", id);
+      fireAndForget(writeInvoiceKey("bb_active_color_preset_id", id));
       persistInv2(next, strings, draft.items);
       toast.push(`المظهر: ${p.name}`, "ok");
     }
@@ -602,20 +609,20 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         return;
       }
       const preset: ColorPreset = { id: `cp_${Date.now()}`, name: trimmed, ...theme };
-      void writeInvoiceKey("bb_color_presets", [...readPresets(), preset]);
-      void writeInvoiceKey("bb_active_color_preset_id", preset.id);
+      fireAndForget(writeInvoiceKey("bb_color_presets", [...readPresets(), preset]));
+      fireAndForget(writeInvoiceKey("bb_active_color_preset_id", preset.id));
       toast.push("حُفظ المظهر", "ok");
     }
     function removePreset(id: string) {
-      void writeInvoiceKey(
+      fireAndForget(writeInvoiceKey(
         "bb_color_presets",
         readPresets().filter((p) => p.id !== id),
-      );
-      if (activePresetId === id) void writeInvoiceKey("bb_active_color_preset_id", "");
+      ));
+      if (activePresetId === id) fireAndForget(writeInvoiceKey("bb_active_color_preset_id", ""));
     }
     function persistLook() {
       persistInv2();
-      void writeInvoiceKey("bb_inv_print_preset_id", printLook);
+      fireAndForget(writeInvoiceKey("bb_inv_print_preset_id", printLook));
       toast.push("تم حفظ إعدادات الطباعة", "ok");
     }
     function printInvoice(mode: "original" | "net", look?: PrintLookId) {
@@ -629,7 +636,7 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
         }
       }
       const resolved = look ?? printLook;
-      void writeInvoiceKey("bb_inv_print_preset_id", resolved);
+      fireAndForget(writeInvoiceKey("bb_inv_print_preset_id", resolved));
       const ok = printInvoiceDocument({
         draft,
         theme: resolvePrintTheme(resolved, theme, readPresets()),
@@ -752,23 +759,23 @@ export function InvoiceProvider({ children }: { children: ReactNode }) {
       setStrings: (patch) => setStringsState((prev) => ({ ...prev, ...patch })),
       persistLook,
       setFitOne: (on) => {
-        void writeInvoiceKey("bb_print_fit_one", on);
+        fireAndForget(writeInvoiceKey("bb_print_fit_one", on));
       },
       pageSize,
       setPageSize: (size: PrintPageSize) => {
-        void writeInvoiceKey("bb_inv_print_page_size", size);
+        fireAndForget(writeInvoiceKey("bb_inv_print_page_size", size));
       },
       margins,
       setMargins: (patch: Partial<PrintMargins>) => {
-        void writeInvoiceKey("bb_inv_print_margins", {
+        fireAndForget(writeInvoiceKey("bb_inv_print_margins", {
           ...DEFAULT_PRINT_MARGINS,
           ...margins,
           ...patch,
-        });
+        }));
       },
       printLook,
       setPrintLook: (look: PrintLookId) => {
-        void writeInvoiceKey("bb_inv_print_preset_id", look);
+        fireAndForget(writeInvoiceKey("bb_inv_print_preset_id", look));
       },
       printInvoice,
       printSavedInvoice,

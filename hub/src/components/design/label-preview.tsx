@@ -131,10 +131,10 @@ export function LabelPreview({
                   aria-pressed={on}
                   className={`absolute box-border touch-none ${
                     on
-                      ? "border-2 border-[var(--bb-gold)]"
+                      ? "outline outline-2 outline-[var(--bb-gold)]"
                       : multi
-                        ? "cursor-grab border-2 border-dashed border-[var(--bb-gold)]"
-                        : "cursor-grab border border-transparent hover:border-[var(--bb-line)]"
+                        ? "cursor-grab outline outline-2 outline-dashed outline-[var(--bb-gold)]"
+                        : "cursor-grab outline outline-1 outline-transparent hover:outline-[var(--bb-line)]"
                   }`}
                   style={{
                     left: `${item.x - item.w / 2}%`,

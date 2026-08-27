@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/components/auth-provider";
 import { FinanceProvider } from "./finance-context";
+import { FinanceBusyOverlay } from "./finance-busy";
 import { OverviewTool } from "./overview-tool";
 import { InvoicesTool } from "./invoices-tool";
 import { StockTool } from "./stock-tool";
@@ -28,22 +29,28 @@ export function FinanceApp({ tab }: { tab: string }) {
 }
 
 function FinancePanel({ tab }: { tab: string }) {
-  switch (tab) {
-    case "invoices":
-      return <InvoicesTool />;
-    case "stock":
-      return <StockTool />;
-    case "flow":
-      return <FlowTool />;
-    case "purchases":
-      return <PurchasesTool />;
-    case "recipes":
-      return <RecipesTool />;
-    case "returns":
-      return <ReturnsTool />;
-    case "ops":
-      return <OpsTool />;
-    default:
-      return <OverviewTool />;
-  }
+  const body =
+    tab === "invoices" ? (
+      <InvoicesTool />
+    ) : tab === "stock" ? (
+      <StockTool />
+    ) : tab === "flow" ? (
+      <FlowTool />
+    ) : tab === "purchases" ? (
+      <PurchasesTool />
+    ) : tab === "recipes" ? (
+      <RecipesTool />
+    ) : tab === "returns" ? (
+      <ReturnsTool />
+    ) : tab === "ops" ? (
+      <OpsTool />
+    ) : (
+      <OverviewTool />
+    );
+  return (
+    <>
+      <FinanceBusyOverlay />
+      {body}
+    </>
+  );
 }

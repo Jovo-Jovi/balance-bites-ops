@@ -2,11 +2,22 @@ import { findBlock, parseBlockLayerId, sectionOrder } from "./blocks";
 import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./art";
 import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
-import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys } from "./layout";
+import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys, compositeAspect } from "./layout";
+import {
+  PART_TYPES,
+  isEqualAspectPart,
+  syncEqualAspectPart,
+  syncHalfCirclePartSize,
+  syncIconSquareSize,
+  syncLogoCircleSize,
+  syncPartPhysicalAspect,
+  syncZonePhysicalAspect,
+} from "./part-types";
+import { studioPackArtLabel } from "./art-presets";
 import { stampOnFace } from "./studio-library";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
-import type { CompositeBlob, CompositePart, LabelState, LabelTemplate } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
 
 export const PHOTO_LAYER = "__photo__";
 export const QR_LAYER = "__qr__";
@@ -60,6 +71,13 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
   return kind || "Layer";
 }
 
+function partLayerLabel(part: { name?: string; type?: string; artKey?: string }) {
+  if (part.name) return part.name;
+  if (part.artKey) return studioPackArtLabel(part.artKey);
+  if (part.type === "silhouette") return "Cut shape";
+  return PART_TYPES.find((t) => t.id === part.type)?.label || part.type || "Shape";
+}
+
 export function canvasEditText(template: LabelTemplate, id: string): { value: string; multiline: boolean } | null {
   const named = parseBlockLayerId(id);
   if (named) {
@@ -110,7 +128,7 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
       layers.push({
         id: part.id,
         kind: "part",
-        label: part.name || (part.type === "silhouette" ? "Cut shape" : part.type || "Shape"),
+        label: partLayerLabel(part),
         z: part.z || 0,
         color: part.color,
         lock: Boolean(part.lock),
@@ -204,30 +222,33 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
   }
   const circular = designType === "circular";
   if (face === "composite") {
+  const asp = compositeAspect(state);
   for (const part of state._composite?.parts || []) {
+    const box = syncPartPhysicalAspect(part, asp);
     items.push({
-      id: part.id,
+      id: box.id,
       kind: "part",
-      x: part.x,
-      y: part.y,
-      w: part.w,
-      h: part.h,
-      rot: part.rot,
-      z: part.z || 0,
-      lock: Boolean(part.lock) && part.showImage !== true,
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
+      rot: box.rot,
+      z: box.z || 0,
+      lock: Boolean(box.lock) && box.showImage !== true,
     });
   }
   for (const zone of state._composite?.zones || []) {
+    const box = syncZonePhysicalAspect(zone, asp);
     items.push({
-      id: zone.id,
+      id: box.id,
       kind: "zone",
-      x: zone.x,
-      y: zone.y,
-      w: zone.w,
-      h: zone.h,
-      rot: zone.rot,
-      z: zone.z || 0,
-      lock: Boolean(zone.lock) && zone.kind !== "image" && zone.kind !== "icon",
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
+      rot: box.rot,
+      z: box.z || 0,
+      lock: Boolean(box.lock) && box.kind !== "image" && box.kind !== "icon",
     });
   }
   }
@@ -378,6 +399,34 @@ function scaleBox<T extends { w: number; h: number }>(item: T, size: number): T 
   return { ...item, w: item.w * f, h: item.h * f };
 }
 
+function physicalSizePart(part: CompositePart, size: number, asp: number): CompositePart {
+  if (isEqualAspectPart(part)) return syncEqualAspectPart({ ...part, w: size }, asp, "w");
+  if (part.type === "half_circle") return syncHalfCirclePartSize({ ...part, w: size }, asp, "w");
+  return scaleBox(part, size);
+}
+
+function physicalSizeZone(zone: CompositeZone, size: number, asp: number): CompositeZone {
+  if (zone.kind === "logo") return syncLogoCircleSize({ ...zone, w: size }, asp, "w");
+  if (zone.kind === "icon") return syncIconSquareSize({ ...zone, w: size }, asp, "w");
+  return scaleBox(zone, size);
+}
+
+function physicalResizePart(part: CompositePart, nw: number, nh: number, asp: number): CompositePart {
+  const prefer: "w" | "h" = Math.abs(nw - part.w) >= Math.abs(nh - part.h) ? "w" : "h";
+  if (isEqualAspectPart(part)) return syncEqualAspectPart({ ...part, w: nw, h: nh }, asp, prefer);
+  if (part.type === "half_circle") return syncHalfCirclePartSize({ ...part, w: nw, h: nh }, asp, prefer);
+  if (part.lockAspect) return scaleBox(part, Math.max(nw, nh));
+  return { ...part, w: nw, h: nh };
+}
+
+function physicalResizeZone(zone: CompositeZone, nw: number, nh: number, asp: number): CompositeZone {
+  const prefer: "w" | "h" = Math.abs(nw - zone.w) >= Math.abs(nh - zone.h) ? "w" : "h";
+  if (zone.kind === "logo") return syncLogoCircleSize({ ...zone, w: nw, h: nh }, asp, prefer);
+  if (zone.kind === "icon") return syncIconSquareSize({ ...zone, w: nw, h: nh }, asp, prefer);
+  if (zone.lockAspect) return scaleBox(zone, Math.max(nw, nh));
+  return { ...zone, w: nw, h: nh };
+}
+
 type CutBox = { x: number; y: number; w: number; h: number };
 
 function itemAffectsCut(blob: CompositeBlob, id: string) {
@@ -472,10 +521,11 @@ function applyLayerSize(state: LabelState, id: string, size: number): LabelState
   }
   const stamps = (state._stamps || []).map((st) => (st.id === id ? scaleBox(st, size) : st));
   if (!state._composite) return { ...state, _stamps: stamps };
+  const asp = compositeAspect(state);
   const oldPart = (state._composite.parts || []).find((p) => p.id === id);
   const oldZone = (state._composite.zones || []).find((z) => z.id === id);
-  const parts = (state._composite.parts || []).map((p) => (p.id === id ? scaleBox(p, size) : p));
-  const zones = (state._composite.zones || []).map((z) => (z.id === id ? scaleBox(z, size) : z));
+  const parts = (state._composite.parts || []).map((p) => (p.id === id ? physicalSizePart(p, size, asp) : p));
+  const zones = (state._composite.zones || []).map((z) => (z.id === id ? physicalSizeZone(z, size, asp) : z));
   const oldBox = oldPart || oldZone;
   const newBox = parts.find((p) => p.id === id) || zones.find((z) => z.id === id);
   const blob: CompositeBlob = { ...state._composite, parts, zones };
@@ -673,7 +723,7 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
     const parts = (next._composite.parts || []).map((p) => {
       if (p.id !== id) return p;
       let borderColor = patch.borderColor ?? p.borderColor;
-      let borderWidth = patch.borderWidth ?? p.borderWidth;
+      const borderWidth = patch.borderWidth ?? p.borderWidth;
       if (patch.color) {
         return { ...p, color: patch.color, borderColor, borderWidth };
       }
@@ -697,6 +747,18 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
   return next;
 }
 
+function moveFamilySectionTo(state: LabelState, fromSec: string, toSec: string): LabelState {
+  const order = parseSecOrd(state);
+  const i = order.indexOf(fromSec);
+  const j = order.indexOf(toSec);
+  if (i < 0 || j < 0 || i === j) return state;
+  const next = order.slice();
+  const [moved] = next.splice(i, 1);
+  if (!moved) return state;
+  next.splice(j, 0, moved);
+  return { ...state, eSecOrd: next.join(",") };
+}
+
 export function moveLayer(template: LabelTemplate, id: string, dir: -1 | 1): LabelState {
   const sec = familySectionKey(id);
   const face = previewFace(template);
@@ -715,7 +777,37 @@ export function moveLayer(template: LabelTemplate, id: string, dir: -1 | 1): Lab
   const ordered = items.slice();
   const [moved] = ordered.splice(index, 1);
   ordered.splice(next, 0, moved);
-  const zOf = new Map(ordered.map((item, i) => [item.id, i]));
+  return applyStackOrder(state, ordered.map((item) => item.id));
+}
+
+/** Drop `id` onto `toId` (same stack). Print cut is not a drop target. */
+export function moveLayerTo(template: LabelTemplate, id: string, toId: string): LabelState {
+  if (!id || !toId || id === toId) return template.state;
+  const sec = familySectionKey(id);
+  const face = previewFace(template);
+  if (sec && (face === "back" || face === "taper")) {
+    const toSec = familySectionKey(toId);
+    if (!toSec) return template.state;
+    return moveFamilySectionTo(template.state, sec, toSec);
+  }
+  const state = template.state;
+  const items: { id: string; z: number }[] = [];
+  for (const part of state._composite?.parts || []) items.push({ id: part.id, z: part.z || 0 });
+  for (const zone of state._composite?.zones || []) items.push({ id: zone.id, z: zone.z || 0 });
+  for (const stamp of state._stamps || []) items.push({ id: stamp.id, z: stamp.z || 0 });
+  items.sort((a, b) => a.z - b.z || a.id.localeCompare(b.id));
+  const from = items.findIndex((item) => item.id === id);
+  const to = items.findIndex((item) => item.id === toId);
+  if (from < 0 || to < 0) return state;
+  const ordered = items.slice();
+  const [moved] = ordered.splice(from, 1);
+  if (!moved) return state;
+  ordered.splice(to, 0, moved);
+  return applyStackOrder(state, ordered.map((item) => item.id));
+}
+
+function applyStackOrder(state: LabelState, ids: string[]): LabelState {
+  const zOf = new Map(ids.map((itemId, i) => [itemId, i]));
   return {
     ...state,
     _stamps: (state._stamps || []).map((st) => ({ ...st, z: zOf.get(st.id) ?? (st.z || 0) })),
@@ -824,13 +916,14 @@ export function resizeItem(template: LabelTemplate, id: string, w: number, h: nu
   }
   const stamps = (state._stamps || []).map((s) => (s.id === id ? { ...s, w: nw, h: nh } : s));
   if (!state._composite) return { ...state, _stamps: stamps };
+  const asp = compositeAspect(state);
   const oldPart = (state._composite.parts || []).find((p) => p.id === id);
   const oldZone = (state._composite.zones || []).find((z) => z.id === id);
   const parts = (state._composite.parts || []).map((p) =>
-    p.id === id ? (p.lockAspect ? scaleBox(p, Math.max(nw, nh)) : { ...p, w: nw, h: nh }) : p,
+    p.id === id ? physicalResizePart(p, nw, nh, asp) : p,
   );
   const zones = (state._composite.zones || []).map((z) =>
-    z.id === id ? (z.lockAspect ? scaleBox(z, Math.max(nw, nh)) : { ...z, w: nw, h: nh }) : z,
+    z.id === id ? physicalResizeZone(z, nw, nh, asp) : z,
   );
   const oldBox = oldPart || oldZone;
   const newBox = parts.find((p) => p.id === id) || zones.find((z) => z.id === id);

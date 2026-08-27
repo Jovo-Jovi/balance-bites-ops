@@ -27,6 +27,7 @@ Inner chips are sections, not extra workspace tools. Print a saved invoice (and 
 ```
 hub/src/components/finance/
   finance-app.tsx          provider + tab switch (mirrors InvoiceApp)
+  finance-busy.tsx         indeterminate bar while stock / product / production persist
   finance-context.tsx      mutations + CloudStore writes
   section-chips.tsx        inner section nav (same chip language as Invoices)
   item-modal.tsx / recipe-modal.tsx / purchase-modal.tsx

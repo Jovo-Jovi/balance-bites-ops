@@ -3,6 +3,7 @@
 import {
   doc,
   getDoc,
+  getDocFromServer,
   setDoc,
   deleteDoc,
   onSnapshot,
@@ -27,6 +28,7 @@ export type CloudKeyDoc = {
   updatedAt: unknown;
   updatedBy: string;
   clientWriteId: string;
+  prevWriteId?: string;
 };
 
 type UiHooks = {
@@ -36,6 +38,7 @@ type UiHooks = {
 
 const pendingWriteIds = new Set<string>();
 const lastAppliedWriteId = new Map<string, string>();
+const persistChain = new Map<string, Promise<void>>();
 const unsubscribers = new Map<string, Unsubscribe>();
 const firstSnapDone = new Set<string>();
 const listeners = new Set<(key: string) => void>();
@@ -62,6 +65,11 @@ let hooks: UiHooks = {
 
 export function configureCloudStoreUi(next: Partial<UiHooks>) {
   hooks = { ...hooks, ...next };
+}
+
+/** Persist already toasted via `onError`. Swallow so ignored promises are not Uncaught. */
+export function fireAndForget(p: Promise<unknown>): void {
+  void p.catch(() => undefined);
 }
 
 export function keyDocRef(key: string) {
@@ -134,14 +142,22 @@ export const CloudStore = {
     return readLocal(key, fallback);
   },
 
+  getVersioned<T>(key: string, fallback: T): { value: T; writeId: string } {
+    return { value: readLocal(key, fallback), writeId: lastAppliedWriteId.get(key) || "" };
+  },
+
   /**
    * Drop-in for live `Store.set`: cache locally, then write Firestore.
    * Callers that ignore the promise still get a visible error via `onError`.
    */
   set(key: string, value: unknown): Promise<void> {
+    return CloudStore.setFrom(key, value, lastAppliedWriteId.get(key) || "");
+  },
+
+  setFrom(key: string, value: unknown, basedOn: string): Promise<void> {
     writeLocal(key, value);
     notify(key);
-    return persist(key, value);
+    return persist(key, value, basedOn);
   },
 
   remove(key: string): Promise<void> {
@@ -162,6 +178,8 @@ export const CloudStore = {
         if (!snap.exists()) return;
         const payload = snap.data() as CloudKeyDoc;
         if (payload && "data" in payload) {
+          const writeId = String(payload.clientWriteId || "");
+          if (writeId) lastAppliedWriteId.set(key, writeId);
           applyRemote(key, payload.data);
         }
       }),
@@ -241,7 +259,7 @@ export const CloudStore = {
         if (writeId && pendingWriteIds.has(writeId) && !snap.metadata.hasPendingWrites) {
           pendingWriteIds.delete(writeId);
         }
-        if (writeId) lastAppliedWriteId.set(key, writeId);
+        if (writeId && !snap.metadata.hasPendingWrites) lastAppliedWriteId.set(key, writeId);
         applyRemote(key, payload.data);
         firstSnapDone.add(key);
         if (kind === "conflict") hooks.onConflict(key);
@@ -264,11 +282,43 @@ export const CloudStore = {
     unsubscribers.clear();
     firstSnapDone.clear();
     pendingWriteIds.clear();
+  },
+
+  /** Drop every `bb_*` cache entry. Does not touch other origin keys. */
+  clearLocalCache() {
     lastAppliedWriteId.clear();
+    pendingWriteIds.clear();
+    for (const key of BB_KEYS) clearLocal(key);
+    for (const key of BB_KEYS) notify(key);
   },
 };
 
-async function persist(key: string, value: unknown): Promise<void> {
+function queuePersist(key: string, job: () => Promise<void>): Promise<void> {
+  const prev = persistChain.get(key) ?? Promise.resolve();
+  const next = prev.then(job, job);
+  persistChain.set(
+    key,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return next;
+}
+
+async function readStoredWriteId(key: string): Promise<string> {
+  try {
+    const snap = await getDocFromServer(keyDocRef(key));
+    if (!snap.exists()) return "";
+    return String((snap.data() as CloudKeyDoc).clientWriteId || "");
+  } catch {
+    const snap = await getDoc(keyDocRef(key));
+    if (!snap.exists()) return "";
+    return String((snap.data() as CloudKeyDoc).clientWriteId || "");
+  }
+}
+
+async function persist(key: string, value: unknown, prevWriteId = ""): Promise<void> {
   if (!isFirebaseConfigured()) {
     hooks.onError("Firebase غير مضبوط — الحفظ محلي فقط", key);
     return;
@@ -277,22 +327,31 @@ async function persist(key: string, value: unknown): Promise<void> {
     hooks.onError(`مفتاح غير مدرج في السحابة — حُفظ محلياً فقط: ${key}`, key);
     return;
   }
-  const clientWriteId = newWriteId();
-  try {
-    const uid = requireUid();
-    pendingWriteIds.add(clientWriteId);
-    await setDoc(keyDocRef(key), {
-      data: value,
-      updatedAt: serverTimestamp(),
-      updatedBy: uid,
-      clientWriteId,
-    });
-  } catch (err) {
-    pendingWriteIds.delete(clientWriteId);
-    const message = formatWriteError(err);
-    hooks.onError(message, key);
-    throw err instanceof Error ? err : new Error(message);
-  }
+  return queuePersist(key, async () => {
+    const clientWriteId = newWriteId();
+    let basedOn = "";
+    try {
+      const uid = requireUid();
+      // Caller token is the CAS check. Re-read the stored id only when that
+      // token is empty (unhydrated stock). Replacing a real token with the
+      // live server id made prevWriteId == clientWriteId by construction.
+      basedOn = prevWriteId || (await readStoredWriteId(key));
+      pendingWriteIds.add(clientWriteId);
+      await setDoc(keyDocRef(key), {
+        data: value,
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        clientWriteId,
+        prevWriteId: basedOn,
+      });
+      lastAppliedWriteId.set(key, clientWriteId);
+    } catch (err) {
+      pendingWriteIds.delete(clientWriteId);
+      const message = await classifyPersistError(err, key, basedOn);
+      hooks.onError(message, key);
+      throw err instanceof Error ? err : new Error(message);
+    }
+  });
 }
 
 async function persistDelete(key: string): Promise<void> {
@@ -307,13 +366,66 @@ async function persistDelete(key: string): Promise<void> {
   }
 }
 
-function formatWriteError(err: unknown): string {
-  const code =
-    typeof err === "object" && err && "code" in err
-      ? String((err as { code: string }).code)
-      : "";
+function firebaseCode(err: unknown): string {
+  return typeof err === "object" && err && "code" in err
+    ? String((err as { code: string }).code)
+    : "";
+}
+
+function isPermissionDenied(err: unknown): boolean {
+  const code = firebaseCode(err);
   const message = err instanceof Error ? err.message : String(err);
-  if (code.includes("permission-denied") || message.includes("permission")) {
+  return code.includes("permission-denied") || message.includes("permission");
+}
+
+function genericWriteError(err: unknown, key?: string): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return key
+    ? `فشل الحفظ في السحابة (${key}): ${message}`
+    : `فشل الحفظ في السحابة: ${message}`;
+}
+
+/**
+ * permission-denied is not always a CAS miss. `prevWriteId` is the token we
+ * sent, not proof the server rejected a version mismatch. Probe the doc
+ * (reads use a separate rule) only on that error when we sent a token.
+ */
+async function classifyPersistError(
+  err: unknown,
+  key: string,
+  prevWriteId: string,
+): Promise<string> {
+  if (!isPermissionDenied(err) || !prevWriteId) {
+    return formatWriteError(err, { docExists: Boolean(prevWriteId) });
+  }
+  try {
+    const snap = await getDoc(keyDocRef(key));
+    if (!snap.exists()) {
+      return `فشل الحفظ في السحابة (${key})`;
+    }
+    const payload = snap.data() as CloudKeyDoc;
+    const stored = String(payload.clientWriteId || "");
+    if (stored !== prevWriteId) {
+      if (stored) lastAppliedWriteId.set(key, stored);
+      if (payload && "data" in payload) applyRemote(key, payload.data);
+      return formatWriteError(err, { docExists: true });
+    }
+    return "رُفض الحفظ: القواعد غير منشورة أو قديمة";
+  } catch (probeErr) {
+    if (isPermissionDenied(probeErr)) {
+      return formatWriteError(err);
+    }
+    return genericWriteError(err);
+  }
+}
+
+function formatWriteError(err: unknown, ctx?: { docExists?: boolean }): string {
+  const code = firebaseCode(err);
+  const message = err instanceof Error ? err.message : String(err);
+  if (isPermissionDenied(err)) {
+    if (ctx?.docExists) {
+      return "تغيرت البيانات على جهاز آخر ولم يُحفظ التعديل — أعد المحاولة";
+    }
     return "رُفض الحفظ: الحساب غير مدرج كموظف أو القواعد غير منشورة";
   }
   if (code.includes("unauthenticated")) {
@@ -322,7 +434,7 @@ function formatWriteError(err: unknown): string {
   if (message.toLowerCase().includes("exceed") || message.includes("1 MiB")) {
     return "المستند أكبر من حد Firestore (1 ميغابايت) — يجب تقسيم المفتاح";
   }
-  return `فشل الحفظ في السحابة: ${message}`;
+  return genericWriteError(err);
 }
 
 /** Live-app shaped Store: get is sync; set writes local then cloud. */

@@ -126,17 +126,26 @@ export function calcTaper(state: LabelState): TaperGeo {
   };
 }
 
+/** Composite artboard cm from `_composite.artboard` or `cW`×`cH`. */
+export function compositeBoardCm(state: LabelState) {
+  const board = state._composite?.artboard;
+  const w = Number(board?.wCm ?? state.cW);
+  const h = Number(board?.hCm ?? state.cH);
+  return {
+    wCm: Number.isFinite(w) && w > 0 ? w : 6,
+    hCm: Number.isFinite(h) && h > 0 ? h : 6,
+  };
+}
+
+/** Live `artboardAspect` — boardW / boardH. */
+export function compositeAspect(state: LabelState) {
+  const { wCm, hCm } = compositeBoardCm(state);
+  return Math.max(0.01, wCm) / Math.max(0.01, hCm);
+}
+
 export function artboardOf(template: LabelTemplate, state: LabelState = template.state) {
   const face = previewFace(template);
-  if (face === "composite") {
-    const board = state._composite?.artboard;
-    const w = Number(board?.wCm ?? state.cW);
-    const h = Number(board?.hCm ?? state.cH);
-    if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
-      return { wCm: w, hCm: h };
-    }
-    return { wCm: 6, hCm: 6 };
-  }
+  if (face === "composite") return compositeBoardCm(state);
   if (face === "top") {
     const d = topPx(state);
     return { wCm: d.wCm, hCm: d.hCm };

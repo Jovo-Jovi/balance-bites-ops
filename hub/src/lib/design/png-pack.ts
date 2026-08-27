@@ -1,3 +1,5 @@
+import { usableImage } from "./art";
+import { isPackArtKey } from "./art-presets";
 import { familyDieView } from "./family-preview";
 import { previewFace } from "./layout";
 import {
@@ -8,8 +10,8 @@ import {
   exportFileBase,
   pxFromMm,
 } from "./prepress";
-import { artboardCm, compositeDiePath, labelPreviewSvg } from "./preview";
-import type { CompositeBlob, LabelState, LabelTemplate } from "./types";
+import { artboardCm, compositeDiePath, labelPreviewSvg, liveComposite } from "./preview";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
 
 export type PngKind = "cut" | "exact" | "bleed";
 
@@ -227,12 +229,6 @@ async function blobToDataUrl(blob: Blob) {
   });
 }
 
-function isSvgHref(href: string) {
-  const s = href.trim();
-  if (/^data:image\/svg/i.test(s)) return true;
-  return /\.svg(?:\?|#|$)/i.test(s);
-}
-
 async function flattenSvgHrefToPng(href: string) {
   const src = href.startsWith("data:") ? href : absUrl(href);
   const cacheKey = href.startsWith("data:") ? `png:data:${href.length}:${href.slice(18, 42)}` : `png:${src}`;
@@ -267,13 +263,23 @@ async function flattenSvgHrefToPng(href: string) {
   }
 }
 
-async function flattenNestedSvgImages(svg: string) {
+/** Nested raster/SVG hrefs must become data URLs. SVG-as-image will not fetch `/design-presets/*.png`. */
+function needsInlineHref(href: string) {
+  const u = href.trim();
+  if (!u || u.startsWith("#")) return false;
+  if (/^data:image\/(png|jpe?g|webp|gif|avif)/i.test(u)) return false;
+  if (/^data:image\/svg/i.test(u)) return true;
+  if (u.startsWith("data:")) return false;
+  return true;
+}
+
+async function flattenNestedImages(svg: string) {
   const re = /(?:href|xlink:href|src)=["']([^"']+)["']/gi;
   const map = new Map<string, string>();
   let m: RegExpExecArray | null;
   while ((m = re.exec(svg))) {
     const href = m[1].trim();
-    if (!href || map.has(href) || !isSvgHref(href)) continue;
+    if (!href || map.has(href) || !needsInlineHref(href)) continue;
     try {
       map.set(href, await flattenSvgHrefToPng(href));
     } catch {
@@ -364,14 +370,15 @@ async function inlineSvgAssets(svg: string) {
     urls.add(u);
   }
   for (const u of urls) {
+    if (!needsInlineHref(u)) continue;
     try {
-      const data = isSvgHref(u) ? await flattenSvgHrefToPng(u) : await urlToDataUrl(u);
-      out = out.split(u).join(data);
+      const data = await flattenSvgHrefToPng(u);
+      if (data && data !== u) out = out.split(u).join(data);
     } catch {
-      out = out.split(u).join("");
+      /* keep href — blanking it made pack PNG Library snaps empty */
     }
   }
-  out = await flattenNestedSvgImages(out);
+  out = await flattenNestedImages(out);
   return stripRemoteRefs(out);
 }
 
@@ -668,7 +675,7 @@ function applyCutMask(canvas: HTMLCanvasElement, template: LabelTemplate, state:
   if (!ctx) return;
   const face = previewFace(template);
   if (face === "composite" && state._composite) {
-    applyCompositeCut(ctx, state._composite, canvas.width, canvas.height);
+    applyCompositeCut(ctx, liveComposite(state) || state._composite, canvas.width, canvas.height);
     return;
   }
   applyFamilyCut(ctx, template, state, canvas.width, canvas.height);
@@ -707,6 +714,158 @@ function triggerDownload(dataUrl: string, filename: string) {
   a.href = dataUrl;
   a.download = filename;
   a.click();
+}
+
+function isRasterArtHref(href: string) {
+  if (!href) return false;
+  if (/^data:image\/svg/i.test(href) || /\.svg(?:\?|#|$)/i.test(href)) return false;
+  return true;
+}
+
+type RasterFit = "meet" | "slice" | "fill";
+
+type RasterLayer = {
+  z: number;
+  href: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot: number;
+  cx: number;
+  cy: number;
+  fit: RasterFit;
+};
+
+async function loadRasterImage(src: string): Promise<HTMLImageElement | null> {
+  if (!src || !isRasterArtHref(src)) return null;
+  const abs = absUrl(src);
+  const img = new Image();
+  img.decoding = "sync";
+  img.src = abs;
+  try {
+    if (typeof img.decode === "function") await img.decode();
+    else {
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Could not load pack art"));
+        if (img.complete && img.naturalWidth) resolve();
+      });
+    }
+  } catch {
+    return null;
+  }
+  return img.naturalWidth ? img : null;
+}
+
+function fitDest(iw: number, ih: number, x: number, y: number, w: number, h: number, fit: RasterFit) {
+  if (fit === "fill" || !(iw > 0 && ih > 0)) return { x, y, w, h };
+  const scale = fit === "meet" ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  return { x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
+}
+
+function drawFittedImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  layer: RasterLayer,
+) {
+  const iw = img.naturalWidth || 1;
+  const ih = img.naturalHeight || 1;
+  const box = fitDest(iw, ih, layer.x, layer.y, layer.w, layer.h, layer.fit);
+  ctx.save();
+  if (layer.rot) {
+    ctx.translate(layer.cx, layer.cy);
+    ctx.rotate((layer.rot * Math.PI) / 180);
+    ctx.translate(-layer.cx, -layer.cy);
+  }
+  if (layer.fit === "slice") {
+    ctx.beginPath();
+    ctx.rect(layer.x, layer.y, layer.w, layer.h);
+    ctx.clip();
+  }
+  ctx.drawImage(img, box.x, box.y, box.w, box.h);
+  ctx.restore();
+}
+
+function zoneRasterLayer(z: CompositeZone): RasterLayer | null {
+  if (z.kind !== "image") return null;
+  const href = usableImage(z.src || z.srcUrl);
+  if (!href || !isRasterArtHref(href)) return null;
+  return {
+    z: z.z || 0,
+    href,
+    x: z.x - z.w / 2,
+    y: z.y - z.h / 2,
+    w: z.w,
+    h: z.h,
+    rot: z.rot || 0,
+    cx: z.x,
+    cy: z.y,
+    fit: "meet",
+  };
+}
+
+function partRasterLayer(p: CompositePart): RasterLayer | null {
+  if (!p.showImage) return null;
+  const href = usableImage(p.src || p.srcUrl, p.artKey);
+  if (!href || !isRasterArtHref(href)) return null;
+  return {
+    z: p.z || 0,
+    href,
+    x: p.x - p.w / 2,
+    y: p.y - p.h / 2,
+    w: p.w,
+    h: p.h,
+    rot: p.rot || 0,
+    cx: p.x,
+    cy: p.y,
+    fit: isPackArtKey(p.artKey) ? "meet" : "fill",
+  };
+}
+
+function compositeRasterLayers(state: LabelState): RasterLayer[] {
+  const comp = liveComposite(state) || state._composite;
+  if (!comp) return [];
+  const layers: RasterLayer[] = [];
+  for (const z of comp.zones || []) {
+    const row = zoneRasterLayer(z);
+    if (row) layers.push(row);
+  }
+  for (const p of comp.parts || []) {
+    const row = partRasterLayer(p);
+    if (row) layers.push(row);
+  }
+  layers.sort((a, b) => a.z - b.z);
+  return layers;
+}
+
+/** Draw pack PNG / photo zones with Image() so Library snaps and Cut PNG keep art SVG-as-image dropped. */
+export async function paintCompositeRasterArt(canvas: HTMLCanvasElement, state: LabelState) {
+  const layers = compositeRasterLayers(state);
+  if (!layers.length) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx || !canvasIsClean(ctx)) return;
+  const loaded = await Promise.all(layers.map(async (layer) => ({ layer, img: await loadRasterImage(layer.href) })));
+  const wPx = canvas.width;
+  const hPx = canvas.height;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(wPx / 100, hPx / 100);
+  const comp = liveComposite(state) || state._composite;
+  const d = comp ? compositeDiePath(comp) : "";
+  if (d) {
+    ctx.beginPath();
+    ctx.clip(new Path2D(d));
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  for (const row of loaded) {
+    if (!row.img) continue;
+    drawFittedImage(ctx, row.img, row.layer);
+  }
+  ctx.restore();
 }
 
 export async function rasterizeLabelCanvas(

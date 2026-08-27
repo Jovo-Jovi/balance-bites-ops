@@ -1,7 +1,8 @@
 import { genId } from "@/lib/invoices/helpers";
 import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
-import type { PreviewFace } from "./layout";
+import { compositeAspect, type PreviewFace } from "./layout";
+import { syncIconSquareSize } from "./part-types";
 import { stampFaceOf } from "./studio-library";
 import { isAssetRef } from "./templates";
 import type { CompositeZone, LabelStamp, LabelState } from "./types";
@@ -76,13 +77,17 @@ function srcLooksLikeCharacterArt(src: unknown) {
 
 /** Character stickers use repo `artref:` / `artKey` on a part. Product photo (`hxCProd`) must not cover them. */
 export function compositeHasCharacterArt(state: LabelState) {
-  return Boolean(
-    state._composite?.parts?.some(
-      (p) =>
-        p.showImage === true &&
-        (Boolean(p.artKey) || srcLooksLikeCharacterArt(p.src) || srcLooksLikeCharacterArt(p.srcUrl)),
-    ),
+  const parts = state._composite?.parts?.some(
+    (p) =>
+      p.showImage === true &&
+      (Boolean(p.artKey) || srcLooksLikeCharacterArt(p.src) || srcLooksLikeCharacterArt(p.srcUrl)),
   );
+  const zones = state._composite?.zones?.some(
+    (z) =>
+      z.kind === "image" &&
+      (z.shape === "pack" || srcLooksLikeCharacterArt(z.src) || srcLooksLikeCharacterArt(z.srcUrl)),
+  );
+  return Boolean(parts || zones);
 }
 
 export function compositeShowsProductPhoto(state: LabelState) {
@@ -154,11 +159,12 @@ export function applyIconToState(
       z: 40,
       label: icon.label,
     };
+    const sized = syncIconSquareSize(zone, compositeAspect(state));
     return {
       ...state,
       _composite: {
         ...state._composite,
-        zones: [...(state._composite.zones || []), zone],
+        zones: [...(state._composite.zones || []), sized],
       },
     };
   }

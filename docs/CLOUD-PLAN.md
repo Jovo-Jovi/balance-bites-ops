@@ -94,7 +94,7 @@ match /tenants/{tid}/keys/{key} {
 
 In all three HTML apps:
 
-1. Add Firebase JS SDK (or a tiny `bb-cloud-store.js` shared file).
+1. Native `CloudStore` in the hub (Firebase JS SDK). Do **not** add `public/bb-cloud-store.js` — that file was removed (T13); its `Store.remove` cleared localStorage only.
 2. `Store.set` → Firestore `set` with merge + `updatedAt`.
 3. On load: `getDoc` then `onSnapshot` to refresh other tabs.
 4. Keep FileStore behind a flag `USE_FOLDER=false` for emergency Desktop use.
@@ -120,7 +120,7 @@ In all three HTML apps:
 - Automated nightly export of all `keys/*` to Storage
 - App Check
 - Custom domain
-- Optional: split giant `bb_invoices` into `invoices/{id}` if the blob grows
+- Optional: year-shard `bb_invoices` (`bb_invoices_2026`, …) when the 1 MiB document ceiling is near (~730 typical invoices). After T7 CAS only — see [DATA.md](DATA.md) T14. Not `invoices/{id}`.
 
 ## MCP checklist (when you say go)
 

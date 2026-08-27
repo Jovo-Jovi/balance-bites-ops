@@ -133,25 +133,42 @@ function StoragePicker({
   target: StorageTarget | null;
   onClose: () => void;
 }) {
+  if (!open) return null;
+  return <StoragePickerOpen key={JSON.stringify(target)} target={target} onClose={onClose} />;
+}
+
+function StoragePickerOpen({
+  target,
+  onClose,
+}: {
+  target: StorageTarget | null;
+  onClose: () => void;
+}) {
   const app = useDesignApp();
   const toast = useToast();
   const [items, setItems] = useState<LabelAssetItem[]>([]);
   const [scope, setScope] = useState<"this" | "all">("all");
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const multiple = Boolean(target && "addPhotos" in target);
 
   useEffect(() => {
-    if (!open) return;
-    setPicked([]);
-    setQ("");
-    setLoading(true);
+    let stop = false;
     void listLabelAssets()
-      .then(setItems)
-      .catch((err) => toast.push(err instanceof Error ? err.message : "Could not list storage.", "bad"))
-      .finally(() => setLoading(false));
-  }, [open, toast]);
+      .then((list) => {
+        if (!stop) setItems(list);
+      })
+      .catch((err) => {
+        if (!stop) toast.push(err instanceof Error ? err.message : "Could not list storage.", "bad");
+      })
+      .finally(() => {
+        if (!stop) setLoading(false);
+      });
+    return () => {
+      stop = true;
+    };
+  }, [toast]);
 
   const names = useMemo(() => {
     const map = new Map(app.templates.map((t) => [t.id, t.name]));
@@ -166,7 +183,7 @@ function StoragePicker({
     return true;
   });
 
-  async function useKeys(keys: string[]) {
+  async function applyStorageKeys(keys: string[]) {
     if (!keys.length || !target || !app.current) return;
     try {
       if ("addPhotos" in target) await app.addPhotosFromStorage(keys);
@@ -183,14 +200,14 @@ function StoragePicker({
 
   return (
     <Modal
-      open={open}
+      open
       title="Choose from storage"
       onClose={onClose}
       closeLabel="Close"
       wide
       footer={
         multiple ? (
-          <ActionBtn disabled={!picked.length || app.busy} onClick={() => void useKeys(picked)}>
+          <ActionBtn disabled={!picked.length || app.busy} onClick={() => void applyStorageKeys(picked)}>
             Use selected{picked.length ? ` (${picked.length})` : ""}
           </ActionBtn>
         ) : undefined
@@ -228,7 +245,7 @@ function StoragePicker({
                 }`}
                 onClick={() => {
                   if (multiple) toggle(it.key);
-                  else void useKeys([it.key]);
+                  else void applyStorageKeys([it.key]);
                 }}
               >
                 <StorageThumb item={it} />

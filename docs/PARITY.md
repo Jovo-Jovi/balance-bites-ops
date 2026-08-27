@@ -32,12 +32,12 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 - [x] Same `bb_*` keys → `tenants/balance-bites/keys/{key}` (`data`, `updatedAt`, `updatedBy`, `clientWriteId`)
 - [x] Firestore preferred on hydrate (empty localStorage cannot wipe cloud)
 - [x] `Store.set` / `CloudStore.set` surfaces write errors (no silent fail)
-- [x] `onSnapshot` + `clientWriteId` so another tab toasts instead of silent clobber
+- [x] `onSnapshot` + `clientWriteId` so another tab toasts instead of silent clobber. `persist` sends the caller’s read-time `prevWriteId` (empty token only then re-reads the stored id)
 - [x] Prep / print keys that were localStorage-only now listed as Firestore keys
 - [x] One-shot import of `saved data` JSON (re-run with `--apply` when Desktop files change)
 - [x] Cloudflare R2 wiring for `label_assets/` and `bb_backups/` (not Firebase Storage)
 - [x] Create the R2 bucket + API token, then `npm run storage:init` and `npm run import:assets`
-- [ ] HTML wrap for Design / Finance (`public/bb-cloud-store.js` exists; all three apps are native React instead)
+- [x] HTML wrap dropped — three native React apps; deleted `public/bb-cloud-store.js` (localStorage-only `Store.remove`) and unauthenticated `/api/firebase-config`
 
 ### Keys imported from disk today
 
@@ -91,7 +91,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
 - [x] Flavor pack **Loaded** chip for the colors already on the open template
 - [x] Icon library in Studio (repo catalog + live A–Z letter fonts; wrap / taper / circle / lid / composite)
-- [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; photo fill + path stroke like live (not clip-to-path). Preset files letterbox a square viewBox in a tall canvas — hub slices that into the part so Print cut hugs the kernels
+- [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; Studio and print use the same `/design-presets/*.svg` files. Photo fill + path stroke like live (not clip-to-path). Preset files letterbox a square viewBox in a tall canvas — hub slices that into the part so Print cut hugs the kernels
 - [x] Studio select + drag of parts, zones, stamps, and uploaded images
 - [x] Studio rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)
 - [x] Circular / outline families use live front layout (logo, brand, flavor, photo, weight, dates) in **pixel** `cW`×`cH` (ellipse clip, not a stretched 0–100 square)
@@ -100,16 +100,20 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Studio inspector is face-aware (Copy / Nutrition / Layout / Type / Size / Color). Canvas first. Flavor packs tint the sticker only
 - [x] Inspector Layers / Layout / Type / Size / Color stay open when a wrap column is selected; Nutrition does not trap Layers. Images / Icons live in the Libraries rail
 - [x] Select a section to type in it; wrap/taper QR and weight move separately from dates; wrap logo disc and brand names are separate boxes
-- [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy and character kernels; missing snap = cheap Path2D die, no FO / no `/design-presets` fetch). Design scroll uses a solid sheet, not glass blur
+- [x] Compact Library thumbs (saved raster WebP/PNG snap of the live design, including wrap/taper/circle FO copy, character kernels, and Composite **pack PNG** zones; missing snap = Path2D die plus on-screen pack PNGs, no FO / no popcorn SVG fetch). Design scroll uses a solid sheet, not glass blur
 - [x] Wrap / taper Layers Up / Down reorder columns (`eSecOrd`); per-layer size + **outward** border (Dates / QR / Weight are separate); popcorn black rim is Print cut
 - [x] Composite Size / resize keeps Print cut on the silhouette (`pathLocal` for a sole character, not a scaled raster trace); seeded characters without `cutSourceIds` still rebuild on drag-end
+- [x] Composite Round sq / Round rect borders match live: physical square on non-square boards (`syncEqualAspectPart`), cut-polygon corners (`partFillPathLocal`, 18% not 11%), stroke outside the die clip so it is not eaten inward
+- [x] Composite text / logo / image Layers Border sits fully outside the fill (outset stroke); unfilled text rings hug the type, not the drag frame; wrap Nutrition ring is on an overflow-visible wrapper; taper FO does not clip `box-shadow` rings
+- [x] Composite fill + decorative stroke share Layers z (jelly-blob rim no longer paints above later icons / type)
 - [x] Design Save / Delete / New / Duplicate show an indeterminate progress bar (snap + cloud wait)
 - [x] Rect wrap Nutrition fits the column (no transform-scale clip); left Ingredients stay as stored
 - [ ] Legacy Desktop scan of `bbLabel-*.json` (import the file instead)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
 - [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG
 - [x] Family print / SVG / PNG match Studio hit-boxes (top lid, circle, wrap). Delete template removes the R2 art folder
-- [x] Studio libraries rail (Wave C) — Shapes / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*` with Remove; composite `addZone` removable; Characters = DiceBear people library (not product stickers)
+- [x] Studio libraries rail (Wave C) — Shapes / Pack art / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*` with Remove; composite `addZone` removable; Characters = DiceBear people library (not product stickers). Pack art is Kids / Adults (trimmed RGBA), named in Layers
+- [x] Layers list drag-reorder (⋮⋮) plus Up / Down; wrap columns via `eSecOrd`, composite via z
 - [x] User-named sections + blank-from-scratch (Wave D) — new template die-only unless starter recipes; wrap `_blocks` + `eSecOrd`; legacy `chkS*` / Custom column still open
 - [ ] Dumping `assets/presets/` / Jelly Kids catalogs into Firestore (product art stays `artref:` on saved templates; Characters rail does not list them)
 
@@ -205,6 +209,7 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Cloud Storage is **not used** (Spark / free tier). Label art lives on Cloudflare R2.
 - On-screen invoice chrome is the linen hub. Print asks: **Invoice Pro** (saved white/green `bb_inv2`), any stored color preset, or **web-app linen**.
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
+- **T14 deferred:** `bb_invoices` stays one document. Year shards when the 1 MiB ceiling is near (~730 typical invoices). CAS (`prevWriteId`) is already in; do not shard on top of an unenforced conflict token. Reports (`reports.ts`) and finance analytics must read across shards when that work starts. Spark read/write quotas are not the reason.
 
 ---
 

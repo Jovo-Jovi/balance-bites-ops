@@ -44,6 +44,12 @@ export function isFinanceWriteKey(key: string): key is BbKey {
   return FINANCE_WRITE_SET.has(key);
 }
 
+/**
+ * Prep-approve appends a finished invoice onto the customer ledger.
+ * Not a second invoice editor — keep this list off `FINANCE_WRITE_KEYS`.
+ */
+export const FINANCE_PREP_APPEND_KEYS = ["bb_invoices"] as const;
+
 const KEY_SET = new Set<string>(BB_KEYS);
 
 export function isBbKey(key: string): key is BbKey {

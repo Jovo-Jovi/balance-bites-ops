@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
 import { LibraryThumb } from "@/components/design/library-thumb-img";
@@ -756,25 +756,31 @@ function ProductModal({
   categories: Category[];
   onClose: () => void;
 }) {
-  const app = useFinanceApp();
-  const [name, setName] = useState("");
-  const [packType, setPack] = useState("");
-  const [weight, setWeight] = useState("");
-  const [price, setPrice] = useState("0");
-  const [categoryId, setCat] = useState("");
+  if (!open) return null;
+  return (
+    <ProductModalForm key={product?.id ?? "new"} product={product} categories={categories} onClose={onClose} />
+  );
+}
 
-  useEffect(() => {
-    if (!open) return;
-    setName(product?.name || "");
-    setPack(product?.packType || "");
-    setWeight(product?.weight || "");
-    setPrice(String(product?.unitPrice || 0));
-    setCat(product?.categoryId || "");
-  }, [open, product]);
+function ProductModalForm({
+  product,
+  categories,
+  onClose,
+}: {
+  product: Product | null;
+  categories: Category[];
+  onClose: () => void;
+}) {
+  const app = useFinanceApp();
+  const [name, setName] = useState(product?.name || "");
+  const [packType, setPack] = useState(product?.packType || "");
+  const [weight, setWeight] = useState(product?.weight || "");
+  const [price, setPrice] = useState(String(product?.unitPrice || 0));
+  const [categoryId, setCat] = useState(product?.categoryId || "");
 
   return (
     <Modal
-      open={open}
+      open
       title={product ? "تعديل منتج" : "منتج جديد"}
       onClose={onClose}
       footer={

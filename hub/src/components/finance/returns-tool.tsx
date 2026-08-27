@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionBtn, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
 import { fmt, fmtQty, todayISO } from "@/lib/finance/helpers";
 import { getHawalekAmount, getTotalReturns, isExpiredDisp, normalizeDisposition } from "@/lib/finance/returns-live";
@@ -53,12 +53,12 @@ export function ReturnsTool() {
 }
 
 function ReturnModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return <ReturnModalForm onClose={onClose} />;
+}
+
+function ReturnModalForm({ onClose }: { onClose: () => void }) {
   const app = useFinanceApp();
-  const [customerId, setCustomerId] = useState("");
-  const [invoiceId, setInvoiceId] = useState("");
-  const [date, setDate] = useState(todayISO());
-  const [reason, setReason] = useState("");
-  const [items, setItems] = useState<ReturnLine[]>([]);
 
   const customerOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string; phone: string; invCount: number }>();
@@ -87,10 +87,13 @@ function ReturnModal({ open, onClose }: { open: boolean; onClose: () => void }) 
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "ar"));
   }, [app.customers, app.invoices]);
 
-  const lastCustRef = useRef(app.lastCustomerId);
-  lastCustRef.current = app.lastCustomerId;
-  const optionsRef = useRef(customerOptions);
-  optionsRef.current = customerOptions;
+  const startCust =
+    app.lastCustomerId && customerOptions.some((c) => c.id === app.lastCustomerId) ? app.lastCustomerId : "";
+  const [customerId, setCustomerId] = useState(startCust);
+  const [invoiceId, setInvoiceId] = useState("");
+  const [date, setDate] = useState(todayISO);
+  const [reason, setReason] = useState("");
+  const [items, setItems] = useState<ReturnLine[]>([]);
 
   const customerInvoices = useMemo(() => {
     if (!customerId) return app.invoices;
@@ -100,17 +103,6 @@ function ReturnModal({ open, onClose }: { open: boolean; onClose: () => void }) 
     }
     return app.invoices.filter((inv) => inv.customerId === customerId);
   }, [app.invoices, customerId]);
-
-  useEffect(() => {
-    if (!open) return;
-    setDate(todayISO());
-    setReason("");
-    setItems([]);
-    const prev = lastCustRef.current;
-    const valid = prev && optionsRef.current.some((c) => c.id === prev) ? prev : "";
-    setCustomerId(valid);
-    setInvoiceId("");
-  }, [open]);
 
   const inv = app.invoices.find((i) => i.id === invoiceId);
 
@@ -146,7 +138,7 @@ function ReturnModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
   return (
     <Modal
-      open={open}
+      open
       title="مرتجع"
       wide
       onClose={onClose}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "./auth-provider";
@@ -13,22 +14,34 @@ import {
   getWorkspaceApp,
   type AppId,
 } from "@/lib/workspace";
-import { InvoiceApp } from "./invoices/invoice-app";
-import { DesignApp } from "./design/design-app";
-import { FinanceApp } from "./finance/finance-app";
 import { LocalBackupButton } from "./local-backup-button";
+
+function WorkspaceLoading({ lang }: { lang: "ar" | "en" }) {
+  return (
+    <p className="py-16 text-center text-[var(--bb-muted)]">
+      {lang === "ar" ? "جاري التحميل…" : "Loading…"}
+    </p>
+  );
+}
+
+const InvoiceApp = dynamic(
+  () => import("./invoices/invoice-app").then((m) => m.InvoiceApp),
+  { ssr: false, loading: () => <WorkspaceLoading lang="ar" /> },
+);
+const DesignApp = dynamic(
+  () => import("./design/design-app").then((m) => m.DesignApp),
+  { ssr: false, loading: () => <WorkspaceLoading lang="en" /> },
+);
+const FinanceApp = dynamic(
+  () => import("./finance/finance-app").then((m) => m.FinanceApp),
+  { ssr: false, loading: () => <WorkspaceLoading lang="ar" /> },
+);
 
 export function WorkspaceScreen({ appId }: { appId: AppId }) {
   const app = getWorkspaceApp(appId);
   return (
     <RequireStaff dir={app.dir} lang={app.lang}>
-      <Suspense
-        fallback={
-          <p className="py-16 text-center text-[var(--bb-muted)]">
-            {app.lang === "ar" ? "جاري التحميل…" : "Loading…"}
-          </p>
-        }
-      >
+      <Suspense fallback={<WorkspaceLoading lang={app.lang} />}>
         <AppWorkspace appId={appId} />
       </Suspense>
     </RequireStaff>

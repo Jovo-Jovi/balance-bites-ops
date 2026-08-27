@@ -21,7 +21,7 @@ export function invstrAddDays(iso: string, n: number) {
 }
 
 export function clampInvstrDay(d: string | undefined | null, start: string | undefined | null) {
-  let day = invstrDay(d);
+  const day = invstrDay(d);
   const begin = invstrDay(start);
   if (!day) return begin || "0000-00-00";
   if (begin && day < begin) return begin;

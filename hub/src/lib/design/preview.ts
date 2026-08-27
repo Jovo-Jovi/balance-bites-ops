@@ -1,9 +1,10 @@
 import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
-import { isCharacterPresetArt } from "./art-presets";
-import { partFillPath } from "./boolean-cut";
+import { isCharacterPresetArt, isPackArtKey } from "./art-presets";
+import { partFillPath, partFillPathLocal } from "./boolean-cut";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconInner } from "./icons";
-import { artboardOf, circlePx, previewFace } from "./layout";
+import { artboardOf, circlePx, compositeAspect, previewFace } from "./layout";
+import { isEqualAspectPart, syncCompositePhysicalAspect } from "./part-types";
 import { getDesignSpec } from "./specs";
 import { stampOnFace } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
@@ -112,11 +113,7 @@ function partLocalGroup(part: CompositePart, inner: string) {
   const left = part.x - part.w / 2;
   const top = part.y - part.h / 2;
   const rot = part.rot ? ` transform="rotate(${part.rot} ${part.x} ${part.y})"` : "";
-  const stroke =
-    part.pathLocal && partBorderWidth(part) > 0
-      ? `<path d="${esc(part.pathLocal)}" fill="none"${strokePaint(part)}/>`
-      : "";
-  return `<g${rot}><g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">${inner}${stroke}</g></g>`;
+  return `<g${rot}><g transform="translate(${left} ${top}) scale(${part.w / 100} ${part.h / 100})">${inner}</g></g>`;
 }
 
 function partRot(part: CompositePart, inner: string) {
@@ -124,7 +121,22 @@ function partRot(part: CompositePart, inner: string) {
   return `<g transform="rotate(${part.rot} ${part.x} ${part.y})">${inner}</g>`;
 }
 
-function partShape(part: CompositePart, lite = false) {
+function partOutlineLocal(part: CompositePart) {
+  if (part.pathLocal) return part.pathLocal;
+  if (part.type === "rounded_sq" || part.type === "rounded_rect") {
+    return partFillPathLocal({ ...part, rot: 0 });
+  }
+  return "";
+}
+
+function partStrokeLocal(part: CompositePart, d: string) {
+  if (!d || partBorderWidth(part) <= 0) return "";
+  return `<path d="${esc(d)}" fill="none"${strokePaint(part)}/>`;
+}
+
+type PartPaint = "fill" | "stroke";
+
+function partShape(part: CompositePart, lite = false, paint: PartPaint = "fill") {
   const fill = part.color || "#2e7d32";
   const x = part.x;
   const y = part.y;
@@ -132,24 +144,55 @@ function partShape(part: CompositePart, lite = false) {
   const ry = part.h / 2;
   const src = previewImage(part.src || part.srcUrl, part.artKey, lite);
   const wantImage = Boolean(src) && part.showImage === true;
+  const outline = partOutlineLocal(part);
+
+  if (paint === "stroke") {
+    if (partBorderWidth(part) <= 0) return "";
+    if (outline) return partLocalGroup(part, partStrokeLocal(part, outline));
+    const ink = `fill="none"${strokePaint(part)}`;
+    const t = part.type;
+    if (t === "circle" || t === "oval") {
+      return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+    }
+    if (t === "square" || t === "rectangle") {
+      return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" ${ink} />`);
+    }
+    if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`);
+    if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`);
+    if (t === "pentagon") return partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" ${ink} />`);
+    if (t === "octagon") return partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" ${ink} />`);
+    if (t === "star") return partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" ${ink} />`);
+    const d = partFillPath({ ...part, rot: 0 });
+    if (d) return partRot(part, `<path d="${esc(d)}" ${ink} />`);
+    return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+  }
+
   if (wantImage) {
-    const par = isCharacterPresetArt(src, part.artKey) ? "xMidYMid slice" : "none";
+    const par = isPackArtKey(part.artKey)
+      ? "xMidYMid meet"
+      : isCharacterPresetArt(src, part.artKey)
+        ? "xMidYMid slice"
+        : "none";
     return partLocalGroup(
       part,
-      `<image href="${esc(src)}" x="0" y="0" width="100" height="100" preserveAspectRatio="${par}" />`,
+      svgImage(src, `x="0" y="0" width="100" height="100" preserveAspectRatio="${par}"`),
     );
   }
   if (part.pathLocal) {
     return partLocalGroup(part, `<path d="${esc(part.pathLocal)}" fill="${esc(fill)}" />`);
   }
   const t = part.type;
-  const ink = `fill="${esc(fill)}"${strokePaint(part)}`;
+  const ink = `fill="${esc(fill)}" stroke="none"`;
   if (t === "circle" || t === "oval") {
     return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
   }
-  if (t === "square" || t === "rectangle" || t === "rounded_sq" || t === "rounded_rect") {
-    const rr = t.startsWith("rounded") ? Math.min(rx, ry) * 0.22 : 0;
-    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" rx="${rr}" ${ink} />`);
+  if (t === "rounded_sq" || t === "rounded_rect") {
+    const d = partFillPathLocal({ ...part, rot: 0 });
+    if (!d) return "";
+    return partLocalGroup(part, `<path d="${esc(d)}" fill="${esc(fill)}" />`);
+  }
+  if (t === "square" || t === "rectangle") {
+    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" ${ink} />`);
   }
   if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`);
   if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`);
@@ -168,7 +211,28 @@ export function compositeDiePath(comp: CompositeBlob) {
   const union = String(comp.unionPath || "").trim();
   if (union) return union;
   if (parts[0]?.pathLocal) return partFillPath(parts[0]);
+  if (parts[0]) return partFillPath(parts[0]);
   return "";
+}
+
+/** Live `buildLabel` geometry for preview / cut / PNG — percent w/h compensated for artboard aspect. */
+export function liveComposite(state: LabelState): CompositeBlob | undefined {
+  const comp = state._composite;
+  if (!comp) return undefined;
+  const live = syncCompositePhysicalAspect(comp, compositeAspect(state));
+  const parts = live.parts || [];
+  const sole = parts[0];
+  if (
+    parts.length === 1 &&
+    sole &&
+    !sole.pathLocal &&
+    !live.cutGroupId &&
+    !live.cutZoneId &&
+    (isEqualAspectPart(sole) || sole.type === "half_circle")
+  ) {
+    return { ...live, unionPath: partFillPath(sole) };
+  }
+  return live;
 }
 
 function compositeClip(comp: CompositeBlob) {
@@ -198,7 +262,7 @@ function bgLayers(state: LabelState, lite = false) {
       const cy = num(state, pan.y, 50);
       const x = cx - size / 2;
       const y = cy - size / 2;
-      return `<image href="${esc(href)}" x="${x}" y="${y}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice" />`;
+      return svgImage(href, `x="${x}" y="${y}" width="${size}" height="${size}" opacity="${o}" preserveAspectRatio="xMidYMid slice"`);
     })
     .join("");
 }
@@ -210,7 +274,7 @@ function productLayer(state: LabelState, circular: boolean, lite = false) {
   const box = productPhotoBox(state, circular);
   const x = box.x - box.w / 2;
   const y = box.y - box.h / 2;
-  return `<image href="${esc(href)}" x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet" />`;
+  return svgImage(href, `x="${x}" y="${y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid meet"`);
 }
 
 function qrLayer(state: LabelState, lite = false) {
@@ -220,7 +284,7 @@ function qrLayer(state: LabelState, lite = false) {
   const w = Math.max(8, num(state, "sQRSize", 16));
   const x = num(state, "sQRX", 86);
   const y = num(state, "sQRY", 86);
-  return `<image href="${esc(href)}" x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet" />`;
+  return svgImage(href, `x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet"`);
 }
 
 function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; borderColor?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string) {
@@ -234,7 +298,7 @@ function stampMark(s: { iconId: string; x: number; y: number; w: number; h: numb
       Number.isFinite(bw) && bw > 0
         ? `<circle cx="${s.x}" cy="${s.y}" r="${side / 2}" fill="none" stroke="${esc(s.borderColor || s.color || "#ffffff")}" stroke-width="${bw}" />`
         : "";
-    const img = `<image href="${esc(href)}" x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />${ring}`;
+    const img = `${svgImage(href, `x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet"`)}${ring}`;
     if (!s.rot) return img;
     return `<g transform="rotate(${s.rot} ${s.x} ${s.y})">${img}</g>`;
   }
@@ -288,6 +352,98 @@ function fontOf(state: LabelState, keys: string[], fallback: string) {
   return fallback;
 }
 
+function zoneRot(z: CompositeZone, inner: string) {
+  if (!z.rot) return inner;
+  return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${inner}</g>`;
+}
+
+/** Centerline sits `bw/2` outside the box so a stroke of `bw` is fully outward (wrap `box-shadow: 0 0 0`). */
+function outsetRect(x: number, y: number, w: number, h: number, rx: number, bw: number, attrs: string) {
+  const o = bw / 2;
+  return `<rect x="${x - o}" y="${y - o}" width="${w + bw}" height="${h + bw}" rx="${rx + o}" ${attrs} />`;
+}
+
+function zoneIsPaddedBox(z: CompositeZone) {
+  const label = String(z.label || "");
+  return (
+    label === "Net Wt" ||
+    label === "Exp" ||
+    /^exp/i.test(label) ||
+    Boolean(z.fill && z.fill !== "none" && z.fill !== "transparent")
+  );
+}
+
+function zoneCharEm(z: CompositeZone) {
+  const wt = Number(z.fontWeight) || 800;
+  return wt >= 800 ? 0.72 : wt >= 600 ? 0.65 : 0.58;
+}
+
+/** Live `zoneTextFontPx` in artboard % so type stays inside the zone. */
+function zoneTextFontPct(z: CompositeZone) {
+  const w = Math.max(1, Number(z.w) || 40);
+  const h = Math.max(1, Number(z.h) || 14);
+  const lines = String(z.text || "").split("\n");
+  const lineCount = Math.max(1, lines.length);
+  let longest = 1;
+  for (const line of lines) longest = Math.max(longest, line.length);
+  const isBox = zoneIsPaddedBox(z);
+  const padX = Math.max(0.8, Math.min(w * 0.08, w * 0.25));
+  const padY = Math.max(0.5, Math.min(h * 0.1, h * 0.25));
+  const maxW = Math.max(1, w - padX);
+  const maxH = Math.max(1, h - padY);
+  const fsByH = (maxH * (isBox ? 0.68 : 0.78)) / lineCount;
+  const fsByW = maxW / (longest * zoneCharEm(z));
+  const minFs = isBox ? 0.8 : 1;
+  const maxFs = Math.min(isBox ? 18 : 28, maxH);
+  return Math.max(minFs, Math.min(maxFs, fsByH, fsByW));
+}
+
+function zoneTextLayout(z: CompositeZone) {
+  const lines = String(z.text || "").split("\n");
+  const size = zoneTextFontPct(z);
+  const gap = size * 1.08;
+  const startY = z.y - ((lines.length - 1) * gap) / 2;
+  let longest = 1;
+  for (const line of lines) longest = Math.max(longest, line.length);
+  const contentW = Math.max(size, longest * size * zoneCharEm(z)) * 1.06;
+  const contentH = Math.max(size, lines.length * gap) * 1.04;
+  return { lines, size, startY, gap, contentW, contentH };
+}
+
+function zoneStrokeMarkup(z: CompositeZone) {
+  if (z.kind === "icon") return "";
+  if (z.kind === "image") {
+    const bw = Number(z.borderWidth);
+    if (!(Number.isFinite(bw) && bw > 0)) return "";
+    const ink = `fill="none" stroke="${esc(z.borderColor || z.color || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
+    const isChar = z.shape === "character" || String(z.label || "").startsWith("Character");
+    if (isChar) {
+      const r = Math.min(z.w, z.h) / 2;
+      return zoneRot(z, `<circle cx="${z.x}" cy="${z.y}" r="${r + bw / 2}" ${ink} />`);
+    }
+    return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, 0, bw, ink));
+  }
+  if (z.kind === "logo") {
+    const sw = z.strokeWidth ?? Number(z.borderWidth);
+    if (!(Number.isFinite(sw) && sw > 0)) return "";
+    const r = Math.min(z.w, z.h) / 2;
+    return zoneRot(
+      z,
+      `<circle cx="${z.x}" cy="${z.y}" r="${r + sw / 2}" fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${sw}" />`,
+    );
+  }
+  const bw = Number(z.borderWidth);
+  if (!(Number.isFinite(bw) && bw > 0)) return "";
+  const ink = `fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
+  if (z.fill && z.fill !== "none" && z.fill !== "transparent") {
+    const rx = Math.min(z.w, z.h) * 0.12;
+    return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, rx, bw, ink));
+  }
+  const { contentW, contentH } = zoneTextLayout(z);
+  const rx = Math.min(contentW, contentH) * 0.12;
+  return zoneRot(z, outsetRect(z.x - contentW / 2, z.y - contentH / 2, contentW, contentH, rx, bw, ink));
+}
+
 function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false) {
   if (z.kind === "icon" && z.iconId) {
     return iconMark(
@@ -307,17 +463,8 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     if (!src) return "";
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
-    const bw = Number(z.borderWidth);
-    const isChar = z.shape === "character" || String(z.label || "").startsWith("Character");
-    const stroke =
-      Number.isFinite(bw) && bw > 0
-        ? isChar
-          ? `<circle cx="${z.x}" cy="${z.y}" r="${Math.min(z.w, z.h) / 2}" fill="none" stroke="${esc(z.borderColor || z.color || "#1a1a1a")}" stroke-width="${bw}" />`
-          : `<rect x="${left}" y="${top}" width="${z.w}" height="${z.h}" fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" />`
-        : "";
-    const img = `<image href="${esc(src)}" x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet" />${stroke}`;
-    if (!z.rot) return img;
-    return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${img}</g>`;
+    const img = svgImage(src, `x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet"`);
+    return zoneRot(z, img);
   }
   if (z.kind === "logo") {
     const r = Math.min(z.w, z.h) / 2;
@@ -325,47 +472,38 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     const ink = z.textColor || "#1a1a1a";
     const fs = Math.max(3, r * (z.fontScale || 0.7));
     const family = z.fontFamily || fontOf(state, ["fntHead", "fntH"], "Bitter, serif");
-    const sw = z.strokeWidth ?? Number(z.borderWidth);
-    const ring =
-      Number.isFinite(sw) && sw > 0
-        ? ` stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${sw}"`
-        : ` stroke="none"`;
     const body = `<g>
-      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}"${ring} />
+      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}" stroke="none" />
       <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="${esc(family)}">${esc(String(z.text || "BB"))}</text>
     </g>`;
-    if (!z.rot) return body;
-    return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${body}</g>`;
+    return zoneRot(z, body);
   }
-  const lines = String(z.text || "").split("\n");
+  const { lines, size, startY, gap } = zoneTextLayout(z);
   const color = z.color || z.textColor || fallback;
-  const size = Math.max(2.2, Math.min(10, z.h / Math.max(lines.length, 1) * 0.7));
-  const startY = z.y - ((lines.length - 1) * size * 0.55);
   const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
   const weight = z.fontWeight || "700";
-  const bw = Number(z.borderWidth);
-  const boxStroke =
-    Number.isFinite(bw) && bw > 0
-      ? ` stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}"`
-      : "";
-  const plate = z.fill && z.fill !== "none"
-    ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${Math.min(z.w, z.h) * 0.12}" fill="${esc(z.fill)}"${boxStroke} />`
-    : Number.isFinite(bw) && bw > 0
-      ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${Math.min(z.w, z.h) * 0.12}" fill="none"${boxStroke} />`
+  const rx = Math.min(z.w, z.h) * 0.12;
+  const plate =
+    z.fill && z.fill !== "none"
+      ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${rx}" fill="${esc(z.fill)}" stroke="none" />`
       : "";
   const text = lines
     .map(
       (line, i) =>
-        `<text x="${z.x}" y="${startY + i * size * 1.12}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}">${esc(line)}</text>`,
+        `<text x="${z.x}" y="${startY + i * gap}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}" letter-spacing="0.02em">${esc(line)}</text>`,
     )
     .join("");
-  const body = `${plate}${text}`;
-  if (!z.rot) return body;
-  return `<g transform="rotate(${z.rot} ${z.x} ${z.y})">${body}</g>`;
+  return zoneRot(z, `${plate}${text}`);
 }
 
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+}
+
+/** SVG-as-image often ignores `href` without the xlink twin. */
+function svgImage(href: string, attrs: string) {
+  const h = esc(href);
+  return `<image href="${h}" xlink:href="${h}" ${attrs} />`;
 }
 
 export const CUT_STROKE_MM = 0.25;
@@ -535,7 +673,7 @@ function compositeCutMm(comp: CompositeBlob, wMm: number, hMm: number) {
 function cutGeomMm(template: LabelTemplate, state: LabelState, wMm: number, hMm: number) {
   const spec = getDesignSpec(template.designType);
   const face = previewFace(template);
-  if (spec.composite && state._composite) return compositeCutMm(state._composite, wMm, hMm);
+  if (spec.composite && state._composite) return compositeCutMm(liveComposite(state) || state._composite, wMm, hMm);
   return familyCutMm(
     face === "taper" ? "taper" : face === "back" ? "rect" : circleShape(state, spec.outline),
     wMm,
@@ -558,14 +696,14 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
     ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
     : "";
   if (!showCut) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}${inner}</svg>`;
   }
   const wMm = wCm * 10;
   const hMm = hCm * 10;
   const under = `<g fill="none" stroke="${esc(stroke.color)}" stroke-width="${stroke.mm * 2}" stroke-linejoin="round" stroke-linecap="round">${cutGeomMm(template, state, wMm, hMm)}</g>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-padMm} ${-padMm} ${wMm + 2 * padMm} ${hMm + 2 * padMm}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${-padMm} ${-padMm} ${wMm + 2 * padMm} ${hMm + 2 * padMm}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}
     ${under}
-    <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none">${inner}</svg>
+    <svg viewBox="0 0 100 100" x="0" y="0" width="${wMm}" height="${hMm}" preserveAspectRatio="none" overflow="visible">${inner}</svg>
   </svg>`;
 }
 
@@ -578,7 +716,8 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
 
   const fill = str(state, "cLabel", "#2e7d32");
   const txt = str(state, "cTxtMain", "#ffffff");
-  const comp = state._composite;
+  const stored = state._composite;
+  const comp = liveComposite(state) || stored;
   const clipId = clipIdOf(template);
   const stamps = [...(state._stamps || [])].filter((s) => stampOnFace(s, "composite"));
 
@@ -588,26 +727,37 @@ export function labelPreviewSvg(template: LabelTemplate, state: LabelState, opts
     const exactArt = parts.some((p) => p.showImage);
     const boardFill =
       lite || !exactArt ? `<rect width="100" height="100" fill="${esc(comp.bg || fill)}" />` : "";
-    const stack: { z: number; html: string }[] = [];
-    for (const p of parts) stack.push({ z: p.z || 0, html: partShape(p, lite) });
-    for (const z of zones) stack.push({ z: z.z || 0, html: zoneMarkup(z, comp.txt || txt, state, lite) });
-    for (const s of stamps) {
-      stack.push({
-        z: s.z || 0,
-        html: stampMark(s, txt),
+    const layers: { z: number; fill: string; stroke: string }[] = [];
+    for (const p of parts) {
+      layers.push({ z: p.z || 0, fill: partShape(p, lite, "fill"), stroke: partShape(p, lite, "stroke") });
+    }
+    for (const z of zones) {
+      layers.push({
+        z: z.z || 0,
+        fill: zoneMarkup(z, comp.txt || txt, state, lite),
+        stroke: zoneStrokeMarkup(z),
       });
     }
+    for (const s of stamps) {
+      layers.push({ z: s.z || 0, fill: stampMark(s, txt), stroke: "" });
+    }
     const photo = compositeHasCharacterArt(state) ? "" : productLayer(state, false, lite);
-    if (photo) stack.push({ z: 0.5, html: photo });
-    stack.sort((a, b) => a.z - b.z);
+    if (photo) layers.push({ z: 0.5, fill: photo, stroke: "" });
+    layers.sort((a, b) => a.z - b.z);
+    const painted = layers
+      .map((item) => {
+        const fill = item.fill ? `<g clip-path="url(#${clipId})">${item.fill}</g>` : "";
+        return `${fill}${item.stroke || ""}`;
+      })
+      .join("");
     const inner = `
       <defs><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">${compositeClip(comp)}</clipPath></defs>
       <g clip-path="url(#${clipId})">
         ${boardFill}
         ${bgLayers(state, lite)}
-        ${stack.map((item) => item.html).join("")}
-        ${qrLayer(state, lite)}
-      </g>`;
+      </g>
+      ${painted}
+      <g clip-path="url(#${clipId})">${qrLayer(state, lite)}</g>`;
     return wrapPreviewSvg(inner, template, state, opts);
   }
 

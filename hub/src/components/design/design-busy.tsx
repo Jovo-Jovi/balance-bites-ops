@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useIsClient } from "@/lib/use-is-client";
 import { useDesignApp } from "./design-context";
 
 export function DesignBusyOverlay() {
   const app = useDesignApp();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsClient();
   if (!mounted || !app.busy) return null;
   const label = app.busyMessage || "Working…";
   return createPortal(

@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setStoreReady(false);
           CloudStore.stopAll();
           if (!next) {
+            CloudStore.clearLocalCache();
             setUser(null);
             setStaff(null);
             setLoading(false);
@@ -151,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { getFirebaseAuth } = await import("@/lib/firebase");
         const { signOut: firebaseSignOut } = await import("firebase/auth");
         CloudStore.stopAll();
+        CloudStore.clearLocalCache();
         await firebaseSignOut(getFirebaseAuth());
       },
     }),

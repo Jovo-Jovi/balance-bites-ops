@@ -2,7 +2,7 @@ import { isStorageEnabled } from "@/lib/firebase-config";
 import { uploadLabelAsset } from "@/lib/storage";
 import { hydrateAssetValue } from "./assets";
 import { familyDieView } from "./family-preview";
-import { rasterizeLabelCanvas } from "./png-pack";
+import { paintCompositeRasterArt, rasterizeLabelCanvas } from "./png-pack";
 import { artboardCm } from "./preview";
 import { presetThumbFill } from "./art-presets";
 import { getDesignSpec } from "./specs";
@@ -92,7 +92,7 @@ function fillForDie(template: LabelTemplate) {
   return /^#fff(fff)?$/i.test(raw.trim()) || raw.trim().toLowerCase() === "white" ? "#FECE00" : raw;
 }
 
-function fallbackDieCanvas(template: LabelTemplate, wPx: number, hPx: number) {
+async function fallbackDieCanvas(template: LabelTemplate, wPx: number, hPx: number) {
   const canvas = document.createElement("canvas");
   canvas.width = wPx;
   canvas.height = hPx;
@@ -122,22 +122,27 @@ function fallbackDieCanvas(template: LabelTemplate, wPx: number, hPx: number) {
         ctx.fillRect(0, 0, 100, 100);
       }
       ctx.restore();
-      return canvas;
-    }
-    const die = familyDieView(template, template.state);
-    if (die.d && die.vbW > 0 && die.vbH > 0) {
-      const sx = wPx / die.vbW;
-      const sy = hPx / die.vbH;
-      ctx.save();
-      ctx.translate(-die.minX * sx, -die.minY * sy);
-      ctx.scale(sx, sy);
-      ctx.fill(new Path2D(die.d));
-      ctx.restore();
     } else {
-      ctx.fillRect(0, 0, wPx, hPx);
+      const die = familyDieView(template, template.state);
+      if (die.d && die.vbW > 0 && die.vbH > 0) {
+        const sx = wPx / die.vbW;
+        const sy = hPx / die.vbH;
+        ctx.save();
+        ctx.translate(-die.minX * sx, -die.minY * sy);
+        ctx.scale(sx, sy);
+        ctx.fill(new Path2D(die.d));
+        ctx.restore();
+      } else {
+        ctx.fillRect(0, 0, wPx, hPx);
+      }
     }
   } catch {
     ctx.fillRect(2, 2, wPx - 4, hPx - 4);
+  }
+  try {
+    await paintCompositeRasterArt(canvas, template.state);
+  } catch {
+    /* die fill still present */
   }
   return canvas;
 }
@@ -147,9 +152,14 @@ export async function renderLibraryThumbBlob(template: LabelTemplate): Promise<B
   try {
     const work = libraryWorkSize(template);
     const canvas = await rasterizeLabelCanvas(template, template.state, work.wPx, work.hPx, thumbKind(template));
+    try {
+      await paintCompositeRasterArt(canvas, template.state);
+    } catch {
+      /* SVG raster may already have pack art */
+    }
     return await canvasToThumbBlob(scaleCanvas(canvas, wPx, hPx));
   } catch {
-    return await canvasToThumbBlob(fallbackDieCanvas(template, wPx, hPx));
+    return await canvasToThumbBlob(await fallbackDieCanvas(template, wPx, hPx));
   }
 }
 
@@ -220,7 +230,7 @@ async function snapThumbSrc(template: LabelTemplate) {
   if (pending) return pending;
   const job = (async () => {
     const { wPx, hPx } = libraryThumbSize(template);
-    const blob = await canvasToThumbBlob(fallbackDieCanvas(template, wPx, hPx));
+    const blob = await canvasToThumbBlob(await fallbackDieCanvas(template, wPx, hPx));
     const url = URL.createObjectURL(blob);
     remember(cacheKey, url);
     viewPending.delete(cacheKey);

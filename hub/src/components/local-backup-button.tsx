@@ -26,6 +26,15 @@ export function LocalBackupButton({
         setBusy(true);
         void downloadLocalBackup()
           .then((out) => {
+            if (out.assetsSkipped) {
+              toast.push(
+                lang === "en"
+                  ? `Saved invoice and customer data in ${out.filename} (${out.keys.length} keys). Label images were skipped because cloud storage is off.`
+                  : `حُفظت بيانات الفواتير والعملاء في ${out.filename} (${out.keys.length} مفتاح). تُخطّيت صور الملصقات لأن التخزين السحابي غير مفعّل.`,
+                "warn",
+              );
+              return;
+            }
             toast.push(
               lang === "en"
                 ? `Saved ${out.filename} (${out.keys.length} keys · ${out.assets} assets)`

@@ -17,7 +17,7 @@ import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
 import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { CUT_LAYER, moveLayer as moveLayerInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
+import { CUT_LAYER, moveLayer as moveLayerInState, moveLayerTo as moveLayerToInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -67,6 +67,7 @@ import {
   addLibraryCharacter,
   addNamedTextZone,
   addShape,
+  dropPackArt,
   addZone,
   applyClipJoin,
   approveCutPreview,
@@ -140,6 +141,7 @@ type DesignContextValue = {
   removeArt: (id: string) => void;
   patchLayer: (id: string, patch: { color?: string; text?: string; borderWidth?: number; borderColor?: string; size?: number }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
+  moveLayerTo: (id: string, toId: string) => void;
   selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
   moveItem: (id: string, x: number, y: number) => void;
   resizeItem: (id: string, w: number, h: number) => void;
@@ -154,6 +156,7 @@ type DesignContextValue = {
   patchNamedField: (blockId: string, fieldId: string, patch: Partial<Pick<DesignBlockField, "label" | "en" | "ar">>) => void;
   setNamedBlockFirstEn: (blockId: string, en: string) => void;
   applyStudioCharacter: (style: string, seed: string) => Promise<void>;
+  applyStudioPackArt: (artKey: string) => void;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -326,7 +329,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       if (templateId) {
         wantedId.current = templateId;
         const t = templates.find((x) => x.id === templateId);
-        if (t) void loadIntoCurrent(t).then(() => go("atelier", t.id));
+        if (t) {
+          const openId = t.id;
+          void Promise.resolve().then(() =>
+            loadIntoCurrent(t).then(() => go("atelier", openId)),
+          );
+        }
       }
       return;
     }
@@ -336,7 +344,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     if (wantedId.current && wantedId.current !== urlId) return;
     const t = templates.find((x) => x.id === urlId);
     if (!t) return;
-    void loadIntoCurrent(t);
+    void Promise.resolve().then(() => {
+      void loadIntoCurrent(t);
+    });
   }, [labelOpen, params, templates, stickers, loadIntoCurrent, go]);
 
   const replaceCurrent = useCallback((next: LabelTemplate) => {
@@ -703,7 +713,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       },
       moveLayer: (id, dir) => {
         if (!current) return;
+        pushUndo(current.state);
         replaceCurrent({ ...current, state: moveLayerInState(current, id, dir) });
+      },
+      moveLayerTo: (id, toId) => {
+        if (!current) return;
+        const next = moveLayerToInState(current, id, toId);
+        if (next === current.state) return;
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: next });
       },
       selectLayer: (id, opts) => {
         if (clipPick && id && current?.state._composite?.parts?.some((p) => p.id === id)) {
@@ -827,6 +845,22 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       setNamedBlockFirstEn: (blockId, en) => {
         if (!current) return;
         replaceCurrent({ ...current, state: setBlockFirstEn(current.state, blockId, en) });
+      },
+      applyStudioPackArt: (artKey) => {
+        if (!current) return;
+        if (previewFace(current) !== "composite") {
+          toast.push("Switch Family to Composite, then tap Pack art.", "warn");
+          return;
+        }
+        const op = dropPackArt(current.state, artKey);
+        if (!op.ok) {
+          toast.push(op.message, "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: op.state });
+        setSelectedIds(op.selectIds);
+        toast.push(op.message, "ok");
       },
       applyStudioCharacter: async (style, seed) => {
         if (!current) return;

@@ -16,8 +16,18 @@ export default function Error({
         Balance Bites
       </p>
       <p className="max-w-md text-center break-words text-[var(--bb-bad)]">
-        {error.message}
+        حدث خطأ. أعد المحاولة.
+        {error.digest ? (
+          <span className="mt-1 block font-mono text-xs text-[var(--bb-muted)]" dir="ltr">
+            {error.digest}
+          </span>
+        ) : null}
       </p>
+      {process.env.NODE_ENV !== "production" ? (
+        <p className="max-w-md text-center break-words text-xs text-[var(--bb-muted)]" dir="ltr">
+          {error.message}
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={reset}

@@ -363,8 +363,8 @@ export function investorShareOf(list: Investor[], total: number, mode: InvestorT
   const use = wsum <= 0 ? people.map(() => 1) : weights;
   wsum = use.reduce((s, w) => s + w, 0);
   const floors = use.map((w) => Math.floor((cents * w) / wsum));
-  let used = floors.reduce((s, v) => s + v, 0);
-  let rem = cents - used;
+  const used = floors.reduce((s, v) => s + v, 0);
+  const rem = cents - used;
   const order = use
     .map((w, i) => ({ i, frac: (cents * w) / wsum - floors[i] }))
     .sort((a, b) => b.frac - a.frac);

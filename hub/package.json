@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:rules": "node scripts/test-firestore-rules.mjs",
     "import:dry": "node scripts/import-saved-data.mjs --dry-run",
     "import:apply": "node scripts/import-saved-data.mjs --apply",
     "import:assets": "node scripts/import-saved-data.mjs --apply --assets",
@@ -23,6 +24,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
