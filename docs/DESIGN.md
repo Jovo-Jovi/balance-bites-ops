@@ -35,7 +35,7 @@ Inspector tabs depend on the **open face**. A control that does not change this 
 | Type | Wrap font/size sliders | Circle font/size keys | Lid sizes | — |
 | Size | `sW`×`sH` **or** cup Ø / `tpCupH` / `tpLblH` / wrap % / `tpOffsetBot`; screen zoom `sScale` | `cW`×`cH`; `sScale` | `tSz`; `sScale` | `cW`×`cH`; `sScale` |
 | Color | Label / ink / logo circle (packs in Libraries → Brand). Selected layer: Solid / Half / Gradient | Flavor ink + selected layer fill | Ink + selected layer fill | Part / zone / stamp: Solid / Half / Gradient |
-| Libraries rail | Shapes (Composite) · wrap recipes + named section · curved text / arc line · Icons · Uploads · Brand · Characters | same | Icons · Uploads · Brand · curved text / arc | Shapes · named section · composite blocks (`addZone`) · curved text / arc · Characters |
+| Libraries rail | Shapes (Composite) · wrap recipes + named section · curved text / arc line · Icons (incl. letter word group) · Uploads · Brand · Characters | same | Icons · Uploads · Brand · curved text / arc | Shapes · named section · composite blocks (`addZone`) · curved text / arc · Characters |
 | Layers | Print cut + section boxes (logo disc ≠ brand names) | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
 
 No fourth Design workspace tool.
@@ -88,9 +88,10 @@ hub/src/lib/design/
   icons.ts          repo catalog + LETTER_STYLES + Arabic أ–ي. Not Firestore.
   icon-catalog.json
   fills.ts          solid / half / two-stop gradient paint
-  deco.ts           curved text path + arc stroke
-  stamp-art.ts      icon / curved text / arc stamp SVG
-  art.ts            bg slots, stamps, addProductPhotos, fill-cut-with-paper
+  deco.ts           curved text path + arc stroke + letter-word layout
+  letter-word.ts    one-group A–Z / أ–ي word (lined or curved)
+  stamp-art.ts      icon / curved text / arc / letter-word stamp SVG
+  art.ts            bg slots, stamps, letter words, addProductPhotos, fill-cut-with-paper
   art-presets.ts    artref: / assets/presets/ → /design-presets/*.{svg,png}; Pack art rail drops trimmed RGBA PNGs
   product-match.ts  template name → current bb_products when productId is empty
   layers.ts         layer list / move / drag-reorder / rotate / recolor; grouped parts move together
@@ -153,7 +154,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image; Save inlines pack PNGs (Image load, not cookie-less fetch) and the Library snap paints those zones onto the card. Cut PNG z-order stays the SVG. Re-save a card that was snapped before pack art to replace a colour-only die.
-- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). **Blocks** also drop **Curved text** (Curvature −100…100 in Layers / Color) and **Arc line** (⅓ / ½ / sweep slider, thick gradient stroke) on wrap, circle, lid, and Composite. Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** is **Kids** / **Adults** (faces, toys, treats, product, garnish, brand). Trimmed RGBA PNGs drop as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists pack names (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG. Shape / type / icon color: **Solid**, **Half**, or **Gradient** (two picks).
+- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). **Blocks** also drop **Curved text** (Curvature −100…100 in Layers / Color) and **Arc line** (⅓ / ½ / sweep slider, thick gradient stroke) on wrap, circle, lid, and Composite. **Icons** can drop a **letter word** (type BITES / تفاح, Lined or Curved, Rainbow or one color) as one selectable group of the same A–Z / أ–ي glyph fonts — not N separate icons. Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** is **Kids** / **Adults** (faces, toys, treats, product, garnish, brand). Trimmed RGBA PNGs drop as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists pack names (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG. Shape / type / icon color: **Solid**, **Half**, or **Gradient** (two picks).
 - **Blank die + named sections (Wave D).** New template defaults to die only (Library checkbox **Include starter recipes** is off). Wrap/taper: `chkS1–6` false. Composite: empty zones. **Named section** on wrap/taper writes `state._blocks` and extends `eSecOrd`; Copy edits title / fields / width; Remove deletes it. Recipes stay `chkS*`. Legacy Custom column still opens. Composite named section is a text zone. No new `bb_*` key.
 
 ## Print house

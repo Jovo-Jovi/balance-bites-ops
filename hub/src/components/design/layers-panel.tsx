@@ -7,7 +7,7 @@ import { cssFill } from "@/lib/design/fills";
 import { iconSvg } from "@/lib/design/icons";
 import { CUT_STROKE_COLOR, CUT_STROKE_MM } from "@/lib/design/preview";
 import { useDesignApp } from "./design-context";
-import { FillControls } from "./fill-controls";
+import { LayerFillControls } from "./fill-controls";
 
 export function LayersPanel() {
   const app = useDesignApp();
@@ -153,16 +153,7 @@ export function LayersPanel() {
                 </div>
               </div>
               {deco?.fill && selected && !cut ? (
-                <FillControls
-                  color={deco.color}
-                  color2={deco.color2}
-                  fillMode={deco.fillMode}
-                  onChange={(patch) => app.patchLayer(layer.id, patch)}
-                  curve={deco.curve ? deco.curveValue : undefined}
-                  onCurve={deco.curve ? (v) => app.patchLayer(layer.id, { curve: v }) : undefined}
-                  sweep={deco.sweep ? deco.sweepValue : undefined}
-                  onSweep={deco.sweep ? (v) => app.patchLayer(layer.id, { sweep: v }) : undefined}
-                />
+                <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(layer.id, patch)} />
               ) : null}
               {size ? (
                 <Field label={`Size ${sizeLabel(size)}`}>

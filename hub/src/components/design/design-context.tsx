@@ -16,8 +16,8 @@ import { useToast } from "@/components/toast";
 import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
-import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { CUT_LAYER, moveLayer as moveLayerInState, moveLayerTo as moveLayerToInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
+import { addProductPhotos, applyIconToState, applyLetterWord, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
+import { CUT_LAYER, moveLayer as moveLayerInState, moveLayerTo as moveLayerToInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer, type LayerPatch } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -138,8 +138,12 @@ type DesignContextValue = {
   setField: (key: string, value: string) => void;
   setFields: (patch: Record<string, string>) => void;
   applyIcon: (iconId: string, sizeId: string, color?: string, letterStyle?: string) => void;
+  applyLetterWord: (
+    text: string,
+    opts: { sizeId: string; color?: string; letterStyle?: string; curved?: boolean; rainbow?: boolean },
+  ) => void;
   removeArt: (id: string) => void;
-  patchLayer: (id: string, patch: { color?: string; color2?: string; fillMode?: string; text?: string; borderWidth?: number; borderColor?: string; size?: number; curve?: number; sweep?: number }) => void;
+  patchLayer: (id: string, patch: LayerPatch) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
   moveLayerTo: (id: string, toId: string) => void;
   selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
@@ -671,6 +675,24 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             previewFace(current),
           ),
         });
+      },
+      applyLetterWord: (text, opts) => {
+        if (!current) return;
+        const result = applyLetterWord(current.state, text, {
+          sizeId: opts.sizeId,
+          color: opts.color || String(current.state.cTxtMain || "#ffffff"),
+          letterStyle: opts.letterStyle,
+          curved: opts.curved,
+          rainbow: opts.rainbow,
+          face: previewFace(current),
+        });
+        if (!result) {
+          toast.push("Type a word first.", "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: result.state });
+        setSelectedIds([result.id]);
       },
       removeArt: (id) => {
         if (!current) return;

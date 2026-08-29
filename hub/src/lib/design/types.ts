@@ -89,6 +89,7 @@ export type CompositeZone = {
   shape?: string;
   fill?: string;
   letterStyle?: string;
+  letterPack?: "solid" | "rainbow";
   layerGroup?: string;
   lockAspect?: boolean;
   borderColor?: string;
@@ -113,10 +114,11 @@ export type LabelStamp = {
   letterStyle?: string;
   src?: string;
   label?: string;
-  kind?: "icon" | "text" | "arc";
+  kind?: "icon" | "text" | "arc" | "letters";
   text?: string;
   curve?: number;
   sweep?: number;
+  letterPack?: "solid" | "rainbow";
   /** Which family face this stamp sits on. Missing = legacy (icons all faces; characters skip the lid). */
   face?: "back" | "taper" | "top" | "circle";
 };

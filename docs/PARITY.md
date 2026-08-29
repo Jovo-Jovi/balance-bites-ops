@@ -91,6 +91,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
 - [x] Flavor pack **Loaded** chip for the colors already on the open template
 - [x] Icon library in Studio (repo catalog + live A–Z and أ–ي letter fonts; wrap / taper / circle / lid / composite)
+- [x] Studio Icons: letter word as one lined or curved group (rainbow or one color; Fatty/Bubble/… fonts)
 - [x] Studio Blocks: curved text (curvature slider) + thick gradient arc lines (⅓ / ½ / editable sweep)
 - [x] Layer color: Solid / Half / two-color Gradient on shapes, type, icons, and arcs
 - [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; Studio and print use the same `/design-presets/*.svg` files. Photo fill + path stroke like live (not clip-to-path). Preset files letterbox a square viewBox in a tall canvas — hub slices that into the part so Print cut hugs the kernels

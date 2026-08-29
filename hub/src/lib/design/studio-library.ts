@@ -63,7 +63,7 @@ export function isPackArtZone(zone: CompositeZone) {
 export function placedCompositeBlocks(state: LabelState) {
   return (state._composite?.zones || []).filter(
     (z) =>
-      (z.kind === "text" || z.kind === "logo" || z.kind === "image" || z.kind === "arc") &&
+      (z.kind === "text" || z.kind === "logo" || z.kind === "image" || z.kind === "arc" || z.kind === "letters") &&
       !isCharacterZone(z) &&
       !isPackArtZone(z) &&
       !z.lock,
@@ -72,8 +72,11 @@ export function placedCompositeBlocks(state: LabelState) {
 
 export function placedDecoStamps(state: LabelState, face: PreviewFace) {
   return (state._stamps || [])
-    .filter((s) => stampOnFace(s, face) && (s.kind === "text" || s.kind === "arc") && !s.src)
-    .map((s) => ({ id: s.id, label: s.label || (s.kind === "arc" ? "Arc line" : "Text") }));
+    .filter((s) => stampOnFace(s, face) && (s.kind === "text" || s.kind === "arc" || s.kind === "letters") && !s.src)
+    .map((s) => ({
+      id: s.id,
+      label: s.label || s.text || (s.kind === "arc" ? "Arc line" : s.kind === "letters" ? "Word" : "Text"),
+    }));
 }
 
 export function placedCharacters(state: LabelState, face: PreviewFace) {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActionBtn, Field, Modal, TextInput } from "@/components/invoices/ui";
 import { useToast } from "@/components/toast";
+import { MAX_LETTER_WORD } from "@/lib/design/letter-word";
 import { isStorageEnabled } from "@/lib/firebase-config";
 import {
   BG_MORE,
@@ -564,22 +565,71 @@ export function ImagesPanel() {
 
 export function IconsPanel() {
   const app = useDesignApp();
+  const toast = useToast();
   const t = app.current;
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [sizeId, setSizeId] = useState("m");
   const [iconColor, setIconColor] = useState("#c9a84c");
   const [letterStyle, setLetterStyle] = useState("fatty");
+  const [word, setWord] = useState("");
+  const [wordCurved, setWordCurved] = useState(false);
+  const [wordRainbow, setWordRainbow] = useState(true);
   const icons = useMemo(() => filterIcons(cat, q), [cat, q]);
   if (!t) return null;
 
   const stampColor = iconColor || "#c9a84c";
 
+  function addWord() {
+    const text = word.trim();
+    if (!text) {
+      toast.push("Type a word first.", "warn");
+      return;
+    }
+    app.applyLetterWord(text, {
+      sizeId,
+      color: stampColor,
+      letterStyle,
+      curved: wordCurved,
+      rainbow: wordRainbow,
+    });
+  }
+
   return (
     <div>
       <p className="mb-3 text-sm text-[var(--bb-muted)]">
-        Hub linen tiles — the flavor color stays on the sticker. Pick a size and gold (or any color), then tap an icon. A–Z and أ–ي use the letter fonts. Works on wrap, taper, circle, lid, and composite.
+        Hub linen tiles — the flavor color stays on the sticker. Pick a size and gold (or any color), then tap an icon. Type a word to drop A–Z / أ–ي as one lined or curved group. Works on wrap, taper, circle, lid, and composite.
       </p>
+      <div className="mb-3 grid gap-2 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-2.5">
+        <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">Letter word</p>
+        <TextInput
+          value={word}
+          onChange={(e) => setWord([...e.target.value].slice(0, MAX_LETTER_WORD).join(""))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addWord();
+            }
+          }}
+          placeholder="BITES or تفاح"
+          aria-label="Letter word"
+        />
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" className={chipClass(!wordCurved)} onClick={() => setWordCurved(false)}>
+            Lined
+          </button>
+          <button type="button" className={chipClass(wordCurved)} onClick={() => setWordCurved(true)}>
+            Curved
+          </button>
+          <button type="button" className={chipClass(wordRainbow)} onClick={() => setWordRainbow(true)}>
+            Rainbow
+          </button>
+          <button type="button" className={chipClass(!wordRainbow)} onClick={() => setWordRainbow(false)}>
+            One color
+          </button>
+        </div>
+        <ActionBtn onClick={addWord}>Add word</ActionBtn>
+      </div>
       <TextInput
         value={q}
         onChange={(e) => setQ(e.target.value)}

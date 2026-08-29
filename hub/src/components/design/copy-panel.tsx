@@ -8,7 +8,7 @@ import { stampOnFace } from "@/lib/design/studio-library";
 import type { DesignBlock } from "@/lib/design/types";
 import { layerDeco, stickerCopyFields } from "@/lib/design/layers";
 import { useDesignApp } from "./design-context";
-import { FillControls } from "./fill-controls";
+import { LayerFillControls } from "./fill-controls";
 
 function toHex(value: string) {
   const v = value.trim();
@@ -23,7 +23,7 @@ function DecoStampCopy() {
   if (!t) return null;
   const face = previewFace(t);
   const stamps = (t.state._stamps || []).filter(
-    (st) => stampOnFace(st, face) && (st.kind === "text" || st.kind === "arc" || Boolean(st.text && !st.iconId)),
+    (st) => stampOnFace(st, face) && (st.kind === "text" || st.kind === "arc" || st.kind === "letters" || Boolean(st.text && !st.iconId)),
   );
   if (!stamps.length) return null;
   return (
@@ -32,25 +32,14 @@ function DecoStampCopy() {
         const deco = layerDeco(t.state, st.id);
         return (
           <div key={st.id} className="grid gap-2">
-            {st.kind === "text" || st.text ? (
-              <Field label={st.label || "Text"}>
+            {st.kind === "arc" && !st.text ? (
+              <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">{st.label || "Arc line"}</p>
+            ) : (
+              <Field label={st.label || (st.kind === "letters" ? "Word" : "Text")}>
                 <TextInput value={st.text || ""} onChange={(e) => app.patchLayer(st.id, { text: e.target.value })} />
               </Field>
-            ) : (
-              <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">{st.label || "Arc line"}</p>
             )}
-            {deco?.fill ? (
-              <FillControls
-                color={deco.color}
-                color2={deco.color2}
-                fillMode={deco.fillMode}
-                onChange={(patch) => app.patchLayer(st.id, patch)}
-                curve={deco.curve ? deco.curveValue : undefined}
-                onCurve={deco.curve ? (v) => app.patchLayer(st.id, { curve: v }) : undefined}
-                sweep={deco.sweep ? deco.sweepValue : undefined}
-                onSweep={deco.sweep ? (v) => app.patchLayer(st.id, { sweep: v }) : undefined}
-              />
-            ) : null}
+            {deco?.fill ? <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(st.id, patch)} /> : null}
           </div>
         );
       })}
@@ -173,14 +162,7 @@ export function CopyPanel() {
               />
             </Field>
             {deco?.fill ? (
-              <FillControls
-                color={deco.color || row.color}
-                color2={deco.color2}
-                fillMode={deco.fillMode}
-                onChange={(patch) => app.patchLayer(row.id, patch)}
-                curve={deco.curve ? deco.curveValue : undefined}
-                onCurve={deco.curve ? (v) => app.patchLayer(row.id, { curve: v }) : undefined}
-              />
+              <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(row.id, patch)} />
             ) : row.color ? (
               <label className="flex items-center gap-2 pb-1 text-xs text-[var(--bb-muted)]">
                 Color
@@ -780,16 +762,7 @@ export function ColorFields({ face }: { face: string }) {
       {deco?.fill && app.selectedId ? (
         <div className="grid gap-2 border-b border-[var(--bb-line)] pb-3">
           <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">Selected layer</p>
-          <FillControls
-            color={deco.color}
-            color2={deco.color2}
-            fillMode={deco.fillMode}
-            onChange={(patch) => app.patchLayer(app.selectedId!, patch)}
-            curve={deco.curve ? deco.curveValue : undefined}
-            onCurve={deco.curve ? (v) => app.patchLayer(app.selectedId!, { curve: v }) : undefined}
-            sweep={deco.sweep ? deco.sweepValue : undefined}
-            onSweep={deco.sweep ? (v) => app.patchLayer(app.selectedId!, { sweep: v }) : undefined}
-          />
+          <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(app.selectedId!, patch)} />
         </div>
       ) : null}
       {color("cLabel", "Label fill", "#2e7d32")}

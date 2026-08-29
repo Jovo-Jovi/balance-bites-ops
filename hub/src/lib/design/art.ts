@@ -3,6 +3,7 @@ import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
 import { compositeAspect, type PreviewFace } from "./layout";
 import { syncIconSquareSize } from "./part-types";
+import { letterWordBox, wordChars } from "./letter-word";
 import { stampFaceOf } from "./studio-library";
 import { isAssetRef } from "./templates";
 import type { CompositeZone, LabelStamp, LabelState } from "./types";
@@ -170,6 +171,86 @@ export function applyIconToState(
   }
 
   return { ...state, _stamps: [...(state._stamps || []), stamp] };
+}
+
+export function applyLetterWord(
+  state: LabelState,
+  text: string,
+  opts: {
+    sizeId: string;
+    color: string;
+    letterStyle?: string;
+    curved?: boolean;
+    rainbow?: boolean;
+    face?: PreviewFace;
+  },
+): { state: LabelState; id: string } | null {
+  const chars = wordChars(text);
+  if (!chars.length) return null;
+  const size = iconSizeById(opts.sizeId);
+  const curved = Boolean(opts.curved);
+  const box = letterWordBox(chars.length, size.pct, curved);
+  const word = chars.join("");
+  const id = genId("ic");
+  const style = opts.letterStyle || "fatty";
+  const pack = opts.rainbow === false ? "solid" : "rainbow";
+  const fill = opts.color || String(state.cTxtMain || "#ffffff");
+  const zTop =
+    Math.max(
+      40,
+      ...(state._stamps || []).map((s) => s.z || 0),
+      ...(state._composite?.zones || []).map((z) => z.z || 0),
+    ) + 1;
+  if (state._composite) {
+    const zone: CompositeZone = {
+      id,
+      kind: "letters",
+      x: 50,
+      y: 48,
+      w: box.w,
+      h: box.h,
+      color: fill,
+      fillMode: "solid",
+      strokeWidth: size.stroke,
+      letterStyle: style,
+      letterPack: pack,
+      text: word,
+      curve: curved ? 55 : 0,
+      label: word,
+      z: zTop,
+    };
+    return {
+      id,
+      state: {
+        ...state,
+        _composite: {
+          ...state._composite,
+          zones: [...(state._composite.zones || []), zone],
+        },
+      },
+    };
+  }
+  const stamp: LabelStamp = {
+    id,
+    iconId: "",
+    kind: "letters",
+    x: 50,
+    y: 48,
+    w: box.w,
+    h: box.h,
+    color: fill,
+    fillMode: "solid",
+    strokeWidth: size.stroke,
+    sizeId: size.id,
+    letterStyle: style,
+    letterPack: pack,
+    text: word,
+    curve: curved ? 55 : 0,
+    label: word,
+    z: zTop,
+    face: stampFaceOf(opts.face || "back"),
+  };
+  return { id, state: { ...state, _stamps: [...(state._stamps || []), stamp] } };
 }
 
 export function removeArtItem(state: LabelState, id: string): LabelState {

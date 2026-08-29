@@ -8,6 +8,7 @@ import { getIcon, iconPainted } from "./icons";
 import { artboardOf, circlePx, compositeAspect, previewFace } from "./layout";
 import { isEqualAspectPart, syncCompositePhysicalAspect } from "./part-types";
 import { getDesignSpec } from "./specs";
+import { letterWordMarkup } from "./letter-word";
 import { stampArtMarkup } from "./stamp-art";
 import { stampOnFace } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
@@ -401,7 +402,7 @@ function zoneTextLayout(z: CompositeZone) {
 }
 
 function zoneStrokeMarkup(z: CompositeZone) {
-  if (z.kind === "icon" || z.kind === "arc") return "";
+  if (z.kind === "icon" || z.kind === "arc" || z.kind === "letters") return "";
   if (z.kind === "image") {
     const bw = Number(z.borderWidth);
     if (!(Number.isFinite(bw) && bw > 0)) return "";
@@ -449,6 +450,24 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
       fillMode: z.fillMode || "gradient",
     });
     return zoneRot(z, `<g>${mark.defs}${mark.body}</g>`);
+  }
+  if (z.kind === "letters") {
+    const body = letterWordMarkup({
+      id: z.id,
+      cx: z.x,
+      cy: z.y,
+      w: z.w,
+      h: z.h,
+      text: String(z.text || ""),
+      curve: z.curve,
+      color: z.color || z.textColor || fallback,
+      color2: z.color2,
+      fillMode: z.fillMode,
+      letterStyle: z.letterStyle,
+      letterPack: z.letterPack,
+      strokeWidth: z.strokeWidth,
+    });
+    return zoneRot(z, body);
   }
   if (z.kind === "icon" && z.iconId) {
     return iconMark(

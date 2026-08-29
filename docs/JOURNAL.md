@@ -508,6 +508,8 @@ Carry-forward: when the bug *is* the vulnerability, the gate is a manual threat 
 
 Studio **Blocks** drop **Curved text** (Layers / Color **Curvature** −100…100) and **Arc line** (⅓ / ½ presets + sweep slider, thick gradient stroke) on wrap, circle, lid, and Composite. Icons gain **أ–ي** (28 hijāʾī letters) next to A–Z, same Fatty/Bubble/Jelly/Candy/Curvy/Block chips with Cairo / Baloo Bhaijaan 2. Selected shape / type / icon / arc color is **Solid**, **Half**, or **Gradient** (two picks) in Layers and Color. No new `bb_*` key; stored on the template zone/part/stamp. Not a Canva clone.
 
+**Letter word group.** Icons rail: type a word (up to 16 characters), **Lined** or **Curved**, **Rainbow** or one color, Add. Drops one `kind: "letters"` zone/stamp — the same letter-icon glyphs, moved and resized together. Layers / Copy edit the word, curvature, and pack. Not N icons grouped after the fact (wrap stamps have no `layerGroup`).
+
 ---
 
 ## Still not done (do not tick as shipped)

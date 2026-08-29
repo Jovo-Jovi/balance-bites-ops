@@ -23,6 +23,50 @@ export function clampSweep(value: unknown, fallback = ARC_SWEEP_HALF) {
   return Math.max(30, Math.min(330, n));
 }
 
+export function letterLayout(
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  count: number,
+  curve: number,
+  rtl = false,
+): { x: number; y: number; rot: number; side: number }[] {
+  if (count < 1) return [];
+  const side = Math.min(h * 0.96, (w / count) * 1.08);
+  const tCurve = clampCurve(curve);
+  const out: { x: number; y: number; rot: number; side: number }[] = [];
+  if (Math.abs(tCurve) < 2) {
+    const gap = w / count;
+    const x0 = cx - w / 2 + gap / 2;
+    for (let i = 0; i < count; i++) {
+      const vis = rtl ? count - 1 - i : i;
+      out.push({ x: x0 + vis * gap, y: cy, rot: 0, side });
+    }
+    return out;
+  }
+  const chord = Math.max(4, w * 0.92);
+  const sagCap = chord * 0.46;
+  const sag = Math.max(0.4, Math.min(sagCap, (Math.abs(tCurve) / 100) * Math.max(2.2, h * 0.5)));
+  const r = (chord * chord) / (8 * sag) + sag / 2;
+  const up = tCurve > 0;
+  const yChord = up ? cy + sag * 0.12 : cy - sag * 0.12;
+  const cyC = up ? yChord + (r - sag) : yChord - (r - sag);
+  const xLeft = cx - chord / 2;
+  for (let i = 0; i < count; i++) {
+    const vis = rtl ? count - 1 - i : i;
+    const t = count === 1 ? 0.5 : vis / (count - 1);
+    const x = xLeft + t * chord;
+    const dx = x - cx;
+    const under = Math.max(0.0001, r * r - dx * dx);
+    const y = up ? cyC - Math.sqrt(under) : cyC + Math.sqrt(under);
+    const slope = (up ? dx : -dx) / Math.sqrt(under);
+    const rot = (Math.atan(slope) * 180) / Math.PI;
+    out.push({ x, y, rot, side });
+  }
+  return out;
+}
+
 export function clampArcStroke(value: unknown, fallback = 5.5) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return fallback;

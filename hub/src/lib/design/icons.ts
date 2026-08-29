@@ -270,6 +270,33 @@ export function iconSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${esc(vb)}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" aria-hidden="true">${defs}${painted.inner}</svg>`;
 }
 
+function syntheticLetter(id: string, letter: string, cat: string, fill: boolean, outline: boolean): IconDef {
+  return {
+    id,
+    label: letter,
+    cat,
+    paths: "",
+    fill,
+    outline,
+    letter,
+    viewBox: "0 0 24 24",
+    thickCurve: false,
+  };
+}
+
+export function letterGlyphIcon(ch: string): IconDef {
+  const raw = String(ch || "").trim();
+  let letter = [...raw][0] || "?";
+  if (/[أإآٱ]/.test(letter)) letter = "ا";
+  const latin = letter.toUpperCase();
+  if (/^[A-Z]$/.test(latin)) {
+    return getIcon(`letter-${latin.toLowerCase()}`) || syntheticLetter(`letter-${latin.toLowerCase()}`, latin, "alpha", true, true);
+  }
+  const ar = ARABIC_ALPHABET.find((row) => row.ch === letter);
+  if (ar) return getIcon(`ar-${ar.id}`) || syntheticLetter(`ar-${ar.id}`, letter, "ar-alpha", false, false);
+  return syntheticLetter(`glyph-${letter.charCodeAt(0)}`, letter, "alpha", false, false);
+}
+
 export function filterIcons(cat: string, query: string) {
   const needle = query.trim().toLowerCase();
   return ICONS.filter((ic) => {

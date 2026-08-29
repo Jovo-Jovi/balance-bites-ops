@@ -1,6 +1,7 @@
 import { usableImage } from "./art";
 import { arcLineMarkup, curvedTextMarkup, hasArabic } from "./deco";
 import { getIcon, iconPainted } from "./icons";
+import { letterWordMarkup } from "./letter-word";
 import type { LabelStamp } from "./types";
 
 function esc(s: string) {
@@ -43,6 +44,24 @@ export function stampArtMarkup(
       fillMode: st.fillMode || "gradient",
     });
     const body = `<g>${mark.defs}${mark.body}</g>`;
+    return rot ? `<g${rot}>${body}</g>` : body;
+  }
+  if (st.kind === "letters") {
+    const body = letterWordMarkup({
+      id: st.id,
+      cx: box.x,
+      cy: box.y,
+      w: box.w,
+      h: box.h,
+      text: st.text || "",
+      curve: st.curve,
+      color: st.color || fallback,
+      color2: st.color2,
+      fillMode: st.fillMode,
+      letterStyle: st.letterStyle,
+      letterPack: st.letterPack,
+      strokeWidth: st.strokeWidth,
+    });
     return rot ? `<g${rot}>${body}</g>` : body;
   }
   if (st.kind === "text" || (st.text && !st.iconId)) {
