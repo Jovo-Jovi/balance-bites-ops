@@ -575,6 +575,7 @@ export function IconsPanel() {
   const [word, setWord] = useState("");
   const [wordCurved, setWordCurved] = useState(false);
   const [wordRainbow, setWordRainbow] = useState(true);
+  const [wordSpace, setWordSpace] = useState(0);
   const icons = useMemo(() => filterIcons(cat, q), [cat, q]);
   if (!t) return null;
 
@@ -592,6 +593,7 @@ export function IconsPanel() {
       letterStyle,
       curved: wordCurved,
       rainbow: wordRainbow,
+      letterSpace: wordSpace,
     });
   }
 
@@ -628,6 +630,17 @@ export function IconsPanel() {
             One color
           </button>
         </div>
+        <Field label={`Letter space ${wordSpace}`}>
+          <input
+            type="range"
+            min={-80}
+            max={80}
+            step={1}
+            value={wordSpace}
+            onChange={(e) => setWordSpace(Number(e.target.value))}
+            className="w-full accent-[var(--bb-gold)]"
+          />
+        </Field>
         <ActionBtn onClick={addWord}>Add word</ActionBtn>
       </div>
       <TextInput

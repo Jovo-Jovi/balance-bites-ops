@@ -811,8 +811,8 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
   return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
 }
 
-/** Drop trimmed pack PNG as a named image zone (`artref:` only). Not a circle plate. */
-export function dropPackArt(state: LabelState, artKey: string): StudioOp {
+/** Drop trimmed pack PNG as a named image zone (`artref:`). Border is square or circle. */
+export function dropPackArt(state: LabelState, artKey: string, opts?: { borderShape?: "circle" | "square" }): StudioOp {
   const key = String(artKey || "")
     .trim()
     .replace(/^bb-/, "")
@@ -837,6 +837,7 @@ export function dropPackArt(state: LabelState, artKey: string): StudioOp {
     z: zTop + 1,
     src: `artref:${key}`,
     shape: "pack",
+    borderShape: opts?.borderShape === "circle" ? "circle" : "square",
     borderWidth: 0,
     rot: 0,
   };

@@ -2,7 +2,7 @@ import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
 import { isCharacterPresetArt, isPackArtKey } from "./art-presets";
 import { partFillPath, partFillPathLocal } from "./boolean-cut";
 import { arcLineMarkup, curvedTextMarkup, hasArabic } from "./deco";
-import { dualFill } from "./fills";
+import { dualFill, plateFillOf, plateShapeMarkup } from "./fills";
 import { familyPreviewSvg, circleShape } from "./family-preview";
 import { getIcon, iconPainted } from "./icons";
 import { artboardOf, circlePx, compositeAspect, previewFace } from "./layout";
@@ -10,7 +10,7 @@ import { isEqualAspectPart, syncCompositePhysicalAspect } from "./part-types";
 import { getDesignSpec } from "./specs";
 import { letterWordMarkup } from "./letter-word";
 import { stampArtMarkup } from "./stamp-art";
-import { stampOnFace } from "./studio-library";
+import { stampOnFace, zoneBorderShape } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
 
 function str(state: LabelState, key: string, fallback = "") {
@@ -407,8 +407,7 @@ function zoneStrokeMarkup(z: CompositeZone) {
     const bw = Number(z.borderWidth);
     if (!(Number.isFinite(bw) && bw > 0)) return "";
     const ink = `fill="none" stroke="${esc(z.borderColor || z.color || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
-    const isChar = z.shape === "character" || String(z.label || "").startsWith("Character");
-    if (isChar) {
+    if (zoneBorderShape(z) === "circle") {
       const r = Math.min(z.w, z.h) / 2;
       return zoneRot(z, `<circle cx="${z.x}" cy="${z.y}" r="${r + bw / 2}" ${ink} />`);
     }
@@ -426,7 +425,7 @@ function zoneStrokeMarkup(z: CompositeZone) {
   const bw = Number(z.borderWidth);
   if (!(Number.isFinite(bw) && bw > 0)) return "";
   const ink = `fill="none" stroke="${esc(z.borderColor || "#1a1a1a")}" stroke-width="${bw}" stroke-linejoin="round"`;
-  if (z.fill && z.fill !== "none" && z.fill !== "transparent") {
+  if (plateFillOf(z.fill)) {
     const rx = Math.min(z.w, z.h) * 0.12;
     return zoneRot(z, outsetRect(z.x - z.w / 2, z.y - z.h / 2, z.w, z.h, rx, bw, ink));
   }
@@ -452,6 +451,7 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     return zoneRot(z, `<g>${mark.defs}${mark.body}</g>`);
   }
   if (z.kind === "letters") {
+    const plate = plateShapeMarkup({ cx: z.x, cy: z.y, w: z.w, h: z.h, fill: z.fill, shape: "round" });
     const body = letterWordMarkup({
       id: z.id,
       cx: z.x,
@@ -465,9 +465,10 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
       fillMode: z.fillMode,
       letterStyle: z.letterStyle,
       letterPack: z.letterPack,
+      letterSpace: z.letterSpace,
       strokeWidth: z.strokeWidth,
     });
-    return zoneRot(z, body);
+    return zoneRot(z, `${plate}${body}`);
   }
   if (z.kind === "icon" && z.iconId) {
     return iconMark(
@@ -486,12 +487,27 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
     );
   }
   if (z.kind === "image") {
+    const circle = zoneBorderShape(z) === "circle";
+    const plate = plateShapeMarkup({
+      cx: z.x,
+      cy: z.y,
+      w: z.w,
+      h: z.h,
+      fill: z.fill,
+      shape: circle ? "circle" : "square",
+    });
     const src = previewImage(z.src || z.srcUrl, undefined, lite);
-    if (!src) return "";
+    if (!src) return plate ? zoneRot(z, plate) : "";
     const left = z.x - z.w / 2;
     const top = z.y - z.h / 2;
     const img = svgImage(src, `x="${left}" y="${top}" width="${z.w}" height="${z.h}" preserveAspectRatio="xMidYMid meet"`);
-    return zoneRot(z, img);
+    if (!circle) return zoneRot(z, `${plate}${img}`);
+    const r = Math.min(z.w, z.h) / 2;
+    const pid = `bbzclip-${String(z.id).replace(/[^a-zA-Z0-9_-]/g, "") || "x"}`;
+    return zoneRot(
+      z,
+      `${plate}<defs><clipPath id="${pid}"><circle cx="${z.x}" cy="${z.y}" r="${r}" /></clipPath></defs><g clip-path="url(#${pid})">${img}</g>`,
+    );
   }
   if (z.kind === "logo") {
     const r = Math.min(z.w, z.h) / 2;
@@ -524,17 +540,14 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
       family: face,
       weight: z.fontWeight || "700",
     });
-    return zoneRot(z, `<g>${mark.defs}${mark.body}</g>`);
+    const plate = plateShapeMarkup({ cx: z.x, cy: z.y, w: z.w, h: z.h, fill: z.fill, shape: "round" });
+    return zoneRot(z, `<g>${plate}${mark.defs}${mark.body}</g>`);
   }
   const { lines, size, startY, gap } = zoneTextLayout(z);
   const fill = dualFill(z.id, z.color || z.textColor || fallback, z.color2, z.fillMode, z.color || z.textColor || fallback);
   const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
   const weight = z.fontWeight || "700";
-  const rx = Math.min(z.w, z.h) * 0.12;
-  const plate =
-    z.fill && z.fill !== "none"
-      ? `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="${rx}" fill="${esc(z.fill)}" stroke="none" />`
-      : "";
+  const plate = plateShapeMarkup({ cx: z.x, cy: z.y, w: z.w, h: z.h, fill: z.fill, shape: "round" });
   const text = lines
     .map(
       (line, i) =>

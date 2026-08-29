@@ -1,5 +1,6 @@
 import { findBlock, parseBlockLayerId, sectionOrder } from "./blocks";
 import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./art";
+import { plateFillOf } from "./fills";
 import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys, compositeAspect } from "./layout";
@@ -14,7 +15,7 @@ import {
   syncZonePhysicalAspect,
 } from "./part-types";
 import { studioPackArtLabel } from "./art-presets";
-import { stampOnFace } from "./studio-library";
+import { stampOnFace, zoneBorderShape, zoneCanPickBorderShape } from "./studio-library";
 import { fitLetterWordSize, wordChars } from "./letter-word";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
@@ -331,6 +332,8 @@ export type LayerPatch = {
   color?: string;
   color2?: string;
   fillMode?: string;
+  /** Box / pack plate. `"none"` turns it off. */
+  fill?: string;
   text?: string;
   borderWidth?: number;
   borderColor?: string;
@@ -338,6 +341,8 @@ export type LayerPatch = {
   curve?: number;
   sweep?: number;
   letterPack?: "solid" | "rainbow";
+  letterSpace?: number;
+  borderShape?: "circle" | "square";
 };
 
 export type LayerSize = {
@@ -619,6 +624,8 @@ export type LayerBorder = {
   color: string;
   max: number;
   showColor: boolean;
+  frame?: "circle" | "square";
+  framePick?: boolean;
 };
 
 function storedPartBorder(part: CompositePart) {
@@ -638,6 +645,7 @@ export type LayerDeco = {
   color2?: string;
   fillMode?: string;
   letterPack?: "solid" | "rainbow";
+  letterSpace?: number;
   curveValue: number;
   sweepValue: number;
 };
@@ -668,6 +676,7 @@ export function layerDeco(state: LabelState, id: string): LayerDeco | null {
       color2: zone.color2,
       fillMode: zone.fillMode,
       letterPack: zone.kind === "letters" ? zone.letterPack || "rainbow" : undefined,
+      letterSpace: zone.kind === "letters" ? Number(zone.letterSpace) || 0 : undefined,
       curveValue: Number(zone.curve) || 0,
       sweepValue: Number(zone.sweep) || 180,
     };
@@ -683,9 +692,40 @@ export function layerDeco(state: LabelState, id: string): LayerDeco | null {
       color2: stamp.color2,
       fillMode: stamp.fillMode,
       letterPack: stamp.kind === "letters" ? stamp.letterPack || "rainbow" : undefined,
+      letterSpace: stamp.kind === "letters" ? Number(stamp.letterSpace) || 0 : undefined,
       curveValue: Number(stamp.curve) || 0,
       sweepValue: Number(stamp.sweep) || 180,
     };
+  }
+  return null;
+}
+
+export type LayerPlate = {
+  color: string;
+  on: boolean;
+  label: string;
+};
+
+function stampTakesPlate(stamp: { kind?: string; text?: string; iconId?: string; src?: string }) {
+  if (stamp.src) return false;
+  return stamp.kind === "text" || stamp.kind === "letters" || Boolean(stamp.text && !stamp.iconId);
+}
+
+/** Box plate behind pack art / photos and text (not letter ink, not logo disc). */
+export function layerPlate(state: LabelState, id: string): LayerPlate | null {
+  const zone = state._composite?.zones?.find((z) => z.id === id);
+  if (zone && (zone.kind === "image" || zone.kind === "text" || zone.kind === "letters")) {
+    const stored = plateFillOf(zone.fill);
+    return {
+      on: Boolean(stored),
+      color: stored || "#ffffff",
+      label: zone.kind === "image" ? "Fill" : "Box fill",
+    };
+  }
+  const stamp = state._stamps?.find((st) => st.id === id);
+  if (stamp && stampTakesPlate(stamp)) {
+    const stored = plateFillOf(stamp.fill);
+    return { on: Boolean(stored), color: stored || "#ffffff", label: "Box fill" };
   }
   return null;
 }
@@ -744,6 +784,8 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
       color: zone.borderColor || "#1a1a1a",
       max: 8,
       showColor: true,
+      frame: zone.kind === "image" ? zoneBorderShape(zone) : undefined,
+      framePick: zoneCanPickBorderShape(zone),
     };
   }
   const stamp = state._stamps?.find((st) => st.id === id);
@@ -765,18 +807,26 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
   return null;
 }
 
-function applyLetterWordPatch<T extends { kind?: string; text?: string; label?: string; w: number; h: number; curve?: number; letterPack?: "solid" | "rainbow" }>(
+function applyLetterWordPatch<T extends { kind?: string; text?: string; label?: string; w: number; h: number; curve?: number; letterPack?: "solid" | "rainbow"; letterSpace?: number }>(
   item: T,
   patch: LayerPatch,
 ): T {
   const next: T = {
     ...item,
     letterPack: patch.letterPack ?? item.letterPack,
+    letterSpace: patch.letterSpace ?? item.letterSpace,
   };
-  if (item.kind !== "letters" || patch.text == null) return next;
-  const word = wordChars(patch.text).join("");
-  const box = fitLetterWordSize(item.w, item.h, word, patch.curve ?? item.curve ?? 0);
-  return { ...next, text: word, label: word || "Word", w: box.w, h: box.h };
+  if (item.kind !== "letters") return next;
+  if (patch.text == null && patch.letterSpace == null) return next;
+  const word = patch.text != null ? wordChars(patch.text).join("") : String(item.text || "");
+  const box = fitLetterWordSize(item.w, item.h, word, patch.curve ?? item.curve ?? 0, patch.letterSpace ?? item.letterSpace ?? 0);
+  return {
+    ...next,
+    text: patch.text != null ? word : item.text,
+    label: patch.text != null ? word || "Word" : item.label,
+    w: box.w,
+    h: box.h,
+  };
 }
 
 export function patchLayer(state: LabelState, id: string, patch: LayerPatch): LabelState {
@@ -817,8 +867,10 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
                 text: patch.text ?? st.text,
                 curve: patch.curve ?? st.curve,
                 sweep: patch.sweep ?? st.sweep,
+                letterSpace: patch.letterSpace ?? st.letterSpace,
                 borderColor: patch.borderColor ?? st.borderColor,
                 strokeWidth: patch.borderWidth ?? st.strokeWidth,
+                fill: patch.fill !== undefined ? patch.fill : st.fill,
               },
               patch,
             )
@@ -838,12 +890,15 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
           text: patch.text ?? z.text,
           curve: patch.curve ?? z.curve,
           sweep: patch.sweep ?? z.sweep,
+          letterSpace: patch.letterSpace ?? z.letterSpace,
           strokeWidth:
             z.kind === "icon" || z.kind === "logo" || z.kind === "arc"
               ? (patch.borderWidth ?? z.strokeWidth)
               : z.strokeWidth,
           borderWidth: z.kind === "icon" || z.kind === "arc" ? z.borderWidth : (patch.borderWidth ?? z.borderWidth),
           borderColor: patch.borderColor ?? z.borderColor,
+          borderShape: patch.borderShape ?? z.borderShape,
+          fill: patch.fill !== undefined ? patch.fill : z.fill,
         },
         patch,
       );

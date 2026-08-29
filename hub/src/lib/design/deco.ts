@@ -23,6 +23,19 @@ export function clampSweep(value: unknown, fallback = ARC_SWEEP_HALF) {
   return Math.max(30, Math.min(330, n));
 }
 
+export function clampLetterSpace(value: unknown) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-80, Math.min(80, n));
+}
+
+/** Center-to-center step as a fraction of glyph box. 0 = snug. */
+export function letterStepMul(space: unknown, arabic = false) {
+  const t = clampLetterSpace(space);
+  const base = arabic ? 0.36 : 0.5;
+  return Math.max(0.18, Math.min(1.08, base + (t / 80) * 0.4));
+}
+
 export function letterLayout(
   cx: number,
   cy: number,
@@ -31,21 +44,24 @@ export function letterLayout(
   count: number,
   curve: number,
   rtl = false,
+  space = 0,
 ): { x: number; y: number; rot: number; side: number }[] {
   if (count < 1) return [];
-  const side = Math.min(h * 0.96, (w / count) * 1.08);
+  const side = Math.max(2.2, Math.min(h * 0.98, w * 0.92));
+  let step = side * letterStepMul(space, false);
+  if (count > 1 && (count - 1) * step > w * 0.96) step = (w * 0.96) / (count - 1);
   const tCurve = clampCurve(curve);
+  const span = count === 1 ? 0 : (count - 1) * step;
   const out: { x: number; y: number; rot: number; side: number }[] = [];
   if (Math.abs(tCurve) < 2) {
-    const gap = w / count;
-    const x0 = cx - w / 2 + gap / 2;
+    const x0 = cx - span / 2;
     for (let i = 0; i < count; i++) {
       const vis = rtl ? count - 1 - i : i;
-      out.push({ x: x0 + vis * gap, y: cy, rot: 0, side });
+      out.push({ x: x0 + vis * step, y: cy, rot: 0, side });
     }
     return out;
   }
-  const chord = Math.max(4, w * 0.92);
+  const chord = Math.max(4, Math.min(w * 0.96, Math.max(span, side * 0.8)));
   const sagCap = chord * 0.46;
   const sag = Math.max(0.4, Math.min(sagCap, (Math.abs(tCurve) / 100) * Math.max(2.2, h * 0.5)));
   const r = (chord * chord) / (8 * sag) + sag / 2;

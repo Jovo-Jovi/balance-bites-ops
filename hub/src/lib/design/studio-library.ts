@@ -60,6 +60,18 @@ export function isPackArtZone(zone: CompositeZone) {
   return zone.shape === "pack" || (zone.kind === "image" && String(zone.src || "").startsWith("artref:"));
 }
 
+export type ZoneBorderShape = "circle" | "square";
+
+export function zoneBorderShape(zone: CompositeZone): ZoneBorderShape {
+  if (zone.borderShape === "circle" || zone.borderShape === "square") return zone.borderShape;
+  if (isCharacterZone(zone)) return "circle";
+  return "square";
+}
+
+export function zoneCanPickBorderShape(zone: CompositeZone) {
+  return zone.kind === "image" && !isCharacterZone(zone);
+}
+
 export function placedCompositeBlocks(state: LabelState) {
   return (state._composite?.zones || []).filter(
     (z) =>

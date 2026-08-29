@@ -94,6 +94,7 @@ export function StudioRail() {
   const t = app.current;
   const [rail, setRail] = useState<RailId>("shapes");
   const [packAudience, setPackAudience] = useState<PackAudience>("kids");
+  const [packFrame, setPackFrame] = useState<"circle" | "square">("square");
   const [charStyle, setCharStyle] = useState<CharacterStyleId>("open-peeps");
   const [charName, setCharName] = useState("");
   const [charBusy, setCharBusy] = useState("");
@@ -155,7 +156,7 @@ export function StudioRail() {
           composite ? (
             <div className="grid gap-2">
               <p className="text-xs text-[var(--bb-muted)]">
-                Kids line or adult pack. Tap to drop on the die, then drag. Not popcorn.
+                Kids line or adult pack. Tap to drop on the die, then drag. Border can be a circle or a square. Not popcorn.
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {PACK_AUDIENCES.map((item) => (
@@ -169,6 +170,14 @@ export function StudioRail() {
                   </button>
                 ))}
               </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button type="button" className={chipClass(packFrame === "circle")} onClick={() => setPackFrame("circle")}>
+                  Circle
+                </button>
+                <button type="button" className={chipClass(packFrame === "square")} onClick={() => setPackFrame("square")}>
+                  Square
+                </button>
+              </div>
               {studioPackGroupsFor(packAudience).map((group) => {
                 const items = studioPackArtFor(packAudience).filter((art) => art.group === group.id);
                 return (
@@ -180,7 +189,7 @@ export function StudioRail() {
                           key={art.key}
                           type="button"
                           className="grid min-h-11 gap-1 rounded-[var(--bb-radius)] border border-[var(--bb-line)] p-2 text-left hover:border-[var(--bb-gold)]"
-                          onClick={() => app.applyStudioPackArt(art.key)}
+                          onClick={() => app.applyStudioPackArt(art.key, { borderShape: packFrame })}
                         >
                           <span className="flex h-20 items-center justify-center bg-[color-mix(in_srgb,var(--bb-line)_22%,var(--bb-panel))]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}

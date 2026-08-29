@@ -1,5 +1,6 @@
 import { usableImage } from "./art";
 import { arcLineMarkup, curvedTextMarkup, hasArabic } from "./deco";
+import { plateShapeMarkup } from "./fills";
 import { getIcon, iconPainted } from "./icons";
 import { letterWordMarkup } from "./letter-word";
 import type { LabelStamp } from "./types";
@@ -47,6 +48,7 @@ export function stampArtMarkup(
     return rot ? `<g${rot}>${body}</g>` : body;
   }
   if (st.kind === "letters") {
+    const plate = plateShapeMarkup({ cx: box.x, cy: box.y, w: box.w, h: box.h, fill: st.fill, shape: "round" });
     const body = letterWordMarkup({
       id: st.id,
       cx: box.x,
@@ -60,12 +62,15 @@ export function stampArtMarkup(
       fillMode: st.fillMode,
       letterStyle: st.letterStyle,
       letterPack: st.letterPack,
+      letterSpace: st.letterSpace,
       strokeWidth: st.strokeWidth,
     });
-    return rot ? `<g${rot}>${body}</g>` : body;
+    const painted = `${plate}${body}`;
+    return rot ? `<g${rot}>${painted}</g>` : painted;
   }
   if (st.kind === "text" || (st.text && !st.iconId)) {
     const face = hasArabic(st.text || "") ? "Tajawal, Cairo, sans-serif" : family;
+    const plate = plateShapeMarkup({ cx: box.x, cy: box.y, w: box.w, h: box.h, fill: st.fill, shape: "round" });
     const mark = curvedTextMarkup({
       id: st.id,
       cx: box.x,
@@ -80,7 +85,7 @@ export function stampArtMarkup(
       family: face,
       weight: "800",
     });
-    const body = `<g>${mark.defs}${mark.body}</g>`;
+    const body = `<g>${plate}${mark.defs}${mark.body}</g>`;
     return rot ? `<g${rot}>${body}</g>` : body;
   }
   const painted = iconPainted(st.iconId, st.color || fallback, st.strokeWidth ?? 2, st.letterStyle, {

@@ -140,7 +140,7 @@ type DesignContextValue = {
   applyIcon: (iconId: string, sizeId: string, color?: string, letterStyle?: string) => void;
   applyLetterWord: (
     text: string,
-    opts: { sizeId: string; color?: string; letterStyle?: string; curved?: boolean; rainbow?: boolean },
+    opts: { sizeId: string; color?: string; letterStyle?: string; curved?: boolean; rainbow?: boolean; letterSpace?: number },
   ) => void;
   removeArt: (id: string) => void;
   patchLayer: (id: string, patch: LayerPatch) => void;
@@ -160,7 +160,7 @@ type DesignContextValue = {
   patchNamedField: (blockId: string, fieldId: string, patch: Partial<Pick<DesignBlockField, "label" | "en" | "ar">>) => void;
   setNamedBlockFirstEn: (blockId: string, en: string) => void;
   applyStudioCharacter: (style: string, seed: string) => Promise<void>;
-  applyStudioPackArt: (artKey: string) => void;
+  applyStudioPackArt: (artKey: string, opts?: { borderShape?: "circle" | "square" }) => void;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -684,6 +684,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           letterStyle: opts.letterStyle,
           curved: opts.curved,
           rainbow: opts.rainbow,
+          letterSpace: opts.letterSpace,
           face: previewFace(current),
         });
         if (!result) {
@@ -868,13 +869,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         if (!current) return;
         replaceCurrent({ ...current, state: setBlockFirstEn(current.state, blockId, en) });
       },
-      applyStudioPackArt: (artKey) => {
+      applyStudioPackArt: (artKey, opts) => {
         if (!current) return;
         if (previewFace(current) !== "composite") {
           toast.push("Switch Family to Composite, then tap Pack art.", "warn");
           return;
         }
-        const op = dropPackArt(current.state, artKey);
+        const op = dropPackArt(current.state, artKey, opts);
         if (!op.ok) {
           toast.push(op.message, "warn");
           return;

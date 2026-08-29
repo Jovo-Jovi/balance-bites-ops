@@ -3,7 +3,7 @@
 import { Field } from "@/components/invoices/ui";
 import { ARC_SWEEP_HALF, ARC_SWEEP_THIRD } from "@/lib/design/deco";
 import { FILL_MODES, cssFill, fillModeOf, pairColor, toHexColor, type FillMode } from "@/lib/design/fills";
-import type { LayerDeco, LayerPatch } from "@/lib/design/layers";
+import type { LayerDeco, LayerPatch, LayerPlate } from "@/lib/design/layers";
 
 function chipClass(on: boolean) {
   return `rounded-[var(--bb-radius)] border px-2.5 py-1.5 text-[11px] tracking-wide uppercase min-h-11 ${
@@ -24,6 +24,8 @@ export function FillControls({
   onSweep,
   letterPack,
   onLetterPack,
+  letterSpace,
+  onLetterSpace,
 }: {
   color?: string;
   color2?: string;
@@ -35,6 +37,8 @@ export function FillControls({
   onSweep?: (value: number) => void;
   letterPack?: string;
   onLetterPack?: (pack: "solid" | "rainbow") => void;
+  letterSpace?: number;
+  onLetterSpace?: (value: number) => void;
 }) {
   const mode = fillModeOf(fillMode);
   const c1 = color || "#c9a84c";
@@ -107,6 +111,32 @@ export function FillControls({
           </div>
         </>
       )}
+      {onLetterSpace ? (
+        <div className="grid gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className={chipClass((letterSpace ?? 0) <= -20)} onClick={() => onLetterSpace(-30)}>
+              Tight
+            </button>
+            <button type="button" className={chipClass(Math.abs(letterSpace ?? 0) < 12)} onClick={() => onLetterSpace(0)}>
+              Snug
+            </button>
+            <button type="button" className={chipClass((letterSpace ?? 0) >= 20)} onClick={() => onLetterSpace(40)}>
+              Open
+            </button>
+          </div>
+          <Field label={`Letter space ${Math.round(letterSpace ?? 0)}`}>
+            <input
+              type="range"
+              min={-80}
+              max={80}
+              step={1}
+              value={letterSpace ?? 0}
+              onChange={(e) => onLetterSpace(Number(e.target.value))}
+              className="w-full accent-[var(--bb-gold)]"
+            />
+          </Field>
+        </div>
+      ) : null}
       {onCurve ? (
         <div className="grid gap-2">
           <div className="flex flex-wrap gap-1.5">
@@ -161,6 +191,37 @@ export function FillControls({
   );
 }
 
+export function PlateFillControls({
+  plate,
+  onPatch,
+}: {
+  plate: LayerPlate;
+  onPatch: (patch: LayerPatch) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button type="button" className={chipClass(!plate.on)} onClick={() => onPatch({ fill: "none" })}>
+        None
+      </button>
+      <button type="button" className={chipClass(plate.on)} onClick={() => onPatch({ fill: plate.color || "#ffffff" })}>
+        Fill
+      </button>
+      {plate.on ? (
+        <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
+          {plate.label}
+          <input
+            type="color"
+            value={toHexColor(plate.color, "#ffffff")}
+            onChange={(e) => onPatch({ fill: e.target.value })}
+            className="h-8 w-8 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+            aria-label={plate.label}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
 export function LayerFillControls({
   deco,
   onPatch,
@@ -180,6 +241,8 @@ export function LayerFillControls({
       onSweep={deco.sweep ? (v) => onPatch({ sweep: v }) : undefined}
       letterPack={deco.letters ? deco.letterPack : undefined}
       onLetterPack={deco.letters ? (pack) => onPatch({ letterPack: pack }) : undefined}
+      letterSpace={deco.letters ? deco.letterSpace : undefined}
+      onLetterSpace={deco.letters ? (v) => onPatch({ letterSpace: v }) : undefined}
     />
   );
 }

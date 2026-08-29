@@ -87,3 +87,28 @@ export function toHexColor(value: string, fallback = "#c9a84c") {
   if (/^#[0-9a-fA-F]{3}$/.test(v)) return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
   return fallback;
 }
+
+/** Box / pack plate. Empty, `none`, and `transparent` mean off. */
+export function plateFillOf(value?: string | null) {
+  const v = String(value || "").trim();
+  if (!v || /^none$/i.test(v) || /^transparent$/i.test(v)) return "";
+  return v;
+}
+
+export function plateShapeMarkup(opts: {
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
+  fill?: string | null;
+  shape: "circle" | "square" | "round";
+}) {
+  const color = plateFillOf(opts.fill);
+  if (!color) return "";
+  if (opts.shape === "circle") {
+    const r = Math.min(opts.w, opts.h) / 2;
+    return `<circle cx="${opts.cx}" cy="${opts.cy}" r="${r}" fill="${esc(color)}" stroke="none" />`;
+  }
+  const rx = opts.shape === "round" ? Math.min(opts.w, opts.h) * 0.12 : 0;
+  return `<rect x="${opts.cx - opts.w / 2}" y="${opts.cy - opts.h / 2}" width="${opts.w}" height="${opts.h}" rx="${rx}" fill="${esc(color)}" stroke="none" />`;
+}

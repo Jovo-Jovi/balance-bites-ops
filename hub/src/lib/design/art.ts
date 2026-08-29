@@ -3,7 +3,7 @@ import { resolveArtSrc } from "./art-presets";
 import { getIcon } from "./icons";
 import { compositeAspect, type PreviewFace } from "./layout";
 import { syncIconSquareSize } from "./part-types";
-import { letterWordBox, wordChars } from "./letter-word";
+import { letterWordBox, wordChars, wordRtl } from "./letter-word";
 import { stampFaceOf } from "./studio-library";
 import { isAssetRef } from "./templates";
 import type { CompositeZone, LabelStamp, LabelState } from "./types";
@@ -182,6 +182,7 @@ export function applyLetterWord(
     letterStyle?: string;
     curved?: boolean;
     rainbow?: boolean;
+    letterSpace?: number;
     face?: PreviewFace;
   },
 ): { state: LabelState; id: string } | null {
@@ -189,8 +190,9 @@ export function applyLetterWord(
   if (!chars.length) return null;
   const size = iconSizeById(opts.sizeId);
   const curved = Boolean(opts.curved);
-  const box = letterWordBox(chars.length, size.pct, curved);
   const word = chars.join("");
+  const space = Number(opts.letterSpace) || 0;
+  const box = letterWordBox(chars.length, size.pct, curved, space, wordRtl(word));
   const id = genId("ic");
   const style = opts.letterStyle || "fatty";
   const pack = opts.rainbow === false ? "solid" : "rainbow";
@@ -214,6 +216,7 @@ export function applyLetterWord(
       strokeWidth: size.stroke,
       letterStyle: style,
       letterPack: pack,
+      letterSpace: space,
       text: word,
       curve: curved ? 55 : 0,
       label: word,
@@ -244,6 +247,7 @@ export function applyLetterWord(
     sizeId: size.id,
     letterStyle: style,
     letterPack: pack,
+    letterSpace: space,
     text: word,
     curve: curved ? 55 : 0,
     label: word,
