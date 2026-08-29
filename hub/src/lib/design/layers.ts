@@ -42,6 +42,10 @@ export type DesignLayer = {
   lock?: boolean;
   removable: boolean;
   letterStyle?: string;
+  color2?: string;
+  fillMode?: string;
+  curve?: number;
+  sweep?: number;
 };
 
 export type CanvasItem = {
@@ -67,6 +71,7 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
   if (kind === "icon") return getIcon(iconId)?.label || "Icon";
   if (kind === "logo") return "Logo";
   if (kind === "text") return "Text";
+  if (kind === "arc") return "Arc line";
   if (kind === "image") return "Photo";
   return kind || "Layer";
 }
@@ -90,6 +95,10 @@ export function canvasEditText(template: LabelTemplate, id: string): { value: st
   if (zone && (zone.kind === "text" || zone.kind === "logo")) {
     const fromField = zone.field ? s(template.state, zone.field) : "";
     return { value: String(zone.text ?? fromField), multiline: zone.kind === "text" };
+  }
+  const stamp = template.state._stamps?.find((st) => st.id === id);
+  if (stamp && (stamp.kind === "text" || stamp.text)) {
+    return { value: String(stamp.text || ""), multiline: true };
   }
   return null;
 }
@@ -131,6 +140,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         label: partLayerLabel(part),
         z: part.z || 0,
         color: part.color,
+        color2: part.color2,
+        fillMode: part.fillMode,
         lock: Boolean(part.lock),
         removable: partCount > 1 && !part.lock,
       });
@@ -142,6 +153,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         label: zoneLabel(zone.kind, zone.label || "", zone.iconId),
         z: zone.z || 0,
         color: zone.color,
+        color2: zone.color2,
+        fillMode: zone.fillMode,
         textColor: zone.textColor,
         iconId: zone.iconId,
         text: zone.text,
@@ -149,6 +162,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         lock: zone.lock,
         removable: !zone.lock,
         letterStyle: zone.letterStyle,
+        curve: zone.curve,
+        sweep: zone.sweep,
       });
     }
   }
@@ -160,9 +175,13 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
       label: stamp.label || getIcon(stamp.iconId)?.label || (stamp.src ? "Character" : stamp.iconId),
       z: stamp.z || 0,
       color: stamp.color,
+      color2: stamp.color2,
+      fillMode: stamp.fillMode,
       iconId: stamp.iconId,
       removable: true,
       letterStyle: stamp.letterStyle,
+      curve: stamp.curve,
+      sweep: stamp.sweep,
     });
   }
   if (face === "composite") {
@@ -308,10 +327,14 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
 
 export type LayerPatch = {
   color?: string;
+  color2?: string;
+  fillMode?: string;
   text?: string;
   borderWidth?: number;
   borderColor?: string;
   size?: number;
+  curve?: number;
+  sweep?: number;
 };
 
 export type LayerSize = {
@@ -603,6 +626,60 @@ function storedPartBorder(part: CompositePart) {
   return part.type === "silhouette" ? 0 : 1.2;
 }
 
+export type LayerDeco = {
+  fill: boolean;
+  curve: boolean;
+  sweep: boolean;
+  color?: string;
+  color2?: string;
+  fillMode?: string;
+  curveValue: number;
+  sweepValue: number;
+};
+
+export function layerDeco(state: LabelState, id: string): LayerDeco | null {
+  const part = state._composite?.parts?.find((p) => p.id === id);
+  if (part) {
+    return {
+      fill: true,
+      curve: false,
+      sweep: false,
+      color: part.color,
+      color2: part.color2,
+      fillMode: part.fillMode,
+      curveValue: 0,
+      sweepValue: 180,
+    };
+  }
+  const zone = state._composite?.zones?.find((z) => z.id === id);
+  if (zone) {
+    return {
+      fill: zone.kind !== "image",
+      curve: zone.kind === "text",
+      sweep: zone.kind === "arc",
+      color: zone.color,
+      color2: zone.color2,
+      fillMode: zone.fillMode,
+      curveValue: Number(zone.curve) || 0,
+      sweepValue: Number(zone.sweep) || 180,
+    };
+  }
+  const stamp = state._stamps?.find((st) => st.id === id);
+  if (stamp && !stamp.src) {
+    return {
+      fill: true,
+      curve: stamp.kind === "text" || Boolean(stamp.text && !stamp.iconId),
+      sweep: stamp.kind === "arc",
+      color: stamp.color,
+      color2: stamp.color2,
+      fillMode: stamp.fillMode,
+      curveValue: Number(stamp.curve) || 0,
+      sweepValue: Number(stamp.sweep) || 180,
+    };
+  }
+  return null;
+}
+
 export function layerBorder(template: LabelTemplate, id: string): LayerBorder | null {
   const state = template.state;
   if (id === FAM.blogo) {
@@ -648,6 +725,9 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
     if (zone.kind === "icon") {
       return { width: zone.strokeWidth ?? 2, color: zone.color || "#c9a84c", max: 8, showColor: false };
     }
+    if (zone.kind === "arc") {
+      return { width: Number(zone.strokeWidth) || 6, color: zone.color || "#ff5d7a", max: 16, showColor: false };
+    }
     const bw = Number(zone.borderWidth ?? zone.strokeWidth);
     return {
       width: Number.isFinite(bw) ? bw : 0,
@@ -658,6 +738,12 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
   }
   const stamp = state._stamps?.find((st) => st.id === id);
   if (stamp) {
+    if (stamp.kind === "arc") {
+      return { width: Number(stamp.strokeWidth) || 6, color: stamp.color || "#ff5d7a", max: 16, showColor: false };
+    }
+    if (stamp.kind === "text") {
+      return { width: 0, color: stamp.color || "#ffffff", max: 8, showColor: false };
+    }
     const png = Boolean(stamp.src);
     return {
       width: stamp.strokeWidth ?? (png ? 0 : 2),
@@ -701,6 +787,11 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
           ? {
               ...st,
               color: patch.color ?? st.color,
+              color2: patch.color2 ?? st.color2,
+              fillMode: patch.fillMode != null ? (patch.fillMode as typeof st.fillMode) : st.fillMode,
+              text: patch.text ?? st.text,
+              curve: patch.curve ?? st.curve,
+              sweep: patch.sweep ?? st.sweep,
               borderColor: patch.borderColor ?? st.borderColor,
               strokeWidth: patch.borderWidth ?? st.strokeWidth,
             }
@@ -714,9 +805,16 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
       return {
         ...z,
         color: patch.color ?? z.color,
+        color2: patch.color2 ?? z.color2,
+        fillMode: patch.fillMode != null ? (patch.fillMode as typeof z.fillMode) : z.fillMode,
         text: patch.text ?? z.text,
-        strokeWidth: z.kind === "icon" || z.kind === "logo" ? (patch.borderWidth ?? z.strokeWidth) : z.strokeWidth,
-        borderWidth: z.kind === "icon" ? z.borderWidth : (patch.borderWidth ?? z.borderWidth),
+        curve: patch.curve ?? z.curve,
+        sweep: patch.sweep ?? z.sweep,
+        strokeWidth:
+          z.kind === "icon" || z.kind === "logo" || z.kind === "arc"
+            ? (patch.borderWidth ?? z.strokeWidth)
+            : z.strokeWidth,
+        borderWidth: z.kind === "icon" || z.kind === "arc" ? z.borderWidth : (patch.borderWidth ?? z.borderWidth),
         borderColor: patch.borderColor ?? z.borderColor,
       };
     });
@@ -724,8 +822,15 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
       if (p.id !== id) return p;
       let borderColor = patch.borderColor ?? p.borderColor;
       const borderWidth = patch.borderWidth ?? p.borderWidth;
-      if (patch.color) {
-        return { ...p, color: patch.color, borderColor, borderWidth };
+      if (patch.color || patch.color2 || patch.fillMode) {
+        return {
+          ...p,
+          color: patch.color ?? p.color,
+          color2: patch.color2 ?? p.color2,
+          fillMode: patch.fillMode != null ? (patch.fillMode as typeof p.fillMode) : p.fillMode,
+          borderColor,
+          borderWidth,
+        };
       }
       if (
         p.type === "silhouette" &&

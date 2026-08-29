@@ -1,13 +1,16 @@
 import { compositeHasCharacterArt, previewImage, usableImage } from "./art";
 import { isCharacterPresetArt, isPackArtKey } from "./art-presets";
 import { partFillPath, partFillPathLocal } from "./boolean-cut";
+import { arcLineMarkup, curvedTextMarkup, hasArabic } from "./deco";
+import { dualFill } from "./fills";
 import { familyPreviewSvg, circleShape } from "./family-preview";
-import { getIcon, iconInner } from "./icons";
+import { getIcon, iconPainted } from "./icons";
 import { artboardOf, circlePx, compositeAspect, previewFace } from "./layout";
 import { isEqualAspectPart, syncCompositePhysicalAspect } from "./part-types";
 import { getDesignSpec } from "./specs";
+import { stampArtMarkup } from "./stamp-art";
 import { stampOnFace } from "./studio-library";
-import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
+import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState, LabelTemplate } from "./types";
 
 function str(state: LabelState, key: string, fallback = "") {
   const v = state[key];
@@ -137,7 +140,9 @@ function partStrokeLocal(part: CompositePart, d: string) {
 type PartPaint = "fill" | "stroke";
 
 function partShape(part: CompositePart, lite = false, paint: PartPaint = "fill") {
-  const fill = part.color || "#2e7d32";
+  const fillPaint = dualFill(part.id, part.color || "#2e7d32", part.color2, part.fillMode, part.color || "#2e7d32");
+  const fill = fillPaint.paint;
+  const fillDefs = paint === "fill" && fillPaint.defs ? `<defs>${fillPaint.defs}</defs>` : "";
   const x = part.x;
   const y = part.y;
   const rx = part.w / 2;
@@ -178,30 +183,31 @@ function partShape(part: CompositePart, lite = false, paint: PartPaint = "fill")
       svgImage(src, `x="0" y="0" width="100" height="100" preserveAspectRatio="${par}"`),
     );
   }
+  const out = (m: string) => (fillDefs ? `${fillDefs}${m}` : m);
   if (part.pathLocal) {
-    return partLocalGroup(part, `<path d="${esc(part.pathLocal)}" fill="${esc(fill)}" />`);
+    return out(partLocalGroup(part, `<path d="${esc(part.pathLocal)}" fill="${esc(fill)}" />`));
   }
   const t = part.type;
   const ink = `fill="${esc(fill)}" stroke="none"`;
   if (t === "circle" || t === "oval") {
-    return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+    return out(partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`));
   }
   if (t === "rounded_sq" || t === "rounded_rect") {
     const d = partFillPathLocal({ ...part, rot: 0 });
     if (!d) return "";
-    return partLocalGroup(part, `<path d="${esc(d)}" fill="${esc(fill)}" />`);
+    return out(partLocalGroup(part, `<path d="${esc(d)}" fill="${esc(fill)}" />`));
   }
   if (t === "square" || t === "rectangle") {
-    return partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" ${ink} />`);
+    return out(partRot(part, `<rect x="${x - rx}" y="${y - ry}" width="${part.w}" height="${part.h}" ${ink} />`));
   }
-  if (t === "diamond") return partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`);
-  if (t === "hexagon") return partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`);
-  if (t === "pentagon") return partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" ${ink} />`);
-  if (t === "octagon") return partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" ${ink} />`);
-  if (t === "star") return partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" ${ink} />`);
+  if (t === "diamond") return out(partRot(part, `<polygon points="${polygon(4, x, y, rx, ry, -45)}" ${ink} />`));
+  if (t === "hexagon") return out(partRot(part, `<polygon points="${polygon(6, x, y, rx, ry)}" ${ink} />`));
+  if (t === "pentagon") return out(partRot(part, `<polygon points="${polygon(5, x, y, rx, ry)}" ${ink} />`));
+  if (t === "octagon") return out(partRot(part, `<polygon points="${polygon(8, x, y, rx, ry)}" ${ink} />`));
+  if (t === "star") return out(partRot(part, `<polygon points="${starPoints(x, y, rx, ry)}" ${ink} />`));
   const d = partFillPath(part);
-  if (d) return `<path d="${esc(d)}" ${ink} />`;
-  return partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`);
+  if (d) return out(`<path d="${esc(d)}" ${ink} />`);
+  return out(partRot(part, `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" ${ink} />`));
 }
 
 /** Sole silhouette: clip/cut follow `pathLocal` in the part box, not a scaled raster-traced union. */
@@ -287,32 +293,8 @@ function qrLayer(state: LabelState, lite = false) {
   return svgImage(href, `x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" preserveAspectRatio="xMidYMid meet"`);
 }
 
-function stampMark(s: { iconId: string; x: number; y: number; w: number; h: number; color?: string; borderColor?: string; strokeWidth?: number; rot?: number; letterStyle?: string; src?: string }, fallback: string) {
-  const href = usableImage(s.src);
-  if (href) {
-    const side = Math.max(2, Math.min(s.w, s.h));
-    const left = s.x - side / 2;
-    const top = s.y - side / 2;
-    const bw = Number(s.strokeWidth);
-    const ring =
-      Number.isFinite(bw) && bw > 0
-        ? `<circle cx="${s.x}" cy="${s.y}" r="${side / 2}" fill="none" stroke="${esc(s.borderColor || s.color || "#ffffff")}" stroke-width="${bw}" />`
-        : "";
-    const img = `${svgImage(href, `x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet"`)}${ring}`;
-    if (!s.rot) return img;
-    return `<g transform="rotate(${s.rot} ${s.x} ${s.y})">${img}</g>`;
-  }
-  return iconMark(
-    s.iconId,
-    s.x,
-    s.y,
-    s.w,
-    s.h,
-    s.color || fallback,
-    s.strokeWidth ?? 2,
-    s.rot,
-    s.letterStyle,
-  );
+function stampMark(s: LabelStamp, fallback: string, family = "Montserrat, Tajawal, sans-serif") {
+  return stampArtMarkup(s, fallback, { x: s.x, y: s.y, w: s.w, h: s.h }, family);
 }
 
 function iconMark(
@@ -325,14 +307,22 @@ function iconMark(
   strokeWidth: number,
   rot?: number,
   letterStyle?: string,
+  paintId?: string,
+  color2?: string,
+  fillMode?: string,
 ) {
-  const inner = iconInner(iconId, color, strokeWidth, letterStyle);
-  if (!inner) return "";
+  const painted = iconPainted(iconId, color, strokeWidth, letterStyle, {
+    color2,
+    fillMode,
+    paintId: paintId || iconId,
+  });
+  if (!painted.inner) return "";
   const side = Math.max(2, Math.min(w, h));
   const left = x - side / 2;
   const top = y - side / 2;
   const vb = getIcon(iconId)?.viewBox || "0 0 24 24";
-  const body = `<svg x="${left}" y="${top}" width="${side}" height="${side}" viewBox="${esc(vb)}" preserveAspectRatio="xMidYMid meet" overflow="visible">${inner}</svg>`;
+  const defs = painted.defs ? `<defs>${painted.defs}</defs>` : "";
+  const body = `<svg x="${left}" y="${top}" width="${side}" height="${side}" viewBox="${esc(vb)}" preserveAspectRatio="xMidYMid meet" overflow="visible">${defs}${painted.inner}</svg>`;
   if (!rot) return body;
   return `<g transform="rotate(${rot} ${x} ${y})">${body}</g>`;
 }
@@ -411,7 +401,7 @@ function zoneTextLayout(z: CompositeZone) {
 }
 
 function zoneStrokeMarkup(z: CompositeZone) {
-  if (z.kind === "icon") return "";
+  if (z.kind === "icon" || z.kind === "arc") return "";
   if (z.kind === "image") {
     const bw = Number(z.borderWidth);
     if (!(Number.isFinite(bw) && bw > 0)) return "";
@@ -445,6 +435,21 @@ function zoneStrokeMarkup(z: CompositeZone) {
 }
 
 function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite = false) {
+  if (z.kind === "arc") {
+    const mark = arcLineMarkup({
+      id: z.id,
+      cx: z.x,
+      cy: z.y,
+      w: z.w,
+      h: z.h,
+      sweep: z.sweep ?? 180,
+      strokeWidth: z.strokeWidth ?? Number(z.borderWidth),
+      color: z.color,
+      color2: z.color2,
+      fillMode: z.fillMode || "gradient",
+    });
+    return zoneRot(z, `<g>${mark.defs}${mark.body}</g>`);
+  }
   if (z.kind === "icon" && z.iconId) {
     return iconMark(
       z.iconId,
@@ -456,6 +461,9 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
       z.strokeWidth ?? 2,
       z.rot,
       z.letterStyle,
+      z.id,
+      z.color2,
+      z.fillMode,
     );
   }
   if (z.kind === "image") {
@@ -468,18 +476,39 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
   }
   if (z.kind === "logo") {
     const r = Math.min(z.w, z.h) / 2;
-    const fill = z.color || "#ffffff";
+    const fill = dualFill(z.id, z.color || "#ffffff", z.color2, z.fillMode, z.color || "#ffffff");
     const ink = z.textColor || "#1a1a1a";
     const fs = Math.max(3, r * (z.fontScale || 0.7));
     const family = z.fontFamily || fontOf(state, ["fntHead", "fntH"], "Bitter, serif");
     const body = `<g>
-      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill)}" stroke="none" />
+      ${fill.defs ? `<defs>${fill.defs}</defs>` : ""}
+      <circle cx="${z.x}" cy="${z.y}" r="${r}" fill="${esc(fill.paint)}" stroke="none" />
       <text x="${z.x}" y="${z.y}" text-anchor="middle" dominant-baseline="middle" fill="${esc(ink)}" font-size="${fs}" font-weight="700" font-family="${esc(family)}">${esc(String(z.text || "BB"))}</text>
     </g>`;
     return zoneRot(z, body);
   }
+  const curve = Number(z.curve);
+  if (Number.isFinite(curve) && Math.abs(curve) >= 2) {
+    const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
+    const face = hasArabic(String(z.text || "")) ? fontOf(state, ["fntArabic", "fntAr"], "Tajawal, Cairo, sans-serif") : family;
+    const mark = curvedTextMarkup({
+      id: z.id,
+      cx: z.x,
+      cy: z.y,
+      w: z.w,
+      h: z.h,
+      text: String(z.text || "TEXT"),
+      curve,
+      color: z.color || z.textColor || fallback,
+      color2: z.color2,
+      fillMode: z.fillMode,
+      family: face,
+      weight: z.fontWeight || "700",
+    });
+    return zoneRot(z, `<g>${mark.defs}${mark.body}</g>`);
+  }
   const { lines, size, startY, gap } = zoneTextLayout(z);
-  const color = z.color || z.textColor || fallback;
+  const fill = dualFill(z.id, z.color || z.textColor || fallback, z.color2, z.fillMode, z.color || z.textColor || fallback);
   const family = z.fontFamily || fontOf(state, ["fntBody", "fntB", "fntArabic", "fntAr"], "Montserrat, Tajawal, sans-serif");
   const weight = z.fontWeight || "700";
   const rx = Math.min(z.w, z.h) * 0.12;
@@ -490,10 +519,10 @@ function zoneMarkup(z: CompositeZone, fallback: string, state: LabelState, lite 
   const text = lines
     .map(
       (line, i) =>
-        `<text x="${z.x}" y="${startY + i * gap}" text-anchor="middle" dominant-baseline="middle" fill="${esc(color)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}" letter-spacing="0.02em">${esc(line)}</text>`,
+        `<text x="${z.x}" y="${startY + i * gap}" text-anchor="middle" dominant-baseline="middle" fill="${esc(fill.paint)}" font-size="${size}" font-weight="${esc(weight)}" font-family="${esc(family)}" letter-spacing="0.02em">${esc(line)}</text>`,
     )
     .join("");
-  return zoneRot(z, `${plate}${text}`);
+  return zoneRot(z, `${fill.defs ? `<defs>${fill.defs}</defs>` : ""}${plate}${text}`);
 }
 
 function esc(s: string) {
@@ -693,7 +722,7 @@ function wrapPreviewSvg(inner: string, template: LabelTemplate, state: LabelStat
   // portrait dies (popcorn 5×6.5) keep Size/overlay aligned. Family faces do not use this helper.
   const par = "none";
   const css = opts?.physical
-    ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
+    ? `<style type="text/css"><![CDATA[@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&family=Cairo:wght@700;800;900&family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap");*{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}]]></style>`
     : "";
   if (!showCut) {
     return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${css}${inner}</svg>`;

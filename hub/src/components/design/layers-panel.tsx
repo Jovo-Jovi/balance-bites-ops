@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { ActionBtn, Field } from "@/components/invoices/ui";
-import { familySectionKey, layerBorder, layerSize, listCanvasItems, listLayers } from "@/lib/design/layers";
+import { familySectionKey, layerBorder, layerDeco, layerSize, listCanvasItems, listLayers } from "@/lib/design/layers";
+import { cssFill } from "@/lib/design/fills";
 import { iconSvg } from "@/lib/design/icons";
 import { CUT_STROKE_COLOR, CUT_STROKE_MM } from "@/lib/design/preview";
 import { useDesignApp } from "./design-context";
+import { FillControls } from "./fill-controls";
 
 export function LayersPanel() {
   const app = useDesignApp();
@@ -36,6 +38,7 @@ export function LayersPanel() {
           const stackIds = sec ? secIds : zIds;
           const stackAt = stackIds.indexOf(sec || layer.id);
           const inStack = stackAt >= 0;
+          const deco = layerDeco(t.state, layer.id);
           const border = selected && !cut ? layerBorder(t, layer.id) : null;
           const size = cut ? null : layerSize(t, layer.id);
           const dragging = dragId === layer.id;
@@ -99,13 +102,17 @@ export function LayersPanel() {
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded border border-[var(--bb-line)] bg-[var(--bb-panel)]"
                       dangerouslySetInnerHTML={{
-                        __html: iconSvg(layer.iconId, layer.color || "#c9a84c", 2, layer.letterStyle),
+                        __html: iconSvg(layer.iconId, layer.color || "#c9a84c", 2, layer.letterStyle, {
+                          color2: layer.color2,
+                          fillMode: layer.fillMode,
+                          paintId: layer.id,
+                        }),
                       }}
                     />
                   ) : (
                     <span
                       className="h-8 w-8 rounded border border-[var(--bb-line)]"
-                      style={{ background: layer.color || "var(--bb-panel)" }}
+                      style={{ background: deco?.fill ? cssFill(deco.color, deco.color2, deco.fillMode, layer.color) : layer.color || "var(--bb-panel)" }}
                     />
                   )}
                   <span
@@ -115,7 +122,7 @@ export function LayersPanel() {
                     {layer.label}
                   </span>
                 </button>
-                {layer.color && !cut ? (
+                {layer.color && !cut && !deco?.fill ? (
                   <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
                     Color
                     <input
@@ -145,6 +152,18 @@ export function LayersPanel() {
                   ) : null}
                 </div>
               </div>
+              {deco?.fill && selected && !cut ? (
+                <FillControls
+                  color={deco.color}
+                  color2={deco.color2}
+                  fillMode={deco.fillMode}
+                  onChange={(patch) => app.patchLayer(layer.id, patch)}
+                  curve={deco.curve ? deco.curveValue : undefined}
+                  onCurve={deco.curve ? (v) => app.patchLayer(layer.id, { curve: v }) : undefined}
+                  sweep={deco.sweep ? deco.sweepValue : undefined}
+                  onSweep={deco.sweep ? (v) => app.patchLayer(layer.id, { sweep: v }) : undefined}
+                />
+              ) : null}
               {size ? (
                 <Field label={`Size ${sizeLabel(size)}`}>
                   <input
@@ -177,7 +196,7 @@ export function LayersPanel() {
               ) : null}
               {border ? (
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Field label={`Border ${border.width}`}>
+                  <Field label={`${deco?.sweep ? "Thickness" : "Border"} ${border.width}`}>
                     <input
                       type="range"
                       min={0}

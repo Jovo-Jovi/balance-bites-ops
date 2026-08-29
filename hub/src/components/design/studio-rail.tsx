@@ -20,11 +20,14 @@ import { blockLayerId, listBlocks } from "@/lib/design/blocks";
 import { previewFace } from "@/lib/design/layout";
 import { PART_TYPES } from "@/lib/design/part-types";
 import {
+  ARC_PRESETS,
   COMPOSITE_BLOCKS,
+  DECO_BLOCKS,
   WRAP_RECIPE_BLOCKS,
   isWrapFace,
   placedCharacters,
   placedCompositeBlocks,
+  placedDecoStamps,
   wrapBlockOn,
 } from "@/lib/design/studio-library";
 import { ImagesPanel, IconsPanel } from "./art-panel";
@@ -42,6 +45,41 @@ const RAILS: { id: RailId; label: string }[] = [
   { id: "brand", label: "Brand" },
   { id: "characters", label: "Characters" },
 ];
+
+function DecoButtons({
+  onZone,
+}: {
+  onZone: (kind: "text" | "curved" | "arc", sweep?: number) => void;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <p className="text-[11px] uppercase tracking-wide text-[var(--bb-muted)]">Type and arcs</p>
+      {DECO_BLOCKS.map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          className="min-h-11 rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-3 py-2 text-left text-sm text-[var(--bb-text)] hover:border-[var(--bb-gold)]"
+          onClick={() => onZone(b.id)}
+        >
+          <span className="block font-medium">{b.label}</span>
+          <span className="block text-[11px] text-[var(--bb-muted)]">{b.hint}</span>
+        </button>
+      ))}
+      <div className="flex flex-wrap gap-1.5">
+        {ARC_PRESETS.map((p) => (
+          <button
+            key={p.sweep}
+            type="button"
+            className="min-h-11 rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-3 text-sm text-[var(--bb-text)] hover:border-[var(--bb-gold)]"
+            onClick={() => onZone("arc", p.sweep)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function chipClass(on: boolean) {
   return `rounded-[var(--bb-radius)] border px-3 py-2 text-xs tracking-wide uppercase min-h-11 ${
@@ -65,6 +103,7 @@ export function StudioRail() {
   const wrap = isWrapFace(face);
   const placedBlocks = composite ? placedCompositeBlocks(t.state) : [];
   const namedWrap = wrap ? listBlocks(t.state) : [];
+  const decoStamps = !composite ? placedDecoStamps(t.state, face) : [];
   const charsOnCanvas = placedCharacters(t.state, face);
 
   return (
@@ -226,6 +265,29 @@ export function StudioRail() {
                   ))}
                 </div>
               ) : null}
+              <DecoButtons onZone={(kind, sweep) => app.addStudioZone(kind, sweep != null ? { sweep } : undefined)} />
+              {decoStamps.length ? (
+                <div className="grid gap-1.5 border-t border-[var(--bb-line)] pt-2">
+                  <p className="text-[11px] uppercase tracking-wide text-[var(--bb-muted)]">On this wrap</p>
+                  {decoStamps.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex min-h-11 items-center gap-1.5 rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-2"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 truncate text-left text-sm text-[var(--bb-text)]"
+                        onClick={() => app.selectLayer(s.id)}
+                      >
+                        {s.label}
+                      </button>
+                      <ActionBtn tone="ghost" onClick={() => app.removeArt(s.id)}>
+                        Remove
+                      </ActionBtn>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : composite ? (
             <div className="grid gap-2">
@@ -233,6 +295,7 @@ export function StudioRail() {
                 Drop a content block onto the die. Select it and tap Remove, or press Delete.
               </p>
               <ActionBtn onClick={() => app.addNamedSection()}>Named section</ActionBtn>
+              <DecoButtons onZone={(kind, sweep) => app.addStudioZone(kind, sweep != null ? { sweep } : undefined)} />
               {COMPOSITE_BLOCKS.map((b) => (
                 <button
                   key={b.id}
@@ -270,10 +333,35 @@ export function StudioRail() {
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-[var(--bb-muted)]">
-              Recipe columns are for wrap and taper. On this face, type in Copy. Switch Family to Composite for text /
-              logo / expiry / photo layers.
-            </p>
+            <div className="grid gap-2">
+              <p className="text-xs text-[var(--bb-muted)]">
+                Curved type and arc strokes drop on this face. Recipe columns stay on wrap. Switch Family to Composite
+                for logo / expiry / photo layers.
+              </p>
+              <DecoButtons onZone={(kind, sweep) => app.addStudioZone(kind, sweep != null ? { sweep } : undefined)} />
+              {decoStamps.length ? (
+                <div className="grid gap-1.5 border-t border-[var(--bb-line)] pt-2">
+                  <p className="text-[11px] uppercase tracking-wide text-[var(--bb-muted)]">On this label</p>
+                  {decoStamps.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex min-h-11 items-center gap-1.5 rounded-[var(--bb-radius)] border border-[var(--bb-line)] px-2"
+                    >
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 truncate text-left text-sm text-[var(--bb-text)]"
+                        onClick={() => app.selectLayer(s.id)}
+                      >
+                        {s.label}
+                      </button>
+                      <ActionBtn tone="ghost" onClick={() => app.removeArt(s.id)}>
+                        Remove
+                      </ActionBtn>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           )
         ) : null}
 

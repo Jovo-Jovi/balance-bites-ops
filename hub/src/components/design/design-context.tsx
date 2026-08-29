@@ -139,7 +139,7 @@ type DesignContextValue = {
   setFields: (patch: Record<string, string>) => void;
   applyIcon: (iconId: string, sizeId: string, color?: string, letterStyle?: string) => void;
   removeArt: (id: string) => void;
-  patchLayer: (id: string, patch: { color?: string; text?: string; borderWidth?: number; borderColor?: string; size?: number }) => void;
+  patchLayer: (id: string, patch: { color?: string; color2?: string; fillMode?: string; text?: string; borderWidth?: number; borderColor?: string; size?: number; curve?: number; sweep?: number }) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
   moveLayerTo: (id: string, toId: string) => void;
   selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
@@ -148,7 +148,7 @@ type DesignContextValue = {
   rotateItem: (id: string, rot: number) => void;
   setFillCut: (on: boolean) => void;
   addStudioShape: (type: string) => void;
-  addStudioZone: (kind: ZoneKind) => void;
+  addStudioZone: (kind: ZoneKind, opts?: { sweep?: number }) => void;
   addNamedSection: () => void;
   patchNamedSection: (id: string, patch: { title?: string; widthPct?: number }) => void;
   addNamedField: (blockId: string) => void;
@@ -787,9 +787,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         setSelectedIds(op.selectIds);
         toast.push(op.message, "ok");
       },
-      addStudioZone: (kind) => {
+      addStudioZone: (kind, opts) => {
         if (!current) return;
-        const op = addZone(current.state, kind);
+        const op = addZone(current.state, kind, { ...opts, face: previewFace(current) });
         if (!op.ok) {
           toast.push(op.message, "warn");
           return;

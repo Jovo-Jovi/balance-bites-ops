@@ -4,15 +4,58 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { ActionBtn, Field, TextArea, TextInput } from "@/components/invoices/ui";
 import { blockLayerId, listBlocks } from "@/lib/design/blocks";
 import { familyFocus, flag, n, previewFace, s } from "@/lib/design/layout";
+import { stampOnFace } from "@/lib/design/studio-library";
 import type { DesignBlock } from "@/lib/design/types";
-import { stickerCopyFields } from "@/lib/design/layers";
+import { layerDeco, stickerCopyFields } from "@/lib/design/layers";
 import { useDesignApp } from "./design-context";
+import { FillControls } from "./fill-controls";
 
 function toHex(value: string) {
   const v = value.trim();
   if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
   if (/^#[0-9a-fA-F]{3}$/.test(v)) return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
   return "#ffffff";
+}
+
+function DecoStampCopy() {
+  const app = useDesignApp();
+  const t = app.current;
+  if (!t) return null;
+  const face = previewFace(t);
+  const stamps = (t.state._stamps || []).filter(
+    (st) => stampOnFace(st, face) && (st.kind === "text" || st.kind === "arc" || Boolean(st.text && !st.iconId)),
+  );
+  if (!stamps.length) return null;
+  return (
+    <div className="grid gap-3">
+      {stamps.map((st) => {
+        const deco = layerDeco(t.state, st.id);
+        return (
+          <div key={st.id} className="grid gap-2">
+            {st.kind === "text" || st.text ? (
+              <Field label={st.label || "Text"}>
+                <TextInput value={st.text || ""} onChange={(e) => app.patchLayer(st.id, { text: e.target.value })} />
+              </Field>
+            ) : (
+              <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">{st.label || "Arc line"}</p>
+            )}
+            {deco?.fill ? (
+              <FillControls
+                color={deco.color}
+                color2={deco.color2}
+                fillMode={deco.fillMode}
+                onChange={(patch) => app.patchLayer(st.id, patch)}
+                curve={deco.curve ? deco.curveValue : undefined}
+                onCurve={deco.curve ? (v) => app.patchLayer(st.id, { curve: v }) : undefined}
+                sweep={deco.sweep ? deco.sweepValue : undefined}
+                onSweep={deco.sweep ? (v) => app.patchLayer(st.id, { sweep: v }) : undefined}
+              />
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function LangSelect({
@@ -119,15 +162,26 @@ export function CopyPanel() {
     return (
       <div className="grid gap-3">
         <p className="text-sm text-[var(--bb-muted)]">Text and logo blocks already on this die-cut.</p>
-        {rows.map((row) => (
-          <div key={row.id} className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+        {rows.map((row) => {
+          const deco = layerDeco(st, row.id);
+          return (
+          <div key={row.id} className="grid gap-2">
             <Field label={row.label}>
               <TextInput
                 value={row.text}
                 onChange={(e) => app.patchLayer(row.id, { text: e.target.value })}
               />
             </Field>
-            {row.color ? (
+            {deco?.fill ? (
+              <FillControls
+                color={deco.color || row.color}
+                color2={deco.color2}
+                fillMode={deco.fillMode}
+                onChange={(patch) => app.patchLayer(row.id, patch)}
+                curve={deco.curve ? deco.curveValue : undefined}
+                onCurve={deco.curve ? (v) => app.patchLayer(row.id, { curve: v }) : undefined}
+              />
+            ) : row.color ? (
               <label className="flex items-center gap-2 pb-1 text-xs text-[var(--bb-muted)]">
                 Color
                 <input
@@ -140,7 +194,8 @@ export function CopyPanel() {
               </label>
             ) : null}
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -148,6 +203,7 @@ export function CopyPanel() {
   if (face === "circle") {
     return (
       <div className="grid gap-3">
+        <DecoStampCopy />
         <FocusBlock id="clogo" title="Logo">
           <Field label="Logo letters">
             <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
@@ -205,6 +261,7 @@ export function CopyPanel() {
   if (face === "top") {
     return (
       <div className="grid gap-3">
+        <DecoStampCopy />
         <FocusBlock id="tlogo" title="Logo">
           <Field label="Logo letters">
             <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
@@ -232,6 +289,7 @@ export function CopyPanel() {
 
   return (
     <div className="grid gap-4">
+      <DecoStampCopy />
       <FocusBlock id="logo" title="Logo">
         <Field label="Letters on the disc">
           <TextInput value={s(st, "eBrand")} onChange={(e) => app.setField("eBrand", e.target.value)} />
@@ -702,6 +760,7 @@ export function ColorFields({ face }: { face: string }) {
   const t = app.current;
   if (!t) return null;
   const st = t.state;
+  const deco = app.selectedId ? layerDeco(st, app.selectedId) : null;
   const color = (key: string, label: string, fallback: string) => (
     <Field key={key} label={label}>
       <div className="flex items-center gap-2">
@@ -718,6 +777,21 @@ export function ColorFields({ face }: { face: string }) {
   );
   return (
     <div className="grid gap-3">
+      {deco?.fill && app.selectedId ? (
+        <div className="grid gap-2 border-b border-[var(--bb-line)] pb-3">
+          <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">Selected layer</p>
+          <FillControls
+            color={deco.color}
+            color2={deco.color2}
+            fillMode={deco.fillMode}
+            onChange={(patch) => app.patchLayer(app.selectedId!, patch)}
+            curve={deco.curve ? deco.curveValue : undefined}
+            onCurve={deco.curve ? (v) => app.patchLayer(app.selectedId!, { curve: v }) : undefined}
+            sweep={deco.sweep ? deco.sweepValue : undefined}
+            onSweep={deco.sweep ? (v) => app.patchLayer(app.selectedId!, { sweep: v }) : undefined}
+          />
+        </div>
+      ) : null}
       {color("cLabel", "Label fill", "#2e7d32")}
       {color("cTxtMain", "Main ink", "#ffffff")}
       {color("cTxtSub", "Secondary ink", "#cccccc")}

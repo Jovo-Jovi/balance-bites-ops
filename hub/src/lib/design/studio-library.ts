@@ -1,5 +1,6 @@
 import { FAM, flag, type PreviewFace } from "./layout";
 import type { CompositeZone, LabelStamp, LabelState } from "./types";
+import { ARC_SWEEP_HALF, ARC_SWEEP_THIRD } from "./deco";
 
 export const WRAP_RECIPE_BLOCKS = [
   { k: "1", chk: "chkS1", label: "Ingredients", famId: FAM.ing, fallbackOn: true, hint: "EN/AR ingredients recipe" },
@@ -11,10 +12,20 @@ export const WRAP_RECIPE_BLOCKS = [
 ] as const;
 
 export const COMPOSITE_BLOCKS = [
-  { id: "text" as const, label: "Text" },
   { id: "logo" as const, label: "Logo disc" },
   { id: "exp" as const, label: "Expiry box" },
   { id: "image" as const, label: "Photo" },
+];
+
+export const ARC_PRESETS = [
+  { sweep: ARC_SWEEP_THIRD, label: "Arc ⅓" },
+  { sweep: ARC_SWEEP_HALF, label: "Arc ½" },
+] as const;
+
+export const DECO_BLOCKS = [
+  { id: "text" as const, label: "Text", hint: "Straight type you can drag" },
+  { id: "curved" as const, label: "Curved text", hint: "Bend with Curvature" },
+  { id: "arc" as const, label: "Arc line", hint: "Thick gradient stroke" },
 ];
 
 export function wrapBlockOn(state: LabelState, chk: string, fallbackOn: boolean) {
@@ -52,11 +63,17 @@ export function isPackArtZone(zone: CompositeZone) {
 export function placedCompositeBlocks(state: LabelState) {
   return (state._composite?.zones || []).filter(
     (z) =>
-      (z.kind === "text" || z.kind === "logo" || z.kind === "image") &&
+      (z.kind === "text" || z.kind === "logo" || z.kind === "image" || z.kind === "arc") &&
       !isCharacterZone(z) &&
       !isPackArtZone(z) &&
       !z.lock,
   );
+}
+
+export function placedDecoStamps(state: LabelState, face: PreviewFace) {
+  return (state._stamps || [])
+    .filter((s) => stampOnFace(s, face) && (s.kind === "text" || s.kind === "arc") && !s.src)
+    .map((s) => ({ id: s.id, label: s.label || (s.kind === "arc" ? "Arc line" : "Text") }));
 }
 
 export function placedCharacters(state: LabelState, face: PreviewFace) {

@@ -34,8 +34,8 @@ Inspector tabs depend on the **open face**. A control that does not change this 
 | Layout | `chkS*`, named section width, `eSecOrd`, `sw*`, badge toggles | — | — | — (Layers) |
 | Type | Wrap font/size sliders | Circle font/size keys | Lid sizes | — |
 | Size | `sW`×`sH` **or** cup Ø / `tpCupH` / `tpLblH` / wrap % / `tpOffsetBot`; screen zoom `sScale` | `cW`×`cH`; `sScale` | `tSz`; `sScale` | `cW`×`cH`; `sScale` |
-| Color | Label / ink / logo circle (packs in Libraries → Brand) | Flavor ink | Ink | Part colors via Layers |
-| Libraries rail | Shapes (Composite) · wrap recipes + named section · Icons · Uploads · Brand · Characters | same | Icons · Uploads · Brand | Shapes · named section · composite blocks (`addZone`) · Characters |
+| Color | Label / ink / logo circle (packs in Libraries → Brand). Selected layer: Solid / Half / Gradient | Flavor ink + selected layer fill | Ink + selected layer fill | Part / zone / stamp: Solid / Half / Gradient |
+| Libraries rail | Shapes (Composite) · wrap recipes + named section · curved text / arc line · Icons · Uploads · Brand · Characters | same | Icons · Uploads · Brand · curved text / arc | Shapes · named section · composite blocks (`addZone`) · curved text / arc · Characters |
 | Layers | Print cut + section boxes (logo disc ≠ brand names) | Print cut + front boxes | Print cut + lid boxes | Parts / zones / stamps / Print cut |
 
 No fourth Design workspace tool.
@@ -69,6 +69,7 @@ hub/src/components/design/
   flavor-packs.tsx  Brand rail packs (code only)
   art-panel.tsx     Uploads + Icons (inside the rail, not inspector tabs)
   copy-panel.tsx    copy + nutrition/layout/type/size/color fields
+  fill-controls.tsx Solid / Half / Gradient + curvature / arc sweep
   layers-panel.tsx  z-order, shift multi-select, color, rotate, print-cut stroke
   print-tool.tsx
   label-preview.tsx tap / drag / rotate / resize overlay; shift multi-select
@@ -84,8 +85,11 @@ hub/src/lib/design/
   blocks.ts         user-named wrap sections (`state._blocks`, `eSecOrd`)
   assets.ts         strip/hydrate `__asset__:` / `__r2__:`; reuse existing R2 objects
   colors.ts         flavor packs (code only) + Loaded snapshot
-  icons.ts          repo catalog + LETTER_STYLES. Not Firestore.
+  icons.ts          repo catalog + LETTER_STYLES + Arabic أ–ي. Not Firestore.
   icon-catalog.json
+  fills.ts          solid / half / two-stop gradient paint
+  deco.ts           curved text path + arc stroke
+  stamp-art.ts      icon / curved text / arc stamp SVG
   art.ts            bg slots, stamps, addProductPhotos, fill-cut-with-paper
   art-presets.ts    artref: / assets/presets/ → /design-presets/*.{svg,png}; Pack art rail drops trimmed RGBA PNGs
   product-match.ts  template name → current bb_products when productId is empty
@@ -149,7 +153,7 @@ Popcorn-blue / popcorn-red stay in Library and Studio. They are excluded from th
 - Opening a template `setCurrent` immediately, then hydrates R2 only if `wantedId` still matches. Character stickers (`showImage` + `artref:` / `artKey`) do not paint or hydrate `hxCProd`, so a cheese photo cannot cover pretzel / china crackers.
 - Save / Delete / New / Duplicate / Import show a Design-wide progress bar (`busyMessage`) so the raster snap + Firestore + R2 wait is not a frozen screen.
 - Library snaps for wrap / taper / circle / lid paint `foreignObject` copy (html-to-image of a real HTML clone, not the 0×0 FO box). Composite stays SVG-as-image; Save inlines pack PNGs (Image load, not cookie-less fetch) and the Library snap paints those zones onto the card. Cut PNG z-order stays the SVG. Re-save a card that was snapped before pack art to replace a colour-only die.
-- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** is **Kids** / **Adults** (faces, toys, treats, product, garnish, brand). Trimmed RGBA PNGs drop as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists pack names (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG.
+- **Libraries rail (Wave C)** sits left of the canvas: Shapes, **Pack art**, Blocks, Icons, Uploads, Brand, Characters. Tap to add. Inspector no longer has Images / Icons tabs. Dropped blocks can be removed (rail Remove, Layers, canvas ×, Delete). **Blocks** also drop **Curved text** (Curvature −100…100 in Layers / Color) and **Arc line** (⅓ / ½ / sweep slider, thick gradient stroke) on wrap, circle, lid, and Composite. Characters are an online DiceBear people library, not `design-presets/` product stickers. Fetched PNG inlines on the template; Save still strips fat data URLs to R2. Existing popcorn templates keep `artref:` / `artKey`. **Pack art** is **Kids** / **Adults** (faces, toys, treats, product, garnish, brand). Trimmed RGBA PNGs drop as named Composite image zones (`artref:` + meet, no circle plate). Family must be Composite. Layers lists pack names (not truncated `circ…`). A character (or icon stamp) dropped on the wrap stays on wrap/taper — it does not copy onto the top lid. Layers **Border** draws a ring on that PNG. Shape / type / icon color: **Solid**, **Half**, or **Gradient** (two picks).
 - **Blank die + named sections (Wave D).** New template defaults to die only (Library checkbox **Include starter recipes** is off). Wrap/taper: `chkS1–6` false. Composite: empty zones. **Named section** on wrap/taper writes `state._blocks` and extends `eSecOrd`; Copy edits title / fields / width; Remove deletes it. Recipes stay `chkS*`. Legacy Custom column still opens. Composite named section is a text zone. No new `bb_*` key.
 
 ## Print house
@@ -191,7 +195,7 @@ Firestore `tenants/balance-bites/keys/bb_label_templates` from Desktop JSON (~32
 5. Family preview uses live formulas in **pixel** artboard space (see table). Taper uses the padded SVG viewBox, not a stretched print bbox.
 6. Library cards are compact **raster** thumbs (WebP/PNG snap; no SVG in the grid). Full preview lives in Studio.
 7. Uploads live in the Studio libraries rail (not a fourth workspace tool). Device or `__r2__:`; do not store the same PNG twice.
-8. A–Z letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block).
+8. A–Z and أ–ي letters use live `LETTER_STYLES` (Fatty / Bubble / Jelly / Candy / Curvy / Block). Arabic tiles use Cairo / Baloo Bhaijaan 2.
 9. Flavor pack **Loaded** is the colors already on this template. Listed packs only highlight after you apply one.
 10. Layers include **Print cut**; mm + colour match Print house.
 11. Character art fills the part box with path stroke; clip is `unionPath`. White full-canvas fills were stripped from repo preset SVGs.
