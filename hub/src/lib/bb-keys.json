@@ -34,7 +34,8 @@
     "bb_inv_print_page_size",
     "bb_inv_print_margins",
     "bb_print_fit_one",
-    "bb_ret_last_customer"
+    "bb_ret_last_customer",
+    "bb_church_status"
   ],
   "storageOnlyKeys": ["bb_backup_locals"],
   "legacyLabelGlob": "bbLabel-*.json",
@@ -88,6 +89,7 @@
       "bb_active_color_preset_id",
       "bb_active_theme",
       "bb_label_open"
-    ]
+    ],
+    "status": ["bb_church_status"]
   }
 }

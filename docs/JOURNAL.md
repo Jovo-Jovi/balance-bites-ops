@@ -14,6 +14,7 @@ Related maps:
 | [INVOICES.md](INVOICES.md) | Invoice app file map, keys, UX decisions |
 | [DESIGN.md](DESIGN.md) | Design app file map, filtered tools, gaps |
 | [FINANCE.md](FINANCE.md) | Finance app file map, eight tools, writers |
+| [STATUS.md](STATUS.md) | Weekly church status sheet, `bb_church_status` |
 | [FINANCE-WAVES.md](FINANCE-WAVES.md) | Finance waves A–E |
 | [PARITY.md](PARITY.md) | Tick-list vs live HTML |
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
@@ -513,6 +514,12 @@ Studio **Blocks** drop **Curved text** (Layers / Color **Curvature** −100…10
 **Pack art frame.** Circle or Square on the Pack art rail and in Layers. Circle clips the PNG and draws a round ring; square keeps the rectangular ring. Stored as `borderShape` on the zone. No new `bb_*` key.
 
 **Box fill.** Selected pack art / photo and any text box (Composite text, curved text, letter word, wrap/lid/circle text stamp) can take a **Fill** / **Box fill** plate in Layers and Color. None turns it off. The plate is `fill` on the zone or stamp — not letter ink (`color` / FillControls). Circle pack art gets a round plate; square pack art a rectangle. Print PNG paints the same plate under the overlay. No new `bb_*` key.
+
+---
+
+## 2026-08-31 — Weekly church status (`feat/church-status`)
+
+Fourth hub card **الحالة الأسبوعية** (`/status`). Native LTR sheet that prints and downloads the BalanceBytes weekly church distribution report with the same sections, column order, header green `#0B4F3B`, and RAG row fills as the Excel template. KPIs and church rows come from invoices, returns, the customer ledger, and the pending queue. Staff notes, RAG overrides, and risks save to `bb_church_status` only — no Church A–D seed, no invoice writes. Map: [STATUS.md](STATUS.md). **Rules:** `bb_church_status` added to `isKnownKey` (additive). Publish Firestore rules before the first Save on a preview that uses production Firebase.
 
 ---
 

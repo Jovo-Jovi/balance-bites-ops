@@ -8,7 +8,7 @@
 **Mark**  
 The rotated square (diamond) from Invoice Pro’s header ornament — not a cartoon bite, not a new mascot. Hub favicon = that diamond, ink fill, linen ground (`hub/src/app/icon.svg`). Pasted-link preview: `opengraph-image.tsx`. Home-screen icon: `apple-icon.tsx`.
 
-**Do not** introduce a second logo for Finance or Designer in v1. One mark, three cards.
+**Do not** introduce a second logo for Finance, Designer, or Weekly status in v1. One mark, four cards.
 
 ## Color (hub: Linen desk)
 
@@ -44,11 +44,12 @@ User color presets (`bb_color_presets`) already retheme Invoice Pro, Stock Costs
 Centered wordmark, diamond, glass login card, one button: دخول. Arabic first.
 
 **After login**  
-Full-viewport linen screen, RTL. Three equal frosted-glass cards:
+Full-viewport linen screen, RTL. Four frosted-glass cards:
 
 1. **الفواتير** — Invoices — subtitle: عملاء · طباعة · تحصيل  
 2. **التصميم** — Design — subtitle: ملصقات · قوالب · مطبعة  
 3. **المالية والمخزون** — Finance & Inventory — subtitle: تكاليف · مخزون · أرباح  
+4. **الحالة الأسبوعية** — Weekly status — subtitle: كنائس · توزيع · تحصيل  
 
 Cards: semi-glass, large ink type, whole card is the hit target. Footer: connected tenant name, **تحميل نسخة محلية** (zip of existing Firestore keys + R2 `label_assets/`), sign out.
 
@@ -59,7 +60,7 @@ The live `costs` HTML files are a **behavior** reference (keys, formulas, print)
 |---|---|
 | Phone | One column, compact cards, 44px tap targets, safe-area insets |
 | Tablet | One column until there is room, then three cards |
-| Desktop / wide | Three equal cards, wider measure |
+| Desktop / wide | Four cards, wider measure |
 
 Type uses `clamp`. Inputs stay 16px so iOS does not zoom. Do not ship fixed 1440px pages, `overflow: hidden` traps, or desktop-only tab strips in the hub.
 
@@ -69,13 +70,13 @@ Type uses `clamp`. Inputs stay 16px so iOS does not zoom. Do not ship fixed 1440
 
 Each app is a **workspace**, not a clone of the old HTML tab strip:
 
-1. App switcher: الفواتير / التصميم / المالية (always visible).
+1. App switcher: الفواتير / التصميم / المالية / الحالة (always visible).
 2. Tool tabs under it — grouped by work (invoice, stock, prep…), scroll on phone.
 3. One tool panel: what it does, primary actions, related features.
 
 Logic and keys stay from the live apps. Layout does not.
 
-Hub still has **three cards only** (no KPIs). Tools live inside the apps.
+Hub still has **no KPIs on `/`**. Tools live inside the apps. Four cards route only.
 
 ## Motion and chrome
 

@@ -19,7 +19,7 @@ Legend: `[x]` this slice · `[ ]` not built yet.
 ## Hub
 
 - [x] Login (email/password; Google optional)
-- [x] Three cards only: الفواتير / التصميم / المالية والمخزون (no KPIs)
+- [x] Four cards: الفواتير / التصميم / المالية والمخزون / الحالة الأسبوعية (no KPIs on `/`)
 - [x] Sign out, tenant name in footer
 - [x] Redirect to login if session missing
 - [x] Staff allowlist live in Firebase (`staff/{uid}` created in Console — not in the app)
@@ -214,6 +214,18 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 - Invoice app does **not** seed DEFAULT_PRODUCTS / DEFAULT_CATEGORIES / color-preset dumps when cloud keys are missing.
 - **T14 deferred:** `bb_invoices` stays one document. Year shards when the 1 MiB ceiling is near (~730 typical invoices). CAS (`prevWriteId`) is already in; do not shard on top of an unenforced conflict token. Reports (`reports.ts`) and finance analytics must read across shards when that work starts. Spark read/write quotas are not the reason. **Rules vs client:** transitional ruleset published (Console) → new client → tighten. File ≠ live. See [JOURNAL.md](JOURNAL.md#standing--firestore-rules-deploy-order).
 - **O1 / O2 (audit 2026-08-27, not blocking):** CSP `script-src` stays Report-Only (Next bootstrap + optional `apis.google.com`); Pack art rail can lazy-load 160 px thumbs later. Map: [FINAL-REPORT-2026-08-27.md](FINAL-REPORT-2026-08-27.md).
+
+---
+
+## Weekly status (`/status`)
+
+Native LTR sheet matching `BalanceBytes_Weekly_Church_Status_Report.xlsx`. Map: [STATUS.md](STATUS.md).
+
+- [x] Hub card الحالة الأسبوعية (no KPIs on `/`)
+- [x] KPI + church table from invoices / ledger / pending queue
+- [x] Print + `.xlsx` download (Weekly Status Report + RAG Legend)
+- [x] `bb_church_status` writer only; no Church A–D seed
+- [x] Firestore `isKnownKey` includes `bb_church_status`
 
 ---
 

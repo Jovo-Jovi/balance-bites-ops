@@ -58,23 +58,35 @@ function bindPrintDone(win: Window, done: () => void) {
   }
 }
 
-export function openPrintHtml(html: string) {
+export type OpenPrintOpts = {
+  dir?: "rtl" | "ltr";
+  label?: string;
+  closeLabel?: string;
+  printLabel?: string;
+};
+
+export function openPrintHtml(html: string, opts?: OpenPrintOpts) {
   if (typeof document === "undefined") return false;
   ensureStyle();
   document.getElementById(OVERLAY_ID)?.remove();
 
+  const dir = opts?.dir ?? "rtl";
+  const closeLabel = opts?.closeLabel ?? (dir === "ltr" ? "Close" : "إغلاق");
+  const printLabel = opts?.printLabel ?? (dir === "ltr" ? "Print" : "طباعة");
+  const title = opts?.label ?? (dir === "ltr" ? "Print preview" : "معاينة الطباعة");
+
   const overlay = document.createElement("div");
   overlay.id = OVERLAY_ID;
-  overlay.dir = "rtl";
+  overlay.dir = dir;
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-label", "معاينة الطباعة");
+  overlay.setAttribute("aria-label", title);
   overlay.innerHTML = `<div class="bb-print-bar">
-      <button type="button" class="bb-print-close">إغلاق</button>
-      <span>معاينة الطباعة</span>
-      <button type="button" class="bb-print-again">طباعة</button>
+      <button type="button" class="bb-print-close">${closeLabel}</button>
+      <span>${title}</span>
+      <button type="button" class="bb-print-again">${printLabel}</button>
     </div>
-    <iframe title="معاينة الطباعة"></iframe>`;
+    <iframe title="${title}"></iframe>`;
   document.body.appendChild(overlay);
 
   const prevOverflow = document.body.style.overflow;

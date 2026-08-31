@@ -20,7 +20,7 @@
 [![RTL](https://img.shields.io/badge/UI-Arabic_RTL-b76e32?style=flat-square)](#apps)
 [![Vercel](https://img.shields.io/badge/Host-Vercel-1f2930?style=flat-square&logo=vercel&logoColor=f4f0ea)](https://balance-bites-ops.vercel.app)
 
-One URL. Three cards after login. **No KPIs on the hub.** Live data is Firebase + Cloudflare R2 — GitHub is code only.
+One URL. Four cards after login. **No KPIs on the hub.** Live data is Firebase + Cloudflare R2 — GitHub is code only.
 
 </div>
 
@@ -84,17 +84,20 @@ Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
 | ![](https://img.shields.io/badge/-Invoices-0f6e6b?style=flat-square) | Billing | Editor, customers, catalog pick, Look print theme, reports, collection flags |
 | ![](https://img.shields.io/badge/-Design-1f2930?style=flat-square) | Labels | Library thumbs, Studio layers, print house SVG/PNG, template JSON |
 | ![](https://img.shields.io/badge/-Finance-b76e32?style=flat-square) | Stock & P&amp;L | Ledger, recipes, prep → production, returns, opex, investor diary |
+| ![](https://img.shields.io/badge/-Status-0B4F3B?style=flat-square) | Weekly | Church distribution executive sheet · print · Excel |
 | ![](https://img.shields.io/badge/-Data-3f7d4e?style=flat-square) | Cloud | Firestore `bb_*` keys · R2 art · staff zip backup · locked rules |
 
 ```mermaid
 flowchart LR
-  Login --> Cards[Three cards]
+  Login --> Cards[Four cards]
   Cards --> Invoices
   Cards --> Design
   Cards --> Finance
+  Cards --> Status
   Invoices --> Firestore
   Design --> Firestore
   Finance --> Firestore
+  Status --> Firestore
   Design --> Assets[R2 assets]
   Finance --> Backups[R2 backups]
 ```

@@ -30,6 +30,9 @@ Live files live in the Desktop folder `saved data` as `{key}.json`. Cloud v1 sto
 | `bb_color_presets` | write | write | write |
 | `bb_active_color_preset_id` | write | write | write |
 | `bb_active_theme` | — | write | write |
+| `bb_church_status` | — | — | — |
+
+`bb_church_status` is written only by Weekly status (`writeStatusKey`). Invoices, Finance, and Design do not touch it.
 
 Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore (`READ_KEYS`) except prep-invoice **approve**, which writes invoices through `writeAnyKey` on purpose. Hub Finance does **not** put `bb_invoices` on `FINANCE_WRITE_KEYS`; the only sanctioned write is `commitPrepInvoice`, which may only touch `FINANCE_PREP_APPEND_KEYS` (`bb_invoices`).
 
@@ -73,3 +76,7 @@ Live HTML designer is listed as a writer of `bb_color_presets` / theme keys abov
 ## Hub Finance (this slice)
 
 Live HTML Stock Costs is listed as a writer of `bb_label_templates` and color/theme keys above. The **hub** Finance app does **not** write those — Design owns templates; Invoices → Look owns presets. Hub Finance writes catalog, recipes, purchases, production, returns, opex, investors, sticker SKUs (`templateKey` + `bb_label_open`), prep drafts, and payments. Prep **approve** is the only `bb_invoices` write: `commitPrepInvoice` is typed against `FINANCE_PREP_APPEND_KEYS` (`satisfies`) and is not a second invoice editor. Named backups go to R2 `bb_backups/`; `bb_backup_locals` stays out of Firestore. Map: [FINANCE.md](FINANCE.md). Waves: [FINANCE-WAVES.md](FINANCE-WAVES.md).
+
+## Hub Weekly status
+
+Writes **only** `bb_church_status` (week, RAG overrides, risks, executive notes). Reads invoices, customers, payments, returns, and the pending queue. Does not seed Church A–D. Map: [STATUS.md](STATUS.md).

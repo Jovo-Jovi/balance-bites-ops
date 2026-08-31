@@ -10,6 +10,7 @@ alwaysApply: true
 | Invoices, customers, invoice print, payments flags | `hub/src/components/invoices/` — **done** |
 | Labels, templates, prepress, `label_assets/` | `hub/src/components/design/` — **native, three tools** (see `docs/DESIGN.md`) |
 | Stock, prep, P&L, catalog **writes**, returns **writes** | `hub/src/components/finance/` — **native, eight tools** (see `docs/FINANCE.md`) |
+| Weekly church status sheet, print, Excel | `hub/src/components/status/` — **native** (see `docs/STATUS.md`) |
 | Auth, CloudStore, brand, workspace shell | existing hub files — import, do not copy |
 
 Do not add a second invoice list, customer book, or catalog CRUD inside Design. Do not reimplement `InvoiceProvider` for stickers.
@@ -25,6 +26,10 @@ Pending cards skip `kind: 'invoice_draft'`. Do not mix prep-approve with product
 # Design slice
 
 Native Library / Studio / Print house. Waves A–D on `main`. Do **not** copy sticker HTML into `public/` or iframe it. Do not add a Theme tab that duplicates Invoices Look. Do not seed templates or flavor packs into Firestore. Map: `docs/DESIGN.md`.
+
+# Status slice
+
+Native Report tool matching the BalanceBytes weekly church Excel. Do **not** add a second customer book or invoice editor. `writeStatusKey` allows `bb_church_status` only. Do not seed Church A–D. Map: `docs/STATUS.md`.
 
 # Finance slice
 

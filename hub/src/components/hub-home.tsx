@@ -86,11 +86,11 @@ export function HubHome() {
       </header>
       <main className="mx-auto mt-8 w-full max-w-3xl flex-1 lg:mt-14 lg:max-w-6xl xl:max-w-7xl">
         <p className="mb-5 text-center text-sm text-[var(--bb-muted)] lg:mb-8">
-          ثلاث أدوات. اختر واحدة — التبويبات داخل كل أداة.
+          أربع أدوات. اختر واحدة — التبويبات داخل كل أداة.
         </p>
         <nav
           aria-label="التطبيقات"
-          className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-6"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6"
         >
           {WORKSPACE_APPS.map((card) => (
             <Link

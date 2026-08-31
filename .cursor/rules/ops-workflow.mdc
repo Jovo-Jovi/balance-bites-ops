@@ -7,8 +7,8 @@ alwaysApply: true
 
 - Write only in `balance-bites-ops`. Treat `costs/` and `saved data` as read-only unless the user says otherwise.
 - Git remote stays `https://github.com/Jovo-Jovi/balance-bites-ops`. No Cursor Origin. Commit/push only when asked. PowerShell: `;` not `&&`.
-- Slice order: hub (done) → invoices (done, see `docs/JOURNAL.md` + `docs/INVOICES.md`) → **design** (A–D on `main`, `docs/DESIGN.md`) → **finance** (A–E on `feat/finance`, `docs/FINANCE.md`). Do not start another app unless asked.
-- One HTTPS hub, three cards after login. No KPIs on `/`.
+- Slice order: hub (done) → invoices (done) → design (done) → finance (done on `main`) → **weekly status** (`feat/church-status`, `docs/STATUS.md`). Do not start another app unless asked.
+- One HTTPS hub, four cards after login. No KPIs on `/`.
 - Same `bb_*` keys. CloudStore hydrates from Firestore; never write empty defaults when a key is missing.
 - Writer map is in `docs/DATA.md` and `hub/src/lib/bb-keys.json`. Do not invert it. Invoice catalog is read-only. Finance writes returns. Design writes templates + `label_assets/` on R2 (not Firebase Storage). Spark only.
 - Do not run `import:apply` or `import:assets` unless asked (zip `saved data` first).
