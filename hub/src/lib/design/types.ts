@@ -29,6 +29,8 @@ export type ProductIdentity = {
 
 export type SyncTargets = { back: boolean; top: boolean; circle: boolean };
 
+export type FillMode = "solid" | "half" | "gradient";
+
 export type CompositePart = {
   id: string;
   name?: string;
@@ -40,6 +42,8 @@ export type CompositePart = {
   rot?: number;
   z?: number;
   color?: string;
+  color2?: string;
+  fillMode?: FillMode;
   src?: string;
   srcUrl?: string;
   pathLocal?: string;
@@ -68,11 +72,15 @@ export type CompositeZone = {
   text?: string;
   field?: string;
   color?: string;
+  color2?: string;
+  fillMode?: FillMode;
   textColor?: string;
   src?: string;
   srcUrl?: string;
   iconId?: string;
   strokeWidth?: number;
+  curve?: number;
+  sweep?: number;
   lock?: boolean;
   fontFamily?: string;
   fontWeight?: string;
@@ -81,10 +89,13 @@ export type CompositeZone = {
   shape?: string;
   fill?: string;
   letterStyle?: string;
+  letterPack?: "solid" | "rainbow";
+  letterSpace?: number;
   layerGroup?: string;
   lockAspect?: boolean;
   borderColor?: string;
   borderWidth?: number | string;
+  borderShape?: "circle" | "square";
 };
 
 export type LabelStamp = {
@@ -97,12 +108,22 @@ export type LabelStamp = {
   rot?: number;
   z?: number;
   color?: string;
+  color2?: string;
+  fillMode?: FillMode;
   borderColor?: string;
   strokeWidth?: number;
   sizeId?: string;
   letterStyle?: string;
   src?: string;
   label?: string;
+  kind?: "icon" | "text" | "arc" | "letters";
+  text?: string;
+  curve?: number;
+  sweep?: number;
+  letterPack?: "solid" | "rainbow";
+  letterSpace?: number;
+  /** Box plate behind wrap/lid/circle text (not letter ink). */
+  fill?: string;
   /** Which family face this stamp sits on. Missing = legacy (icons all faces; characters skip the lid). */
   face?: "back" | "taper" | "top" | "circle";
 };

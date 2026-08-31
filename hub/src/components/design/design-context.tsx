@@ -16,8 +16,8 @@ import { useToast } from "@/components/toast";
 import { asArray, genId, isInactiveProduct } from "@/lib/invoices/helpers";
 import type { Product } from "@/lib/invoices/types";
 import { applyAssetRefs, collectAssetRefs, hasUnresolvedAssets, hydrateAssetValue, hydrateStateAssets, stripStateAssets } from "@/lib/design/assets";
-import { addProductPhotos, applyIconToState, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
-import { CUT_LAYER, moveLayer as moveLayerInState, moveLayerTo as moveLayerToInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer } from "@/lib/design/layers";
+import { addProductPhotos, applyIconToState, applyLetterWord, compositeHasCharacterArt, readImageFile, removeArtItem, setFillCutWithPaper, setZoneSrc, syncPaperToSilhouette } from "@/lib/design/art";
+import { CUT_LAYER, moveLayer as moveLayerInState, moveLayerTo as moveLayerToInState, patchLayer as patchLayerInState, moveItem as moveItemInState, resizeItem as resizeItemInState, rotateItem as rotateItemInState, wrapRecipeChkForLayer, type LayerPatch } from "@/lib/design/layers";
 import {
   flavorPackById,
   flavorSnapshot,
@@ -138,8 +138,12 @@ type DesignContextValue = {
   setField: (key: string, value: string) => void;
   setFields: (patch: Record<string, string>) => void;
   applyIcon: (iconId: string, sizeId: string, color?: string, letterStyle?: string) => void;
+  applyLetterWord: (
+    text: string,
+    opts: { sizeId: string; color?: string; letterStyle?: string; curved?: boolean; rainbow?: boolean; letterSpace?: number },
+  ) => void;
   removeArt: (id: string) => void;
-  patchLayer: (id: string, patch: { color?: string; text?: string; borderWidth?: number; borderColor?: string; size?: number }) => void;
+  patchLayer: (id: string, patch: LayerPatch) => void;
   moveLayer: (id: string, dir: -1 | 1) => void;
   moveLayerTo: (id: string, toId: string) => void;
   selectLayer: (id: string | null, opts?: { shift?: boolean }) => void;
@@ -148,7 +152,7 @@ type DesignContextValue = {
   rotateItem: (id: string, rot: number) => void;
   setFillCut: (on: boolean) => void;
   addStudioShape: (type: string) => void;
-  addStudioZone: (kind: ZoneKind) => void;
+  addStudioZone: (kind: ZoneKind, opts?: { sweep?: number }) => void;
   addNamedSection: () => void;
   patchNamedSection: (id: string, patch: { title?: string; widthPct?: number }) => void;
   addNamedField: (blockId: string) => void;
@@ -156,7 +160,7 @@ type DesignContextValue = {
   patchNamedField: (blockId: string, fieldId: string, patch: Partial<Pick<DesignBlockField, "label" | "en" | "ar">>) => void;
   setNamedBlockFirstEn: (blockId: string, en: string) => void;
   applyStudioCharacter: (style: string, seed: string) => Promise<void>;
-  applyStudioPackArt: (artKey: string) => void;
+  applyStudioPackArt: (artKey: string, opts?: { borderShape?: "circle" | "square" }) => void;
   mergeStudioParts: () => void;
   groupStudioLayers: () => void;
   ungroupStudioLayers: () => void;
@@ -672,6 +676,25 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           ),
         });
       },
+      applyLetterWord: (text, opts) => {
+        if (!current) return;
+        const result = applyLetterWord(current.state, text, {
+          sizeId: opts.sizeId,
+          color: opts.color || String(current.state.cTxtMain || "#ffffff"),
+          letterStyle: opts.letterStyle,
+          curved: opts.curved,
+          rainbow: opts.rainbow,
+          letterSpace: opts.letterSpace,
+          face: previewFace(current),
+        });
+        if (!result) {
+          toast.push("Type a word first.", "warn");
+          return;
+        }
+        pushUndo(current.state);
+        replaceCurrent({ ...current, state: result.state });
+        setSelectedIds([result.id]);
+      },
       removeArt: (id) => {
         if (!current) return;
         const namedId = parseBlockLayerId(id);
@@ -787,9 +810,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         setSelectedIds(op.selectIds);
         toast.push(op.message, "ok");
       },
-      addStudioZone: (kind) => {
+      addStudioZone: (kind, opts) => {
         if (!current) return;
-        const op = addZone(current.state, kind);
+        const op = addZone(current.state, kind, { ...opts, face: previewFace(current) });
         if (!op.ok) {
           toast.push(op.message, "warn");
           return;
@@ -846,13 +869,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         if (!current) return;
         replaceCurrent({ ...current, state: setBlockFirstEn(current.state, blockId, en) });
       },
-      applyStudioPackArt: (artKey) => {
+      applyStudioPackArt: (artKey, opts) => {
         if (!current) return;
         if (previewFace(current) !== "composite") {
           toast.push("Switch Family to Composite, then tap Pack art.", "warn");
           return;
         }
-        const op = dropPackArt(current.state, artKey);
+        const op = dropPackArt(current.state, artKey, opts);
         if (!op.ok) {
           toast.push(op.message, "warn");
           return;

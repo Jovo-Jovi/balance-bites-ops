@@ -10,7 +10,9 @@ import {
   exportFileBase,
   pxFromMm,
 } from "./prepress";
+import { plateFillOf } from "./fills";
 import { artboardCm, compositeDiePath, labelPreviewSvg, liveComposite } from "./preview";
+import { zoneBorderShape } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
 
 export type PngKind = "cut" | "exact" | "bleed";
@@ -735,6 +737,8 @@ type RasterLayer = {
   cx: number;
   cy: number;
   fit: RasterFit;
+  clipCircle?: boolean;
+  plate?: string;
 };
 
 async function loadRasterImage(src: string): Promise<HTMLImageElement | null> {
@@ -780,7 +784,21 @@ function drawFittedImage(
     ctx.rotate((layer.rot * Math.PI) / 180);
     ctx.translate(-layer.cx, -layer.cy);
   }
-  if (layer.fit === "slice") {
+  if (layer.plate) {
+    ctx.fillStyle = layer.plate;
+    ctx.beginPath();
+    if (layer.clipCircle) {
+      ctx.arc(layer.cx, layer.cy, Math.min(layer.w, layer.h) / 2, 0, Math.PI * 2);
+    } else {
+      ctx.rect(layer.x, layer.y, layer.w, layer.h);
+    }
+    ctx.fill();
+  }
+  if (layer.clipCircle) {
+    ctx.beginPath();
+    ctx.arc(layer.cx, layer.cy, Math.min(layer.w, layer.h) / 2, 0, Math.PI * 2);
+    ctx.clip();
+  } else if (layer.fit === "slice") {
     ctx.beginPath();
     ctx.rect(layer.x, layer.y, layer.w, layer.h);
     ctx.clip();
@@ -804,6 +822,8 @@ function zoneRasterLayer(z: CompositeZone): RasterLayer | null {
     cx: z.x,
     cy: z.y,
     fit: "meet",
+    clipCircle: zoneBorderShape(z) === "circle",
+    plate: plateFillOf(z.fill) || undefined,
   };
 }
 

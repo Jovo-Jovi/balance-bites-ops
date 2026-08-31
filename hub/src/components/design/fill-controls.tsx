@@ -1,0 +1,248 @@
+"use client";
+
+import { Field } from "@/components/invoices/ui";
+import { ARC_SWEEP_HALF, ARC_SWEEP_THIRD } from "@/lib/design/deco";
+import { FILL_MODES, cssFill, fillModeOf, pairColor, toHexColor, type FillMode } from "@/lib/design/fills";
+import type { LayerDeco, LayerPatch, LayerPlate } from "@/lib/design/layers";
+
+function chipClass(on: boolean) {
+  return `rounded-[var(--bb-radius)] border px-2.5 py-1.5 text-[11px] tracking-wide uppercase min-h-11 ${
+    on
+      ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+      : "border-[var(--bb-line)] text-[var(--bb-text)]"
+  }`;
+}
+
+export function FillControls({
+  color,
+  color2,
+  fillMode,
+  onChange,
+  curve,
+  onCurve,
+  sweep,
+  onSweep,
+  letterPack,
+  onLetterPack,
+  letterSpace,
+  onLetterSpace,
+}: {
+  color?: string;
+  color2?: string;
+  fillMode?: string;
+  onChange: (patch: { color?: string; color2?: string; fillMode?: FillMode }) => void;
+  curve?: number;
+  onCurve?: (value: number) => void;
+  sweep?: number;
+  onSweep?: (value: number) => void;
+  letterPack?: string;
+  onLetterPack?: (pack: "solid" | "rainbow") => void;
+  letterSpace?: number;
+  onLetterSpace?: (value: number) => void;
+}) {
+  const mode = fillModeOf(fillMode);
+  const c1 = color || "#c9a84c";
+  const c2 = color2 || pairColor(c1);
+  const rainbow = Boolean(onLetterPack) && (letterPack || "rainbow") === "rainbow";
+  const dual = !rainbow && mode !== "solid";
+  const lined = Math.abs(curve ?? 0) < 2;
+
+  return (
+    <div className="grid gap-2">
+      {onLetterPack ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button type="button" className={chipClass(rainbow)} onClick={() => onLetterPack("rainbow")}>
+            Rainbow
+          </button>
+          <button type="button" className={chipClass(!rainbow)} onClick={() => onLetterPack("solid")}>
+            One color
+          </button>
+        </div>
+      ) : null}
+      {rainbow ? (
+        <p className="text-xs text-[var(--bb-muted)]">Each letter keeps its own color. Switch to One color to paint the whole word.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {FILL_MODES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={chipClass(mode === item.id)}
+                onClick={() =>
+                  onChange({
+                    fillMode: item.id,
+                    color2: item.id === "solid" ? color2 : color2 || pairColor(c1),
+                  })
+                }
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
+              {dual ? "Color 1" : "Color"}
+              <input
+                type="color"
+                value={toHexColor(c1)}
+                onChange={(e) => onChange({ color: e.target.value })}
+                className="h-8 w-8 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+                aria-label={dual ? "Color 1" : "Color"}
+              />
+            </label>
+            {dual ? (
+              <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
+                Color 2
+                <input
+                  type="color"
+                  value={toHexColor(c2)}
+                  onChange={(e) => onChange({ color2: e.target.value })}
+                  className="h-8 w-8 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+                  aria-label="Color 2"
+                />
+              </label>
+            ) : null}
+            <span
+              className="h-8 w-14 rounded border border-[var(--bb-line)]"
+              style={{ background: cssFill(c1, c2, mode) }}
+              aria-hidden
+            />
+          </div>
+        </>
+      )}
+      {onLetterSpace ? (
+        <div className="grid gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className={chipClass((letterSpace ?? 0) <= -20)} onClick={() => onLetterSpace(-30)}>
+              Tight
+            </button>
+            <button type="button" className={chipClass(Math.abs(letterSpace ?? 0) < 12)} onClick={() => onLetterSpace(0)}>
+              Snug
+            </button>
+            <button type="button" className={chipClass((letterSpace ?? 0) >= 20)} onClick={() => onLetterSpace(40)}>
+              Open
+            </button>
+          </div>
+          <Field label={`Letter space ${Math.round(letterSpace ?? 0)}`}>
+            <input
+              type="range"
+              min={-80}
+              max={80}
+              step={1}
+              value={letterSpace ?? 0}
+              onChange={(e) => onLetterSpace(Number(e.target.value))}
+              className="w-full accent-[var(--bb-gold)]"
+            />
+          </Field>
+        </div>
+      ) : null}
+      {onCurve ? (
+        <div className="grid gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className={chipClass(lined)} onClick={() => onCurve(0)}>
+              Lined
+            </button>
+            <button
+              type="button"
+              className={chipClass(!lined)}
+              onClick={() => onCurve(lined ? 55 : (curve ?? 55))}
+            >
+              Curved
+            </button>
+          </div>
+          <Field label={`Curvature ${Math.round(curve ?? 0)}`}>
+            <input
+              type="range"
+              min={-100}
+              max={100}
+              step={1}
+              value={curve ?? 0}
+              onChange={(e) => onCurve(Number(e.target.value))}
+              className="w-full accent-[var(--bb-gold)]"
+            />
+          </Field>
+        </div>
+      ) : null}
+      {onSweep ? (
+        <div className="grid gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className={chipClass(Math.abs((sweep ?? 0) - ARC_SWEEP_THIRD) < 1)} onClick={() => onSweep(ARC_SWEEP_THIRD)}>
+              ⅓ circle
+            </button>
+            <button type="button" className={chipClass(Math.abs((sweep ?? 0) - ARC_SWEEP_HALF) < 1)} onClick={() => onSweep(ARC_SWEEP_HALF)}>
+              ½ circle
+            </button>
+          </div>
+          <Field label={`Sweep ${Math.round(sweep ?? ARC_SWEEP_HALF)}°`}>
+            <input
+              type="range"
+              min={30}
+              max={330}
+              step={1}
+              value={sweep ?? ARC_SWEEP_HALF}
+              onChange={(e) => onSweep(Number(e.target.value))}
+              className="w-full accent-[var(--bb-gold)]"
+            />
+          </Field>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function PlateFillControls({
+  plate,
+  onPatch,
+}: {
+  plate: LayerPlate;
+  onPatch: (patch: LayerPatch) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button type="button" className={chipClass(!plate.on)} onClick={() => onPatch({ fill: "none" })}>
+        None
+      </button>
+      <button type="button" className={chipClass(plate.on)} onClick={() => onPatch({ fill: plate.color || "#ffffff" })}>
+        Fill
+      </button>
+      {plate.on ? (
+        <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
+          {plate.label}
+          <input
+            type="color"
+            value={toHexColor(plate.color, "#ffffff")}
+            onChange={(e) => onPatch({ fill: e.target.value })}
+            className="h-8 w-8 cursor-pointer rounded border border-[var(--bb-line)] bg-transparent"
+            aria-label={plate.label}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
+export function LayerFillControls({
+  deco,
+  onPatch,
+}: {
+  deco: LayerDeco;
+  onPatch: (patch: LayerPatch) => void;
+}) {
+  return (
+    <FillControls
+      color={deco.color}
+      color2={deco.color2}
+      fillMode={deco.fillMode}
+      onChange={(patch) => onPatch(patch)}
+      curve={deco.curve ? deco.curveValue : undefined}
+      onCurve={deco.curve ? (v) => onPatch({ curve: v }) : undefined}
+      sweep={deco.sweep ? deco.sweepValue : undefined}
+      onSweep={deco.sweep ? (v) => onPatch({ sweep: v }) : undefined}
+      letterPack={deco.letters ? deco.letterPack : undefined}
+      onLetterPack={deco.letters ? (pack) => onPatch({ letterPack: pack }) : undefined}
+      letterSpace={deco.letters ? deco.letterSpace : undefined}
+      onLetterSpace={deco.letters ? (v) => onPatch({ letterSpace: v }) : undefined}
+    />
+  );
+}

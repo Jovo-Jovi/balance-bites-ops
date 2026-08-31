@@ -9,7 +9,7 @@ import { AtelierTool } from "./atelier-tool";
 import { PrintTool } from "./print-tool";
 
 const LETTER_FONTS =
-  "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&family=Montserrat:wght@400;700;800&display=swap";
+  "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&family=Montserrat:wght@400;700;800&family=Cairo:wght@700;800;900&family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap";
 
 export function DesignApp({ tab }: { tab: string }) {
   const { storeReady, error } = useAuth();

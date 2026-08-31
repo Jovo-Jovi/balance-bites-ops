@@ -4,15 +4,49 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { ActionBtn, Field, TextArea, TextInput } from "@/components/invoices/ui";
 import { blockLayerId, listBlocks } from "@/lib/design/blocks";
 import { familyFocus, flag, n, previewFace, s } from "@/lib/design/layout";
+import { stampOnFace } from "@/lib/design/studio-library";
 import type { DesignBlock } from "@/lib/design/types";
-import { stickerCopyFields } from "@/lib/design/layers";
+import { layerDeco, layerPlate, stickerCopyFields } from "@/lib/design/layers";
 import { useDesignApp } from "./design-context";
+import { LayerFillControls, PlateFillControls } from "./fill-controls";
 
 function toHex(value: string) {
   const v = value.trim();
   if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
   if (/^#[0-9a-fA-F]{3}$/.test(v)) return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
   return "#ffffff";
+}
+
+function DecoStampCopy() {
+  const app = useDesignApp();
+  const t = app.current;
+  if (!t) return null;
+  const face = previewFace(t);
+  const stamps = (t.state._stamps || []).filter(
+    (st) => stampOnFace(st, face) && (st.kind === "text" || st.kind === "arc" || st.kind === "letters" || Boolean(st.text && !st.iconId)),
+  );
+  if (!stamps.length) return null;
+  return (
+    <div className="grid gap-3">
+      {stamps.map((st) => {
+        const deco = layerDeco(t.state, st.id);
+        const plate = layerPlate(t.state, st.id);
+        return (
+          <div key={st.id} className="grid gap-2">
+            {st.kind === "arc" && !st.text ? (
+              <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">{st.label || "Arc line"}</p>
+            ) : (
+              <Field label={st.label || (st.kind === "letters" ? "Word" : "Text")}>
+                <TextInput value={st.text || ""} onChange={(e) => app.patchLayer(st.id, { text: e.target.value })} />
+              </Field>
+            )}
+            {deco?.fill ? <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(st.id, patch)} /> : null}
+            {plate ? <PlateFillControls plate={plate} onPatch={(patch) => app.patchLayer(st.id, patch)} /> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function LangSelect({
@@ -119,15 +153,20 @@ export function CopyPanel() {
     return (
       <div className="grid gap-3">
         <p className="text-sm text-[var(--bb-muted)]">Text and logo blocks already on this die-cut.</p>
-        {rows.map((row) => (
-          <div key={row.id} className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+        {rows.map((row) => {
+          const deco = layerDeco(st, row.id);
+          const plate = layerPlate(st, row.id);
+          return (
+          <div key={row.id} className="grid gap-2">
             <Field label={row.label}>
               <TextInput
                 value={row.text}
                 onChange={(e) => app.patchLayer(row.id, { text: e.target.value })}
               />
             </Field>
-            {row.color ? (
+            {deco?.fill ? (
+              <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(row.id, patch)} />
+            ) : row.color ? (
               <label className="flex items-center gap-2 pb-1 text-xs text-[var(--bb-muted)]">
                 Color
                 <input
@@ -139,8 +178,10 @@ export function CopyPanel() {
                 />
               </label>
             ) : null}
+            {plate ? <PlateFillControls plate={plate} onPatch={(patch) => app.patchLayer(row.id, patch)} /> : null}
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -148,6 +189,7 @@ export function CopyPanel() {
   if (face === "circle") {
     return (
       <div className="grid gap-3">
+        <DecoStampCopy />
         <FocusBlock id="clogo" title="Logo">
           <Field label="Logo letters">
             <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
@@ -205,6 +247,7 @@ export function CopyPanel() {
   if (face === "top") {
     return (
       <div className="grid gap-3">
+        <DecoStampCopy />
         <FocusBlock id="tlogo" title="Logo">
           <Field label="Logo letters">
             <TextInput value={s(st, "tLogoTxt")} onChange={(e) => app.setField("tLogoTxt", e.target.value)} />
@@ -232,6 +275,7 @@ export function CopyPanel() {
 
   return (
     <div className="grid gap-4">
+      <DecoStampCopy />
       <FocusBlock id="logo" title="Logo">
         <Field label="Letters on the disc">
           <TextInput value={s(st, "eBrand")} onChange={(e) => app.setField("eBrand", e.target.value)} />
@@ -702,6 +746,8 @@ export function ColorFields({ face }: { face: string }) {
   const t = app.current;
   if (!t) return null;
   const st = t.state;
+  const deco = app.selectedId ? layerDeco(st, app.selectedId) : null;
+  const plate = app.selectedId ? layerPlate(st, app.selectedId) : null;
   const color = (key: string, label: string, fallback: string) => (
     <Field key={key} label={label}>
       <div className="flex items-center gap-2">
@@ -718,6 +764,15 @@ export function ColorFields({ face }: { face: string }) {
   );
   return (
     <div className="grid gap-3">
+      {app.selectedId && (deco?.fill || plate) ? (
+        <div className="grid gap-2 border-b border-[var(--bb-line)] pb-3">
+          <p className="text-xs uppercase tracking-wide text-[var(--bb-muted)]">Selected layer</p>
+          {deco?.fill ? (
+            <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(app.selectedId!, patch)} />
+          ) : null}
+          {plate ? <PlateFillControls plate={plate} onPatch={(patch) => app.patchLayer(app.selectedId!, patch)} /> : null}
+        </div>
+      ) : null}
       {color("cLabel", "Label fill", "#2e7d32")}
       {color("cTxtMain", "Main ink", "#ffffff")}
       {color("cTxtSub", "Secondary ink", "#cccccc")}

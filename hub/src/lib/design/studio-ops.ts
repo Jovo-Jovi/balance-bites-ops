@@ -17,6 +17,7 @@ import {
 import { presetSrcForKey, studioPackArtBox, studioPackArtLabel } from "./art-presets";
 import { compositeAspect, type PreviewFace } from "./layout";
 import { MAX_OUTLINE_PARTS, makePart, syncPartPhysicalAspect, syncLogoCircleSize } from "./part-types";
+import { ARC_SWEEP_HALF } from "./deco";
 import { stampFaceOf } from "./studio-library";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelStamp, LabelState } from "./types";
 
@@ -564,7 +565,12 @@ export function syncCutPath(state: LabelState): LabelState {
   return next;
 }
 
-export type ZoneKind = "text" | "logo" | "exp" | "image";
+export type ZoneKind = "text" | "logo" | "exp" | "image" | "curved" | "arc";
+
+export type AddZoneOpts = {
+  sweep?: number;
+  face?: PreviewFace;
+};
 
 function defaultExpMonthYear() {
   const d = new Date();
@@ -572,10 +578,73 @@ function defaultExpMonthYear() {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-/** Live `BBComposite.addZone`. Recipe blocks for composite, not wrap columns. */
-export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
+function addDecoStamp(state: LabelState, kind: "text" | "curved" | "arc", opts?: AddZoneOpts): StudioOp {
+  const face = opts?.face || "back";
+  const ink = String(state.cTxtMain || "#ffffff");
+  const id = genId("ic");
+  const zTop = Math.max(0, ...(state._stamps || []).map((s) => s.z || 0));
+  let stamp: LabelStamp;
+  if (kind === "arc") {
+    stamp = {
+      id,
+      iconId: "",
+      kind: "arc",
+      x: 50,
+      y: 42,
+      w: 58,
+      h: 34,
+      color: "#ff5d7a",
+      color2: "#ffd23f",
+      fillMode: "gradient",
+      sweep: opts?.sweep ?? ARC_SWEEP_HALF,
+      strokeWidth: 6,
+      label: "Arc line",
+      z: zTop + 1,
+      face: stampFaceOf(face),
+    };
+  } else {
+    const curved = kind === "curved";
+    stamp = {
+      id,
+      iconId: "",
+      kind: "text",
+      x: 50,
+      y: 48,
+      w: curved ? 54 : 40,
+      h: curved ? 22 : 14,
+      color: ink,
+      text: "TEXT",
+      curve: curved ? 55 : 0,
+      label: curved ? "Curved text" : "Text",
+      z: zTop + 1,
+      face: stampFaceOf(face),
+    };
+  }
+  return {
+    state: { ...state, _stamps: [...(state._stamps || []), stamp] },
+    selectIds: [id],
+    message: kind === "arc" ? "Arc line added — set ⅓ / ½ or drag the sweep." : curvedTextMsg(kind === "curved"),
+    ok: true,
+  };
+}
+
+function curvedTextMsg(curved: boolean) {
+  return curved ? "Curved text added — drag Curvature in Layers." : "Text added — drag it on the canvas.";
+}
+
+/** Live `BBComposite.addZone`. Curved text / arc also drop on wrap, circle, and lid as stamps. */
+export function addZone(state: LabelState, kind: ZoneKind, opts?: AddZoneOpts): StudioOp {
+  const face = opts?.face;
+  if ((kind === "curved" || kind === "arc" || kind === "text") && face && face !== "composite") {
+    return addDecoStamp(state, kind === "arc" ? "arc" : kind === "curved" ? "curved" : "text", opts);
+  }
   const packed = withBlob(state);
-  if (!packed) return fail(state, "Switch family to Composite to drop this block.");
+  if (!packed) {
+    if (kind === "curved" || kind === "arc" || kind === "text") {
+      return addDecoStamp(state, kind === "arc" ? "arc" : kind === "curved" ? "curved" : "text", opts);
+    }
+    return fail(state, "Switch family to Composite to drop this block.");
+  }
   const { next, blob } = packed;
   bumpZ(blob);
   const zTop = Math.max(0, ...(blob.zones || []).map((z) => z.z || 0), ...(blob.parts || []).map((p) => p.z || 0));
@@ -633,6 +702,38 @@ export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
       fill: "#000000",
       rot: 0,
     };
+  } else if (kind === "arc") {
+    zone = {
+      id: genId("z"),
+      kind: "arc",
+      x: 50,
+      y: 38,
+      w: 58,
+      h: 34,
+      label: "Arc line",
+      z: zTop + 1,
+      color: "#ff5d7a",
+      color2: "#ffd23f",
+      fillMode: "gradient",
+      sweep: opts?.sweep ?? ARC_SWEEP_HALF,
+      strokeWidth: 6,
+      rot: 0,
+    };
+  } else if (kind === "curved") {
+    zone = {
+      id: genId("z"),
+      kind: "text",
+      x: 50,
+      y: 48,
+      w: 54,
+      h: 22,
+      label: "Curved text",
+      text: "TEXT",
+      curve: 55,
+      z: zTop + 1,
+      color: ink,
+      rot: 0,
+    };
   } else {
     zone = {
       id: genId("z"),
@@ -651,6 +752,8 @@ export function addZone(state: LabelState, kind: ZoneKind): StudioOp {
   blob.zones = [...(blob.zones || []), zone];
   const labels: Record<ZoneKind, string> = {
     text: "Text added — drag it on the canvas.",
+    curved: "Curved text added — drag Curvature in Layers.",
+    arc: "Arc line added — set ⅓ / ½ or drag the sweep.",
     logo: "Logo disc added.",
     exp: "Expiry box added.",
     image: "Photo layer added — pick a file in Uploads.",
@@ -708,8 +811,8 @@ export function applyCharacterArt(state: LabelState, artKey: string, partId?: st
   return { state: next, selectIds: [part.id], message: `Applied ${key}.`, ok: true };
 }
 
-/** Drop trimmed pack PNG as a named image zone (`artref:` only). Not a circle plate. */
-export function dropPackArt(state: LabelState, artKey: string): StudioOp {
+/** Drop trimmed pack PNG as a named image zone (`artref:`). Border is square or circle. */
+export function dropPackArt(state: LabelState, artKey: string, opts?: { borderShape?: "circle" | "square" }): StudioOp {
   const key = String(artKey || "")
     .trim()
     .replace(/^bb-/, "")
@@ -734,6 +837,7 @@ export function dropPackArt(state: LabelState, artKey: string): StudioOp {
     z: zTop + 1,
     src: `artref:${key}`,
     shape: "pack",
+    borderShape: opts?.borderShape === "circle" ? "circle" : "square",
     borderWidth: 0,
     rot: 0,
   };

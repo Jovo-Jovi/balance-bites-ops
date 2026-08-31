@@ -104,7 +104,7 @@ export function FaceInspector({ face }: { face: PreviewFace }) {
         {shown === "size" ? <SizePanel face={face} /> : null}
         {shown === "color" ? (
           <div className="grid gap-4">
-            <p className="text-sm text-[var(--bb-muted)]">Flavor packs are in Libraries → Brand.</p>
+            <p className="text-sm text-[var(--bb-muted)]">Flavor packs are in Libraries → Brand. Selected shape / type / arc: Solid, Half, or Gradient (two colors).</p>
             <ColorFields face={face} />
           </div>
         ) : null}

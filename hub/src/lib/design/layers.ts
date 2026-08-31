@@ -1,5 +1,6 @@
 import { findBlock, parseBlockLayerId, sectionOrder } from "./blocks";
 import { BG_MORE, BG_SLOTS, compositeShowsProductPhoto, usableImage } from "./art";
+import { plateFillOf } from "./fills";
 import { layersInLayerGroup, partFillPath, recomputeUnion } from "./boolean-cut";
 import { getIcon } from "./icons";
 import { FAM, familyBoxes, familyBoxById, familyTextField, flag, moveFamilyItem, previewFace, resizeFamilyItem, rotateFamilyItem, s, wrapLayerBorderKeys, compositeAspect } from "./layout";
@@ -14,7 +15,8 @@ import {
   syncZonePhysicalAspect,
 } from "./part-types";
 import { studioPackArtLabel } from "./art-presets";
-import { stampOnFace } from "./studio-library";
+import { stampOnFace, zoneBorderShape, zoneCanPickBorderShape } from "./studio-library";
+import { fitLetterWordSize, wordChars } from "./letter-word";
 import { bgPanKeys, isCutBlack, productPhotoBox, scalePathAbout, translatePathD } from "./preview";
 import { isAssetRef } from "./templates";
 import type { CompositeBlob, CompositePart, CompositeZone, LabelState, LabelTemplate } from "./types";
@@ -42,6 +44,10 @@ export type DesignLayer = {
   lock?: boolean;
   removable: boolean;
   letterStyle?: string;
+  color2?: string;
+  fillMode?: string;
+  curve?: number;
+  sweep?: number;
 };
 
 export type CanvasItem = {
@@ -67,6 +73,8 @@ function zoneLabel(kind: string, label: string, iconId?: string) {
   if (kind === "icon") return getIcon(iconId)?.label || "Icon";
   if (kind === "logo") return "Logo";
   if (kind === "text") return "Text";
+  if (kind === "letters") return label || "Word";
+  if (kind === "arc") return "Arc line";
   if (kind === "image") return "Photo";
   return kind || "Layer";
 }
@@ -87,9 +95,13 @@ export function canvasEditText(template: LabelTemplate, id: string): { value: st
   const fam = familyTextField(id);
   if (fam) return { value: s(template.state, fam.field), multiline: fam.multiline };
   const zone = template.state._composite?.zones?.find((z) => z.id === id);
-  if (zone && (zone.kind === "text" || zone.kind === "logo")) {
+  if (zone && (zone.kind === "text" || zone.kind === "logo" || zone.kind === "letters")) {
     const fromField = zone.field ? s(template.state, zone.field) : "";
     return { value: String(zone.text ?? fromField), multiline: zone.kind === "text" };
+  }
+  const stamp = template.state._stamps?.find((st) => st.id === id);
+  if (stamp && (stamp.kind === "text" || stamp.kind === "letters" || stamp.text)) {
+    return { value: String(stamp.text || ""), multiline: stamp.kind === "text" };
   }
   return null;
 }
@@ -131,6 +143,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         label: partLayerLabel(part),
         z: part.z || 0,
         color: part.color,
+        color2: part.color2,
+        fillMode: part.fillMode,
         lock: Boolean(part.lock),
         removable: partCount > 1 && !part.lock,
       });
@@ -142,6 +156,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         label: zoneLabel(zone.kind, zone.label || "", zone.iconId),
         z: zone.z || 0,
         color: zone.color,
+        color2: zone.color2,
+        fillMode: zone.fillMode,
         textColor: zone.textColor,
         iconId: zone.iconId,
         text: zone.text,
@@ -149,6 +165,8 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
         lock: zone.lock,
         removable: !zone.lock,
         letterStyle: zone.letterStyle,
+        curve: zone.curve,
+        sweep: zone.sweep,
       });
     }
   }
@@ -157,12 +175,16 @@ export function listLayers(template: LabelTemplate): DesignLayer[] {
     layers.push({
       id: stamp.id,
       kind: "stamp",
-      label: stamp.label || getIcon(stamp.iconId)?.label || (stamp.src ? "Character" : stamp.iconId),
+      label: stamp.kind === "letters" ? stamp.label || stamp.text || "Word" : stamp.label || getIcon(stamp.iconId)?.label || (stamp.src ? "Character" : stamp.iconId),
       z: stamp.z || 0,
       color: stamp.color,
+      color2: stamp.color2,
+      fillMode: stamp.fillMode,
       iconId: stamp.iconId,
       removable: true,
       letterStyle: stamp.letterStyle,
+      curve: stamp.curve,
+      sweep: stamp.sweep,
     });
   }
   if (face === "composite") {
@@ -308,10 +330,19 @@ export function listCanvasItems(template: LabelTemplate): CanvasItem[] {
 
 export type LayerPatch = {
   color?: string;
+  color2?: string;
+  fillMode?: string;
+  /** Box / pack plate. `"none"` turns it off. */
+  fill?: string;
   text?: string;
   borderWidth?: number;
   borderColor?: string;
   size?: number;
+  curve?: number;
+  sweep?: number;
+  letterPack?: "solid" | "rainbow";
+  letterSpace?: number;
+  borderShape?: "circle" | "square";
 };
 
 export type LayerSize = {
@@ -593,6 +624,8 @@ export type LayerBorder = {
   color: string;
   max: number;
   showColor: boolean;
+  frame?: "circle" | "square";
+  framePick?: boolean;
 };
 
 function storedPartBorder(part: CompositePart) {
@@ -601,6 +634,100 @@ function storedPartBorder(part: CompositePart) {
     if (Number.isFinite(n) && n >= 0) return n;
   }
   return part.type === "silhouette" ? 0 : 1.2;
+}
+
+export type LayerDeco = {
+  fill: boolean;
+  curve: boolean;
+  sweep: boolean;
+  letters: boolean;
+  color?: string;
+  color2?: string;
+  fillMode?: string;
+  letterPack?: "solid" | "rainbow";
+  letterSpace?: number;
+  curveValue: number;
+  sweepValue: number;
+};
+
+export function layerDeco(state: LabelState, id: string): LayerDeco | null {
+  const part = state._composite?.parts?.find((p) => p.id === id);
+  if (part) {
+    return {
+      fill: true,
+      curve: false,
+      sweep: false,
+      letters: false,
+      color: part.color,
+      color2: part.color2,
+      fillMode: part.fillMode,
+      curveValue: 0,
+      sweepValue: 180,
+    };
+  }
+  const zone = state._composite?.zones?.find((z) => z.id === id);
+  if (zone) {
+    return {
+      fill: zone.kind !== "image",
+      curve: zone.kind === "text" || zone.kind === "letters",
+      sweep: zone.kind === "arc",
+      letters: zone.kind === "letters",
+      color: zone.color,
+      color2: zone.color2,
+      fillMode: zone.fillMode,
+      letterPack: zone.kind === "letters" ? zone.letterPack || "rainbow" : undefined,
+      letterSpace: zone.kind === "letters" ? Number(zone.letterSpace) || 0 : undefined,
+      curveValue: Number(zone.curve) || 0,
+      sweepValue: Number(zone.sweep) || 180,
+    };
+  }
+  const stamp = state._stamps?.find((st) => st.id === id);
+  if (stamp && !stamp.src) {
+    return {
+      fill: true,
+      curve: stamp.kind === "text" || stamp.kind === "letters" || Boolean(stamp.text && !stamp.iconId),
+      sweep: stamp.kind === "arc",
+      letters: stamp.kind === "letters",
+      color: stamp.color,
+      color2: stamp.color2,
+      fillMode: stamp.fillMode,
+      letterPack: stamp.kind === "letters" ? stamp.letterPack || "rainbow" : undefined,
+      letterSpace: stamp.kind === "letters" ? Number(stamp.letterSpace) || 0 : undefined,
+      curveValue: Number(stamp.curve) || 0,
+      sweepValue: Number(stamp.sweep) || 180,
+    };
+  }
+  return null;
+}
+
+export type LayerPlate = {
+  color: string;
+  on: boolean;
+  label: string;
+};
+
+function stampTakesPlate(stamp: { kind?: string; text?: string; iconId?: string; src?: string }) {
+  if (stamp.src) return false;
+  return stamp.kind === "text" || stamp.kind === "letters" || Boolean(stamp.text && !stamp.iconId);
+}
+
+/** Box plate behind pack art / photos and text (not letter ink, not logo disc). */
+export function layerPlate(state: LabelState, id: string): LayerPlate | null {
+  const zone = state._composite?.zones?.find((z) => z.id === id);
+  if (zone && (zone.kind === "image" || zone.kind === "text" || zone.kind === "letters")) {
+    const stored = plateFillOf(zone.fill);
+    return {
+      on: Boolean(stored),
+      color: stored || "#ffffff",
+      label: zone.kind === "image" ? "Fill" : "Box fill",
+    };
+  }
+  const stamp = state._stamps?.find((st) => st.id === id);
+  if (stamp && stampTakesPlate(stamp)) {
+    const stored = plateFillOf(stamp.fill);
+    return { on: Boolean(stored), color: stored || "#ffffff", label: "Box fill" };
+  }
+  return null;
 }
 
 export function layerBorder(template: LabelTemplate, id: string): LayerBorder | null {
@@ -648,16 +775,27 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
     if (zone.kind === "icon") {
       return { width: zone.strokeWidth ?? 2, color: zone.color || "#c9a84c", max: 8, showColor: false };
     }
+    if (zone.kind === "arc") {
+      return { width: Number(zone.strokeWidth) || 6, color: zone.color || "#ff5d7a", max: 16, showColor: false };
+    }
     const bw = Number(zone.borderWidth ?? zone.strokeWidth);
     return {
       width: Number.isFinite(bw) ? bw : 0,
       color: zone.borderColor || "#1a1a1a",
       max: 8,
       showColor: true,
+      frame: zone.kind === "image" ? zoneBorderShape(zone) : undefined,
+      framePick: zoneCanPickBorderShape(zone),
     };
   }
   const stamp = state._stamps?.find((st) => st.id === id);
   if (stamp) {
+    if (stamp.kind === "arc") {
+      return { width: Number(stamp.strokeWidth) || 6, color: stamp.color || "#ff5d7a", max: 16, showColor: false };
+    }
+    if (stamp.kind === "text") {
+      return { width: 0, color: stamp.color || "#ffffff", max: 8, showColor: false };
+    }
     const png = Boolean(stamp.src);
     return {
       width: stamp.strokeWidth ?? (png ? 0 : 2),
@@ -667,6 +805,28 @@ export function layerBorder(template: LabelTemplate, id: string): LayerBorder | 
     };
   }
   return null;
+}
+
+function applyLetterWordPatch<T extends { kind?: string; text?: string; label?: string; w: number; h: number; curve?: number; letterPack?: "solid" | "rainbow"; letterSpace?: number }>(
+  item: T,
+  patch: LayerPatch,
+): T {
+  const next: T = {
+    ...item,
+    letterPack: patch.letterPack ?? item.letterPack,
+    letterSpace: patch.letterSpace ?? item.letterSpace,
+  };
+  if (item.kind !== "letters") return next;
+  if (patch.text == null && patch.letterSpace == null) return next;
+  const word = patch.text != null ? wordChars(patch.text).join("") : String(item.text || "");
+  const box = fitLetterWordSize(item.w, item.h, word, patch.curve ?? item.curve ?? 0, patch.letterSpace ?? item.letterSpace ?? 0);
+  return {
+    ...next,
+    text: patch.text != null ? word : item.text,
+    label: patch.text != null ? word || "Word" : item.label,
+    w: box.w,
+    h: box.h,
+  };
 }
 
 export function patchLayer(state: LabelState, id: string, patch: LayerPatch): LabelState {
@@ -698,12 +858,22 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
       ...next,
       _stamps: next._stamps.map((st) =>
         st.id === id
-          ? {
-              ...st,
-              color: patch.color ?? st.color,
-              borderColor: patch.borderColor ?? st.borderColor,
-              strokeWidth: patch.borderWidth ?? st.strokeWidth,
-            }
+          ? applyLetterWordPatch(
+              {
+                ...st,
+                color: patch.color ?? st.color,
+                color2: patch.color2 ?? st.color2,
+                fillMode: patch.fillMode != null ? (patch.fillMode as typeof st.fillMode) : st.fillMode,
+                text: patch.text ?? st.text,
+                curve: patch.curve ?? st.curve,
+                sweep: patch.sweep ?? st.sweep,
+                letterSpace: patch.letterSpace ?? st.letterSpace,
+                borderColor: patch.borderColor ?? st.borderColor,
+                strokeWidth: patch.borderWidth ?? st.strokeWidth,
+                fill: patch.fill !== undefined ? patch.fill : st.fill,
+              },
+              patch,
+            )
           : st,
       ),
     };
@@ -711,21 +881,41 @@ export function patchLayer(state: LabelState, id: string, patch: LayerPatch): La
   if (next._composite) {
     const zones = (next._composite.zones || []).map((z) => {
       if (z.id !== id) return z;
-      return {
-        ...z,
-        color: patch.color ?? z.color,
-        text: patch.text ?? z.text,
-        strokeWidth: z.kind === "icon" || z.kind === "logo" ? (patch.borderWidth ?? z.strokeWidth) : z.strokeWidth,
-        borderWidth: z.kind === "icon" ? z.borderWidth : (patch.borderWidth ?? z.borderWidth),
-        borderColor: patch.borderColor ?? z.borderColor,
-      };
+      return applyLetterWordPatch(
+        {
+          ...z,
+          color: patch.color ?? z.color,
+          color2: patch.color2 ?? z.color2,
+          fillMode: patch.fillMode != null ? (patch.fillMode as typeof z.fillMode) : z.fillMode,
+          text: patch.text ?? z.text,
+          curve: patch.curve ?? z.curve,
+          sweep: patch.sweep ?? z.sweep,
+          letterSpace: patch.letterSpace ?? z.letterSpace,
+          strokeWidth:
+            z.kind === "icon" || z.kind === "logo" || z.kind === "arc"
+              ? (patch.borderWidth ?? z.strokeWidth)
+              : z.strokeWidth,
+          borderWidth: z.kind === "icon" || z.kind === "arc" ? z.borderWidth : (patch.borderWidth ?? z.borderWidth),
+          borderColor: patch.borderColor ?? z.borderColor,
+          borderShape: patch.borderShape ?? z.borderShape,
+          fill: patch.fill !== undefined ? patch.fill : z.fill,
+        },
+        patch,
+      );
     });
     const parts = (next._composite.parts || []).map((p) => {
       if (p.id !== id) return p;
       let borderColor = patch.borderColor ?? p.borderColor;
       const borderWidth = patch.borderWidth ?? p.borderWidth;
-      if (patch.color) {
-        return { ...p, color: patch.color, borderColor, borderWidth };
+      if (patch.color || patch.color2 || patch.fillMode) {
+        return {
+          ...p,
+          color: patch.color ?? p.color,
+          color2: patch.color2 ?? p.color2,
+          fillMode: patch.fillMode != null ? (patch.fillMode as typeof p.fillMode) : p.fillMode,
+          borderColor,
+          borderWidth,
+        };
       }
       if (
         p.type === "silhouette" &&
@@ -941,11 +1131,11 @@ export function stickerCopyFields(template: LabelTemplate) {
   const comp = state._composite;
   if (face === "composite" && comp?.zones?.length) {
     return (comp.zones || [])
-      .filter((z) => z.kind === "text" || z.kind === "logo")
+      .filter((z) => z.kind === "text" || z.kind === "logo" || z.kind === "letters")
       .sort((a, b) => (a.z || 0) - (b.z || 0))
       .map((z) => ({
         id: z.id,
-        label: z.label || (z.kind === "logo" ? "Logo" : "Text"),
+        label: z.label || (z.kind === "logo" ? "Logo" : z.kind === "letters" ? "Word" : "Text"),
         text: String(z.text || ""),
         color: z.color || "#ffffff",
         field: z.field || "",
