@@ -1,6 +1,7 @@
 import { usableImage } from "./art";
 import { getDesignSpec } from "./specs";
 import { stampOnFace } from "./studio-library";
+import { stampArtMarkup } from "./stamp-art";
 import {
   PPC,
   artboardOf,
@@ -18,7 +19,6 @@ import {
   topStackLayout,
 } from "./layout";
 import { fillOf, inkOf, logoDiscFace, mutOf, sectionBox, sectionHtml } from "./section-html";
-import { getIcon, iconInner } from "./icons";
 import type { LabelState, LabelTemplate } from "./types";
 
 function esc(v: string) {
@@ -155,7 +155,7 @@ export function familyDieView(template: LabelTemplate, state: LabelState): Famil
 }
 
 const PRINT_STYLE = `<style type="text/css"><![CDATA[
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;700&family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&family=Bubblegum+Sans&family=Sniglet:wght@400;800&family=Bitter:ital,wght@0,400;0,700&family=Cairo:wght@700;800;900&family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap");
 *{color-interpolation:sRGB;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;forced-color-adjust:none!important;}
 foreignObject,div,span,img,svg,circle,rect,text{color-adjust:exact!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
 ]]></style>`;
@@ -168,7 +168,7 @@ function svgDoc(
   const physical = Boolean(opts?.wCm && opts?.hCm);
   const size = physical ? `width="${opts!.wCm}cm" height="${opts!.hCm}cm"` : `width="100%" height="100%"`;
   const par = physical ? "none" : "xMidYMid meet";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${opts?.printCss ? PRINT_STYLE : ""}${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${viewBox}" preserveAspectRatio="${par}" ${size} overflow="visible" color-interpolation="sRGB" role="img">${opts?.printCss ? PRINT_STYLE : ""}${inner}</svg>`;
 }
 
 function cutStroke(state: LabelState) {
@@ -212,29 +212,21 @@ function htmlShapeStyle(kind: string, radiusPx = 0) {
 function stampLayer(state: LabelState, minX: number, minY: number, vbW: number, vbH: number, face: PreviewFace) {
   const stamps = (state._stamps || []).filter((st) => stampOnFace(st, face));
   if (!stamps.length || !(vbW > 0) || !(vbH > 0)) return "";
+  const family = s(state, "fntBody", "Montserrat, Tajawal, sans-serif") || "Montserrat, Tajawal, sans-serif";
   return stamps
     .map((st) => {
       const cx = minX + (st.x / 100) * vbW;
       const cy = minY + (st.y / 100) * vbH;
-      const side = Math.max(4, Math.min((st.w / 100) * vbW, (st.h / 100) * vbH));
-      const href = usableImage(st.src);
-      let body = "";
-      if (href) {
-        const left = cx - side / 2;
-        const top = cy - side / 2;
-        const bw = Number(st.strokeWidth);
-        const ring =
-          Number.isFinite(bw) && bw > 0
-            ? `<circle cx="${cx}" cy="${cy}" r="${side / 2}" fill="none" stroke="${esc(st.borderColor || st.color || "#ffffff")}" stroke-width="${bw}" />`
-            : "";
-        body = `<image href="${esc(href)}" x="${left}" y="${top}" width="${side}" height="${side}" preserveAspectRatio="xMidYMid meet" />${ring}`;
-      } else {
-        const inner = iconInner(st.iconId, st.color || "#c9a84c", st.strokeWidth ?? 2, st.letterStyle);
-        if (!inner) return "";
-        const vb = getIcon(st.iconId)?.viewBox || "0 0 24 24";
-        body = `<svg x="${cx - side / 2}" y="${cy - side / 2}" width="${side}" height="${side}" viewBox="${esc(vb)}" preserveAspectRatio="xMidYMid meet" overflow="visible">${inner}</svg>`;
-      }
-      return st.rot ? `<g transform="rotate(${st.rot} ${cx} ${cy})">${body}</g>` : body;
+      const w = Math.max(4, (st.w / 100) * vbW);
+      const h = Math.max(4, (st.h / 100) * vbH);
+      const scaled =
+        st.kind === "arc"
+          ? {
+              ...st,
+              strokeWidth: (Number(st.strokeWidth) || 6) * (Math.min(w, h) / Math.max(1, Math.min(st.w, st.h))),
+            }
+          : st;
+      return stampArtMarkup(scaled, st.color || "#c9a84c", { x: cx, y: cy, w, h }, family);
     })
     .join("");
 }

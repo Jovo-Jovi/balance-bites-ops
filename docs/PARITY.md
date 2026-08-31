@@ -90,7 +90,10 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Composite extra photos as image zones (live `addProductPhotos`); pick from R2 or the device
 - [x] Images → Storage picker: linen tile grid with R2 previews (PNG/JPEG and stored `.txt` data URLs)
 - [x] Flavor pack **Loaded** chip for the colors already on the open template
-- [x] Icon library in Studio (repo catalog + live A–Z letter fonts; wrap / taper / circle / lid / composite)
+- [x] Icon library in Studio (repo catalog + live A–Z and أ–ي letter fonts; wrap / taper / circle / lid / composite)
+- [x] Studio Icons: letter word as one lined or curved group (letter-space slider; Arabic joins as one shaped run; Fatty/Bubble/… fonts)
+- [x] Studio Blocks: curved text (curvature slider) + thick gradient arc lines (⅓ / ½ / editable sweep)
+- [x] Layer color: Solid / Half / two-color Gradient on shapes, type, icons, and arcs
 - [x] `artref:` / `assets/presets/` character art (popcorn, chicopon, …) from repo SVGs; Studio and print use the same `/design-presets/*.svg` files. Photo fill + path stroke like live (not clip-to-path). Preset files letterbox a square viewBox in a tall canvas — hub slices that into the part so Print cut hugs the kernels
 - [x] Studio select + drag of parts, zones, stamps, and uploaded images
 - [x] Studio rotate handle + Layers rotate slider (`rot` on composite; family offsets keep live `sC*` / `sT*` / section keys)
@@ -112,7 +115,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 - [x] Composite Studio Wave A: add shape (`PART_TYPES`), shift multi-select, merge / group / ungroup / trim (group clip), preview cut / approve / cut = selected, undo — native raster union from live `BBComposite`
 - [x] PNG cut pack (Wave B) — exact cm + transparent outside die-cut; one label, not a zip; Cut / Exact / Bleed PNG
 - [x] Family print / SVG / PNG match Studio hit-boxes (top lid, circle, wrap). Delete template removes the R2 art folder
-- [x] Studio libraries rail (Wave C) — Shapes / Pack art / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*` with Remove; composite `addZone` removable; Characters = DiceBear people library (not product stickers). Pack art is Kids / Adults (trimmed RGBA), named in Layers
+- [x] Studio libraries rail (Wave C) — Shapes / Pack art / Blocks / Icons / Uploads / Brand / Characters inside Studio; Images / Icons inspector tabs folded in; wrap recipe `chkS*` with Remove; composite `addZone` removable; Characters = DiceBear people library (not product stickers). Pack art is Kids / Adults (trimmed RGBA), named in Layers; Circle or Square frame; Fill plate behind pack PNG or any text box
 - [x] Layers list drag-reorder (⋮⋮) plus Up / Down; wrap columns via `eSecOrd`, composite via z
 - [x] User-named sections + blank-from-scratch (Wave D) — new template die-only unless starter recipes; wrap `_blocks` + `eSecOrd`; legacy `chkS*` / Custom column still open
 - [ ] Dumping `assets/presets/` / Jelly Kids catalogs into Firestore (product art stays `artref:` on saved templates; Characters rail does not list them)

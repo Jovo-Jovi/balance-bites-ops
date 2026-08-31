@@ -505,6 +505,18 @@ Carry-forward: when the bug *is* the vulnerability, the gate is a manual threat 
 
 ---
 
+## 2026-08-30 — Studio Blocks: curve, Arabic letters, arcs, two-color fill
+
+Studio **Blocks** drop **Curved text** (Layers / Color **Curvature** −100…100) and **Arc line** (⅓ / ½ presets + sweep slider, thick gradient stroke) on wrap, circle, lid, and Composite. Icons gain **أ–ي** (28 hijāʾī letters) next to A–Z, same Fatty/Bubble/Jelly/Candy/Curvy/Block chips with Cairo / Baloo Bhaijaan 2. Selected shape / type / icon / arc color is **Solid**, **Half**, or **Gradient** (two picks) in Layers and Color. No new `bb_*` key; stored on the template zone/part/stamp. Not a Canva clone.
+
+**Letter word group.** Icons rail: type a word (up to 16 characters), **Lined** or **Curved**, **Rainbow** or one color, Add. Drops one `kind: "letters"` zone/stamp — the same letter-icon glyphs, moved and resized together. **Letter space** (−80…80) tightens English tiles. Arabic words paint as one Cairo/Baloo run so letters **join**, with per-letter color via tspans. Layers / Copy edit the word, curvature, space, and pack. Not N icons grouped after the fact (wrap stamps have no `layerGroup`).
+
+**Pack art frame.** Circle or Square on the Pack art rail and in Layers. Circle clips the PNG and draws a round ring; square keeps the rectangular ring. Stored as `borderShape` on the zone. No new `bb_*` key.
+
+**Box fill.** Selected pack art / photo and any text box (Composite text, curved text, letter word, wrap/lid/circle text stamp) can take a **Fill** / **Box fill** plate in Layers and Color. None turns it off. The plate is `fill` on the zone or stamp — not letter ink (`color` / FillControls). Circle pack art gets a round plate; square pack art a rectangle. Print PNG paints the same plate under the overlay. No new `bb_*` key.
+
+---
+
 ## 2026-08-31 — Weekly church status (`feat/church-status`)
 
 Fourth hub card **الحالة الأسبوعية** (`/status`). Native LTR sheet that prints and downloads the BalanceBytes weekly church distribution report with the same sections, column order, header green `#0B4F3B`, and RAG row fills as the Excel template. KPIs and church rows come from invoices, returns, the customer ledger, and the pending queue. Staff notes, RAG overrides, and risks save to `bb_church_status` only — no Church A–D seed, no invoice writes. Map: [STATUS.md](STATUS.md). **Rules:** `bb_church_status` added to `isKnownKey` (additive). Publish Firestore rules before the first Save on a preview that uses production Firebase.

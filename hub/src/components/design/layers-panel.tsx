@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { ActionBtn, Field } from "@/components/invoices/ui";
-import { familySectionKey, layerBorder, layerSize, listCanvasItems, listLayers } from "@/lib/design/layers";
+import { familySectionKey, layerBorder, layerDeco, layerPlate, layerSize, listCanvasItems, listLayers } from "@/lib/design/layers";
+import { cssFill } from "@/lib/design/fills";
 import { iconSvg } from "@/lib/design/icons";
 import { CUT_STROKE_COLOR, CUT_STROKE_MM } from "@/lib/design/preview";
 import { useDesignApp } from "./design-context";
+import { LayerFillControls, PlateFillControls } from "./fill-controls";
 
 export function LayersPanel() {
   const app = useDesignApp();
@@ -36,6 +38,8 @@ export function LayersPanel() {
           const stackIds = sec ? secIds : zIds;
           const stackAt = stackIds.indexOf(sec || layer.id);
           const inStack = stackAt >= 0;
+          const deco = layerDeco(t.state, layer.id);
+          const plate = !cut ? layerPlate(t.state, layer.id) : null;
           const border = selected && !cut ? layerBorder(t, layer.id) : null;
           const size = cut ? null : layerSize(t, layer.id);
           const dragging = dragId === layer.id;
@@ -99,13 +103,23 @@ export function LayersPanel() {
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded border border-[var(--bb-line)] bg-[var(--bb-panel)]"
                       dangerouslySetInnerHTML={{
-                        __html: iconSvg(layer.iconId, layer.color || "#c9a84c", 2, layer.letterStyle),
+                        __html: iconSvg(layer.iconId, layer.color || "#c9a84c", 2, layer.letterStyle, {
+                          color2: layer.color2,
+                          fillMode: layer.fillMode,
+                          paintId: layer.id,
+                        }),
                       }}
                     />
                   ) : (
                     <span
                       className="h-8 w-8 rounded border border-[var(--bb-line)]"
-                      style={{ background: layer.color || "var(--bb-panel)" }}
+                      style={{
+                        background: deco?.fill
+                          ? cssFill(deco.color, deco.color2, deco.fillMode, layer.color)
+                          : plate?.on
+                            ? plate.color
+                            : layer.color || "var(--bb-panel)",
+                      }}
                     />
                   )}
                   <span
@@ -115,7 +129,7 @@ export function LayersPanel() {
                     {layer.label}
                   </span>
                 </button>
-                {layer.color && !cut ? (
+                {layer.color && !cut && !deco?.fill ? (
                   <label className="flex items-center gap-1 text-xs text-[var(--bb-muted)]">
                     Color
                     <input
@@ -145,6 +159,12 @@ export function LayersPanel() {
                   ) : null}
                 </div>
               </div>
+              {deco?.fill && selected && !cut ? (
+                <LayerFillControls deco={deco} onPatch={(patch) => app.patchLayer(layer.id, patch)} />
+              ) : null}
+              {selected && plate ? (
+                <PlateFillControls plate={plate} onPatch={(patch) => app.patchLayer(layer.id, patch)} />
+              ) : null}
               {size ? (
                 <Field label={`Size ${sizeLabel(size)}`}>
                   <input
@@ -176,8 +196,35 @@ export function LayersPanel() {
                 </Field>
               ) : null}
               {border ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Field label={`Border ${border.width}`}>
+                <div className="grid gap-2">
+                  {border.framePick ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        className={`rounded-[var(--bb-radius)] border px-2.5 py-1.5 text-[11px] tracking-wide uppercase min-h-11 ${
+                          border.frame === "circle"
+                            ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                            : "border-[var(--bb-line)] text-[var(--bb-text)]"
+                        }`}
+                        onClick={() => app.patchLayer(layer.id, { borderShape: "circle" })}
+                      >
+                        Circle
+                      </button>
+                      <button
+                        type="button"
+                        className={`rounded-[var(--bb-radius)] border px-2.5 py-1.5 text-[11px] tracking-wide uppercase min-h-11 ${
+                          border.frame === "square"
+                            ? "border-[var(--bb-title)] bg-[var(--bb-title)] text-[var(--bb-panel)]"
+                            : "border-[var(--bb-line)] text-[var(--bb-text)]"
+                        }`}
+                        onClick={() => app.patchLayer(layer.id, { borderShape: "square" })}
+                      >
+                        Square
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                  <Field label={`${deco?.sweep ? "Thickness" : "Border"} ${border.width}`}>
                     <input
                       type="range"
                       min={0}
@@ -189,7 +236,7 @@ export function LayersPanel() {
                     />
                   </Field>
                   {border.showColor ? (
-                    <label className="flex items-center gap-2 text-xs text-[var(--bb-muted)]">
+                    <label className="flex min-h-11 items-center gap-2 text-xs text-[var(--bb-muted)]">
                       Border
                       <input
                         type="color"
@@ -200,6 +247,7 @@ export function LayersPanel() {
                       />
                     </label>
                   ) : null}
+                  </div>
                 </div>
               ) : null}
               {cut && selected ? (
