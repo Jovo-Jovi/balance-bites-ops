@@ -1,4 +1,4 @@
-export type AppId = "invoices" | "design" | "finance";
+export type AppId = "invoices" | "design" | "finance" | "status";
 
 export type WorkspaceAction = {
   label: string;
@@ -266,6 +266,34 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
           { label: "نسخة احتياطية" },
         ],
         features: ["bb_operation_costs", "bb_backups على Cloudflare R2"],
+      },
+    ],
+  },
+  {
+    id: "status",
+    href: "/status",
+    title: "الحالة الأسبوعية",
+    en: "Weekly status",
+    subtitle: "كنائس · توزيع · تحصيل",
+    dir: "ltr",
+    lang: "en",
+    signOutLabel: "Sign out",
+    tools: [
+      {
+        id: "report",
+        label: "Report",
+        en: "Church status",
+        summary:
+          "Weekly church distribution status in the BalanceBytes executive layout. KPIs from invoices; notes and RAG overrides save to bb_church_status.",
+        actions: [
+          { label: "Save" },
+          { label: "Print" },
+          { label: "Download Excel" },
+        ],
+        features: [
+          "Same sheet as BalanceBytes_Weekly_Church_Status_Report.xlsx",
+          "Does not write invoices, customers, or stock",
+        ],
       },
     ],
   },

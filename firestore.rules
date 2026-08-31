@@ -79,7 +79,8 @@ service cloud.firestore {
         'bb_inv_print_page_size',
         'bb_inv_print_margins',
         'bb_print_fit_one',
-        'bb_ret_last_customer'
+        'bb_ret_last_customer',
+        'bb_church_status'
       ];
     }
 

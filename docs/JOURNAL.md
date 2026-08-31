@@ -14,6 +14,7 @@ Related maps:
 | [INVOICES.md](INVOICES.md) | Invoice app file map, keys, UX decisions |
 | [DESIGN.md](DESIGN.md) | Design app file map, filtered tools, gaps |
 | [FINANCE.md](FINANCE.md) | Finance app file map, eight tools, writers |
+| [STATUS.md](STATUS.md) | Weekly church status sheet, `bb_church_status` |
 | [FINANCE-WAVES.md](FINANCE-WAVES.md) | Finance waves A–E |
 | [PARITY.md](PARITY.md) | Tick-list vs live HTML |
 | [DATA.md](DATA.md) | Who writes which `bb_*` key |
@@ -501,6 +502,12 @@ Remediation bugs, then fixed: **R-1** (`dcad8a6`) persist discarded the caller C
 **O2** — Pack art rail: 33 PNGs / 12.1 MB, no `loading="lazy"` (`studio-rail.tsx`). `art-panel` already lazy-loads. Not urgent: lazy attribute plus 160 px thumbs; full PNG only after drop.
 
 Carry-forward: when the bug *is* the vulnerability, the gate is a manual threat test, not `tsc`. Rules vs client: standing procedure at the top of this file.
+
+---
+
+## 2026-08-31 — Weekly church status (`feat/church-status`)
+
+Fourth hub card **الحالة الأسبوعية** (`/status`). Native LTR sheet that prints and downloads the BalanceBytes weekly church distribution report with the same sections, column order, header green `#0B4F3B`, and RAG row fills as the Excel template. KPIs and church rows come from invoices, returns, the customer ledger, and the pending queue. Staff notes, RAG overrides, and risks save to `bb_church_status` only — no Church A–D seed, no invoice writes. Map: [STATUS.md](STATUS.md). **Rules:** `bb_church_status` added to `isKnownKey` (additive). Publish Firestore rules before the first Save on a preview that uses production Firebase.
 
 ---
 

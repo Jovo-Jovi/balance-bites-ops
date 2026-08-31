@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     template: "%s · Balance Bites Ops",
   },
   description:
-    "Invoices, label design, and finance & inventory — one hub for Balance Bites.",
+    "Invoices, label design, finance, and weekly church status — one hub for Balance Bites.",
   applicationName: "Balance Bites Ops",
   appleWebApp: {
     title: "Balance Bites Ops",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Balance Bites Ops",
     description:
-      "Invoices, label design, and finance & inventory — one hub for Balance Bites.",
+      "Invoices, label design, finance, and weekly church status — one hub for Balance Bites.",
     url: "/",
     siteName: "Balance Bites Ops",
     locale: "ar_EG",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Balance Bites Ops",
     description:
-      "Invoices, label design, and finance & inventory — one hub for Balance Bites.",
+      "Invoices, label design, finance, and weekly church status — one hub for Balance Bites.",
   },
 };
 

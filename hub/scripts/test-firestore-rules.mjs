@@ -137,11 +137,17 @@ async function main() {
         setDoc(keyRef(staffDb(), "bb_not_a_real_key"), payload(STAFF_UID, { prevWriteId: "" })),
       );
     });
+
+    await run("staff create bb_church_status with prevWriteId: '' → allowed", async () => {
+      await assertSucceeds(
+        setDoc(keyRef(staffDb(), "bb_church_status"), payload(STAFF_UID, { prevWriteId: "" })),
+      );
+    });
   } finally {
     await testEnv.cleanup();
   }
 
-  console.log("\n7 rules tests passed");
+  console.log("\n8 rules tests passed");
 }
 
 main().catch((err) => {

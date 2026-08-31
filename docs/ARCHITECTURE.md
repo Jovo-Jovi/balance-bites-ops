@@ -1,14 +1,14 @@
 # Architecture
 
-Balance Bites is three products that must look like **one company system**: same tenant, same login, same records.
+Balance Bites is four products that must look like **one company system**: same tenant, same login, same records.
 
 ## Layers
 
 ```
 ┌─────────────────────────────────────────────┐
-│  1. Hub UI   one URL · 3 cards · RTL shell  │
+│  1. Hub UI   one URL · 4 cards · RTL shell  │
 ├─────────────────────────────────────────────┤
-│  2. Apps     Invoices | Design | Finance    │
+│  2. Apps     Invoices | Design | Finance | Status │
 ├─────────────────────────────────────────────┤
 │  3. CloudStore SDK   same JSON keys as now  │
 ├─────────────────────────────────────────────┤
@@ -22,7 +22,7 @@ Balance Bites is three products that must look like **one company system**: same
 ```
 
 **Phase 1** was the launcher + CloudStore.  
-**Invoices**, **Design**, and **Finance** are native React in the hub (not HTML wraps). Maps: [INVOICES.md](INVOICES.md), [DESIGN.md](DESIGN.md), [FINANCE.md](FINANCE.md). Studio waves A–D: [DESIGN-STUDIO.md](DESIGN-STUDIO.md). Finance waves A–E: [FINANCE-WAVES.md](FINANCE-WAVES.md).
+**Invoices**, **Design**, **Finance**, and **Weekly status** are native React in the hub (not HTML wraps). Maps: [INVOICES.md](INVOICES.md), [DESIGN.md](DESIGN.md), [FINANCE.md](FINANCE.md), [STATUS.md](STATUS.md).
 
 ## Why this split
 

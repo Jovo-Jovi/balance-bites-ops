@@ -116,6 +116,12 @@ Stock value is **cost**, not retail.
 
 ---
 
+## D. Weekly church status — hub `/status`
+
+Not in the Desktop HTML. Native Report tool matching `BalanceBytes_Weekly_Church_Status_Report.xlsx`. Map: [STATUS.md](STATUS.md). Writes `bb_church_status` only.
+
+---
+
 ## What not to delete
 
 Protected live tools: the three HTML files, sticker JS listed above, `assets/presets` art, print pack. Analysis-only: `report.md` (finance review, not runtime).

@@ -36,6 +36,10 @@ const FinanceApp = dynamic(
   () => import("./finance/finance-app").then((m) => m.FinanceApp),
   { ssr: false, loading: () => <WorkspaceLoading lang="ar" /> },
 );
+const StatusApp = dynamic(
+  () => import("./status/status-app").then((m) => m.StatusApp),
+  { ssr: false, loading: () => <WorkspaceLoading lang="en" /> },
+);
 
 export function WorkspaceScreen({ appId }: { appId: AppId }) {
   const app = getWorkspaceApp(appId);
@@ -76,7 +80,7 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
           </Link>
           <nav
             aria-label={app.lang === "ar" ? "التطبيقات" : "Apps"}
-            className="grid grid-cols-3 gap-1 sm:gap-2"
+            className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-2"
           >
             {WORKSPACE_APPS.map((item) => {
               const current = item.id === app.id;
@@ -134,7 +138,7 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
         </div>
       </div>
 
-      <main className="mx-auto mt-4 flex w-full max-w-3xl min-h-0 flex-1 flex-col gap-4 lg:max-w-6xl lg:flex-row lg:gap-6">
+      <main className="mx-auto mt-4 flex w-full max-w-3xl min-h-0 flex-1 flex-col gap-4 lg:max-w-6xl xl:max-w-7xl lg:flex-row lg:gap-6">
         {appId === "invoices" ? (
           <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">
             <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
@@ -154,6 +158,16 @@ export function AppWorkspace({ appId }: { appId: AppId }) {
               {tool.label}
             </h1>
             <DesignApp tab={tool.id} />
+          </section>
+        ) : appId === "status" ? (
+          <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">
+            <p className="font-label text-[10px] tracking-[0.22em] text-[var(--bb-muted)] uppercase">
+              {tool.en}
+            </p>
+            <h1 className="mt-1 mb-4 text-[clamp(1.35rem,2.6vw,1.85rem)] text-[var(--bb-title)]">
+              {tool.label}
+            </h1>
+            <StatusApp />
           </section>
         ) : (
           <section className="bb-glass min-w-0 flex-1 p-4 sm:p-6">

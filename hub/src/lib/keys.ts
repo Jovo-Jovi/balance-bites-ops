@@ -44,6 +44,15 @@ export function isFinanceWriteKey(key: string): key is BbKey {
   return FINANCE_WRITE_SET.has(key);
 }
 
+/** Weekly church status writes narrative + week only. Invoice / finance keys stay read-only. */
+export const STATUS_WRITE_KEYS = (keyManifest.writers.status ?? []) as BbKey[];
+
+const STATUS_WRITE_SET = new Set<string>(STATUS_WRITE_KEYS);
+
+export function isStatusWriteKey(key: string): key is BbKey {
+  return STATUS_WRITE_SET.has(key);
+}
+
 /**
  * Prep-approve appends a finished invoice onto the customer ledger.
  * Not a second invoice editor — keep this list off `FINANCE_WRITE_KEYS`.
@@ -98,4 +107,16 @@ export const EMPTY_DEFAULTS: Record<BbKey, unknown> = {
   bb_inv_print_margins: { t: 16, r: 14, b: 16, l: 14 },
   bb_print_fit_one: false,
   bb_ret_last_customer: "",
+  bb_church_status: {
+    weekStart: "",
+    weekEnd: "",
+    preparedBy: "",
+    overallStatus: "",
+    showAll: false,
+    churches: {},
+    risks: [],
+    achievements: "",
+    challenges: "",
+    nextPriorities: "",
+  },
 };

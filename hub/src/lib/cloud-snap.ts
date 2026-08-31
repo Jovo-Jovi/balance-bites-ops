@@ -34,5 +34,6 @@ export function conflictToastLabel(key: string): string {
   }
   if (key === "bb_customers") return "العملاء";
   if (key === "bb_invoices" || key === "bb_invoice_payments") return "الفواتير";
+  if (key === "bb_church_status") return "الحالة الأسبوعية";
   return "البيانات";
 }
