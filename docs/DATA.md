@@ -79,4 +79,4 @@ Live HTML Stock Costs is listed as a writer of `bb_label_templates` and color/th
 
 ## Hub Weekly status
 
-Writes **only** `bb_church_status` (week, RAG overrides, risks, executive notes). Reads invoices, customers, payments, returns, and the pending queue. Does not seed Church A–D. Map: [STATUS.md](STATUS.md).
+Writes **only** `bb_church_status` (week, RAG overrides, risks, executive notes, packing/delivery notes). Reads invoices, customers, payments, returns, pending, stock, recipes, purchases, and production. Does not seed Church A–D or dummy SKUs. Map: [STATUS.md](STATUS.md).

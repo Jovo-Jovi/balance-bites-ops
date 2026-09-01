@@ -3,6 +3,7 @@ import {
   EMPTY_STATUS_DOC,
   type ChurchOverride,
   type ChurchStatusDoc,
+  type LineNote,
   type Rag,
   type RiskRow,
 } from "./types";
@@ -27,11 +28,44 @@ function parseOverride(raw: unknown): ChurchOverride {
   };
 }
 
+function parseNote(raw: unknown): LineNote {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const o = raw as Record<string, unknown>;
+  const out: LineNote = {};
+  (
+    [
+      "notes",
+      "owner",
+      "method",
+      "scheduled",
+      "actual",
+      "delay",
+      "nextAction",
+      "payment",
+      "status",
+    ] as const
+  ).forEach((k) => {
+    if (o[k] != null) out[k] = str(o[k]);
+  });
+  return out;
+}
+
+function parseNoteMap(raw: unknown): Record<string, LineNote> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, LineNote> = {};
+  Object.entries(raw as Record<string, unknown>).forEach(([id, val]) => {
+    if (!id) return;
+    out[id] = parseNote(val);
+  });
+  return out;
+}
+
 function parseRisk(raw: unknown, i: number): RiskRow {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
     id: str(o.id) || genId("risk"),
     priority: str(o.priority) || (i === 0 ? "High" : ""),
+    area: str(o.area) || str(o.church),
     risk: str(o.risk),
     impact: str(o.impact),
     action: str(o.action),
@@ -43,7 +77,15 @@ function parseRisk(raw: unknown, i: number): RiskRow {
 
 export function parseChurchStatus(raw: unknown): ChurchStatusDoc {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return { ...EMPTY_STATUS_DOC, churches: {}, risks: [] };
+    return {
+      ...EMPTY_STATUS_DOC,
+      churches: {},
+      inventory: {},
+      sourcing: {},
+      packing: {},
+      delivery: {},
+      risks: [],
+    };
   }
   const o = raw as Record<string, unknown>;
   const churches: Record<string, ChurchOverride> = {};
@@ -61,8 +103,13 @@ export function parseChurchStatus(raw: unknown): ChurchStatusDoc {
     weekEnd: str(o.weekEnd),
     preparedBy: str(o.preparedBy),
     overallStatus: isRag(o.overallStatus) ? o.overallStatus : "",
+    managementFocus: str(o.managementFocus),
     showAll: o.showAll === true,
     churches,
+    inventory: parseNoteMap(o.inventory),
+    sourcing: parseNoteMap(o.sourcing),
+    packing: parseNoteMap(o.packing),
+    delivery: parseNoteMap(o.delivery),
     risks,
     achievements: str(o.achievements),
     challenges: str(o.challenges),

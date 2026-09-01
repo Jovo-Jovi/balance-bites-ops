@@ -174,15 +174,24 @@ export const CloudStore = {
       throw new Error("سجّل الدخول قبل مزامنة البيانات");
     }
 
+    const denied: string[] = [];
     const results = await Promise.allSettled(
       keys.map(async (key) => {
-        const snap = await getDoc(keyDocRef(key));
-        if (!snap.exists()) return;
-        const payload = snap.data() as CloudKeyDoc;
-        if (payload && "data" in payload) {
-          const writeId = String(payload.clientWriteId || "");
-          if (writeId) lastAppliedWriteId.set(key, writeId);
-          applyRemote(key, payload.data);
+        try {
+          const snap = await getDoc(keyDocRef(key));
+          if (!snap.exists()) return;
+          const payload = snap.data() as CloudKeyDoc;
+          if (payload && "data" in payload) {
+            const writeId = String(payload.clientWriteId || "");
+            if (writeId) lastAppliedWriteId.set(key, writeId);
+            applyRemote(key, payload.data);
+          }
+        } catch (err) {
+          if (isPermissionDenied(err)) {
+            denied.push(key);
+            return;
+          }
+          throw err;
         }
       }),
     );
@@ -196,6 +205,13 @@ export const CloudStore = {
           : "تعذر قراءة Firestore";
       hooks.onError(`فشل التحميل من السحابة: ${reason}`);
       throw first.reason;
+    }
+    if (denied.length === keys.length) {
+      const err = new Error("Missing or insufficient permissions.");
+      hooks.onError(
+        "فشل التحميل من السحابة: الحساب غير مدرج كموظف أو القواعد غير منشورة",
+      );
+      throw err;
     }
   },
 
@@ -267,6 +283,7 @@ export const CloudStore = {
         if (kind === "conflict") hooks.onConflict(key);
       },
       (err) => {
+        if (isPermissionDenied(err)) return;
         hooks.onError(`انقطع التزامن (${key}): ${err.message}`, key);
       },
     );

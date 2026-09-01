@@ -32,6 +32,24 @@ export function currentWeek(): { start: string; end: string } {
   return { start, end: addDaysIso(start, 6) };
 }
 
+/**
+ * Default the sheet to last completed Mon–Sun on Monday/Tuesday so a new
+ * week does not look like every church missed its order. Wed–Sun uses the
+ * week that contains today.
+ */
+export function defaultReportingWeek(): { start: string; end: string } {
+  const today = new Date();
+  const current = currentWeek();
+  const dow = today.getDay();
+  if (dow === 1 || dow === 2) {
+    return {
+      start: addDaysIso(current.start, -7),
+      end: addDaysIso(current.end, -7),
+    };
+  }
+  return current;
+}
+
 export function formatDmY(iso: string) {
   const d = parseIsoDate(iso);
   if (!d) return iso || "";
