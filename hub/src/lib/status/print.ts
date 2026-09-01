@@ -6,7 +6,7 @@ import type { ChurchReport } from "./types";
 export function printChurchReport(report: ChurchReport) {
   return openPrintHtml(churchReportDocumentHtml(report), {
     dir: "ltr",
-    label: "Weekly church status",
+    label: "Weekly ops status",
   });
 }
 

@@ -219,12 +219,12 @@ Also on disk, **not** Firestore key docs: `label_assets/**`, `bb_backups/*.json`
 
 ## Weekly status (`/status`)
 
-Native LTR sheet matching `BalanceBytes_Weekly_Church_Status_Report.xlsx`. Map: [STATUS.md](STATUS.md).
+Native LTR sheet matching `Report_Upgraded.xlsx` (PM & operations weekly status). Map: [STATUS.md](STATUS.md).
 
 - [x] Hub card الحالة الأسبوعية (no KPIs on `/`)
-- [x] KPI + church table from invoices / ledger / pending queue
-- [x] Print + `.xlsx` download (Weekly Status Report + RAG Legend)
-- [x] `bb_church_status` writer only; no Church A–D seed
+- [x] Eight sections from invoices / ledger / stock / purchases / production / prep
+- [x] Print + `.xlsx` download (Weekly Status Report + RAG Legend + Update Guide)
+- [x] `bb_church_status` writer only; no Church A–D or dummy SKU seed
 - [x] Firestore `isKnownKey` includes `bb_church_status`
 
 ---

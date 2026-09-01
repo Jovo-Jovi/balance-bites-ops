@@ -84,7 +84,7 @@ Eight tools: overview, invoices, stock, prep, purchases, recipes, returns, ops.
 | ![](https://img.shields.io/badge/-Invoices-0f6e6b?style=flat-square) | Billing | Editor, customers, catalog pick, Look print theme, reports, collection flags |
 | ![](https://img.shields.io/badge/-Design-1f2930?style=flat-square) | Labels | Library thumbs, Studio layers, print house SVG/PNG, template JSON |
 | ![](https://img.shields.io/badge/-Finance-b76e32?style=flat-square) | Stock & P&amp;L | Ledger, recipes, prep → production, returns, opex, investor diary |
-| ![](https://img.shields.io/badge/-Status-0B4F3B?style=flat-square) | Weekly | Church distribution executive sheet · print · Excel |
+| ![](https://img.shields.io/badge/-Status-0B4F3B?style=flat-square) | Weekly | PM & ops executive sheet · print · Excel |
 | ![](https://img.shields.io/badge/-Data-3f7d4e?style=flat-square) | Cloud | Firestore `bb_*` keys · R2 art · staff zip backup · locked rules |
 
 ```mermaid

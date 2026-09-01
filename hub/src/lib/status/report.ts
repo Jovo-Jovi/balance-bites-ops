@@ -4,21 +4,28 @@ import type {
   Customer,
   Invoice,
   InvoicePayments,
-  PendingInvoice,
+  Product,
   ReturnRecord,
 } from "@/lib/invoices/types";
 import { buildCustomerLedger, invCustKey } from "@/lib/finance/customer-ledger";
-import type { CustomerPayment } from "@/lib/finance/types";
+import type {
+  CustomerPayment,
+  FinancePending,
+  ProductionRun,
+  Purchase,
+  Recipe,
+  StockItem,
+} from "@/lib/finance/types";
 import { genId } from "@/lib/invoices/helpers";
 import {
   addDaysIso,
-  currentWeek,
+  defaultReportingWeek,
   inInclusiveRange,
   weekLabel,
 } from "./week";
 import {
-  RAG_DOT,
   RAG_LABEL,
+  STATUS_FOCUS,
   type ChurchReport,
   type ChurchRow,
   type ChurchStatusDoc,
@@ -28,6 +35,15 @@ import {
   type Rag,
   type RiskRow,
 } from "./types";
+import {
+  buildDeliveryRows,
+  buildInventoryRows,
+  buildPackingRows,
+  buildSourcingRows,
+  closingInventoryTotal,
+  onTimeRate,
+  sourcedUnits,
+} from "./ops";
 
 const ACTIVE_LOOKBACK_DAYS = 56;
 
@@ -37,8 +53,15 @@ export type StatusInputs = {
   returns: ReturnRecord[];
   payments: InvoicePayments;
   customerPayments: CustomerPayment[];
-  pending: PendingInvoice[];
+  pending: FinancePending[];
   preparedByFallback: string;
+  materials: StockItem[];
+  packages: StockItem[];
+  stickers: StockItem[];
+  recipes: Recipe[];
+  products: Product[];
+  purchases: Purchase[];
+  production: ProductionRun[];
 };
 
 function num(n: unknown) {
@@ -56,6 +79,10 @@ function fmtMoney(n: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function fmtPct(n: number) {
+  return `${n.toLocaleString("en-GB", { maximumFractionDigits: 1 })}%`;
 }
 
 function trend(current: number, previous: number): KpiRow["trend"] {
@@ -80,7 +107,7 @@ function churchId(inv: { customerId?: string | null; customerName?: string }, cu
 }
 
 function deliveryFromPending(
-  pending: PendingInvoice[],
+  pending: FinancePending[],
   id: string,
   servedThisWeek: boolean,
 ): DeliveryLabel {
@@ -133,32 +160,73 @@ function kpiStatus(current: number, previous: number, warnIfPositive = false): R
   return "green";
 }
 
-function autoRisks(churches: ChurchRow[], outstanding: number): RiskRow[] {
+function autoRisks(
+  churches: ChurchRow[],
+  inventory: ReturnType<typeof buildInventoryRows>,
+  packing: ReturnType<typeof buildPackingRows>,
+  outstanding: number,
+): RiskRow[] {
   const rows: RiskRow[] = [];
   if (outstanding > 0.009) {
     rows.push({
       id: genId("risk"),
       priority: "High",
-      risk: "Cash flow",
-      impact: "Outstanding collections delay working capital.",
+      area: "Collections",
+      risk: "Payment pending",
+      impact: "Cash flow",
       action: "Follow up & confirm payment date",
       owner: "",
       due: "",
       status: "🟡 Open",
     });
   }
-  if (churches.some((c) => c.rag === "red")) {
-    rows.push({
-      id: genId("risk"),
-      priority: "High",
-      risk: "Next-week distribution",
-      impact: "Unconfirmed orders interrupt the weekly church run.",
-      action: "Confirm requirement and delivery date",
-      owner: "",
-      due: "",
-      status: "🔴 Open",
+  churches
+    .filter((c) => c.rag === "red" && !c.servedThisWeek)
+    .forEach((c) => {
+      rows.push({
+        id: genId("risk"),
+        priority: "High",
+        area: c.name,
+        risk: c.issue || "Order not confirmed",
+        impact: "Next-week distribution",
+        action: "Confirm requirement and delivery date",
+        owner: "",
+        due: "",
+        status: "🔴 Open",
+      });
     });
-  }
+  inventory
+    .filter((r) => r.rag !== "green")
+    .slice(0, 4)
+    .forEach((r) => {
+      rows.push({
+        id: genId("risk"),
+        priority: r.rag === "red" ? "High" : "Medium",
+        area: "Inventory",
+        risk: `${r.name} ${r.statusLabel}`,
+        impact: "Stock-out risk",
+        action: "Reorder or confirm supply",
+        owner: "",
+        due: "",
+        status: r.rag === "red" ? "🔴 Open" : "🟡 Open",
+      });
+    });
+  packing
+    .filter((r) => r.rag !== "green")
+    .slice(0, 3)
+    .forEach((r) => {
+      rows.push({
+        id: genId("risk"),
+        priority: r.rag === "red" ? "High" : "Medium",
+        area: "Packing & Labeling",
+        risk: `${r.product} ${r.statusLabel}`,
+        impact: "Dispatch delay",
+        action: "Close packing / labeling gap",
+        owner: r.owner === "[Owner]" ? "" : r.owner,
+        due: "",
+        status: r.rag === "red" ? "🔴 Open" : "🟡 Open",
+      });
+    });
   return rows;
 }
 
@@ -171,27 +239,42 @@ function autoAchievements(churches: ChurchRow[], units: number, sales: number) {
   ].join("\n");
 }
 
-function autoChallenges(churches: ChurchRow[], outstanding: number) {
+function autoChallenges(
+  churches: ChurchRow[],
+  inventory: ReturnType<typeof buildInventoryRows>,
+  outstanding: number,
+) {
   const lines: string[] = [];
   const pendingPay = churches.filter((c) => c.payment === "Pending").length;
   const missed = churches.filter((c) => c.rag === "red").length;
+  const low = inventory.filter((r) => r.rag !== "green").length;
   if (outstanding > 0.009) {
     lines.push(`• Outstanding payments ${fmtMoney(outstanding)} EGP`);
   }
   if (pendingPay) lines.push(`• ${pendingPay} church payment${pendingPay === 1 ? "" : "s"} pending`);
   if (missed) lines.push(`• ${missed} church${missed === 1 ? "" : "es"} need immediate follow-up`);
+  if (low) lines.push(`• ${low} stock item${low === 1 ? "" : "s"} below target`);
   if (!lines.length) return "• No material challenge this week";
   return lines.join("\n");
 }
 
-function autoPriorities(churches: ChurchRow[], outstanding: number) {
+function autoPriorities(
+  churches: ChurchRow[],
+  inventory: ReturnType<typeof buildInventoryRows>,
+  packing: ReturnType<typeof buildPackingRows>,
+  outstanding: number,
+) {
   const lines: string[] = [];
   if (churches.some((c) => !c.servedThisWeek)) {
     lines.push("• Confirm church quantities");
   }
   if (outstanding > 0.009) lines.push("• Close outstanding payments");
-  if (churches.some((c) => c.delivery === "Pending")) {
-    lines.push("• Resolve delivery / order issues");
+  if (
+    inventory.some((r) => r.rag !== "green") ||
+    packing.some((r) => r.rag !== "green") ||
+    churches.some((c) => c.delivery === "Pending")
+  ) {
+    lines.push("• Resolve sourcing / packing / delivery issues");
   }
   if (churches.some((c) => c.rag !== "green")) {
     lines.push("• Follow up on priority churches");
@@ -201,7 +284,7 @@ function autoPriorities(churches: ChurchRow[], outstanding: number) {
 }
 
 export function resolveWeek(doc: ChurchStatusDoc) {
-  const fallback = currentWeek();
+  const fallback = defaultReportingWeek();
   const start = doc.weekStart || fallback.start;
   const end = doc.weekEnd || fallback.end;
   return { start, end };
@@ -341,11 +424,54 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
     return rank[a.rag] - rank[b.rag] || b.sales - a.sales || a.name.localeCompare(b.name, "ar");
   });
 
-  const overallAuto: Rag = rows.some((c) => c.rag === "red")
-    ? "red"
-    : rows.some((c) => c.rag === "yellow") || outstandingTotal > 0.009
-      ? "yellow"
-      : "green";
+  const ops = {
+    invoices: inputs.invoices,
+    returns: inputs.returns,
+    materials: inputs.materials,
+    packages: inputs.packages,
+    stickers: inputs.stickers,
+    recipes: inputs.recipes,
+    products: inputs.products,
+    purchases: inputs.purchases,
+    production: inputs.production,
+    pending: inputs.pending,
+  };
+  const inventory = buildInventoryRows(ops, doc, start, end);
+  const sourcing = buildSourcingRows(ops, doc, start, end);
+  const packing = buildPackingRows(ops, doc, start, end);
+  const deliveries = buildDeliveryRows(rows, inputs.pending, doc, start, end);
+
+  const allInv = { ...doc, showAll: true };
+  const sourced = sourcedUnits(inputs.purchases, start, end);
+  const sourcedPrev = sourcedUnits(inputs.purchases, prevStart, prevEnd);
+  const closingNow = closingInventoryTotal(buildInventoryRows(ops, allInv, start, end));
+  const closingPrev = closingInventoryTotal(buildInventoryRows(ops, allInv, prevStart, prevEnd));
+  const onTime = onTimeRate(deliveries);
+  const onTimePrev = onTimeRate(
+    buildDeliveryRows(
+      rows.map((c) => ({
+        ...c,
+        servedThisWeek: c.servedPrevWeek,
+        delivery: c.servedPrevWeek ? "Delivered" : c.delivery,
+      })),
+      inputs.pending,
+      doc,
+      prevStart,
+      prevEnd,
+    ),
+  );
+
+  const overallAuto: Rag =
+    rows.some((c) => c.rag === "red") ||
+    inventory.some((r) => r.rag === "red") ||
+    packing.some((r) => r.rag === "red")
+      ? "red"
+      : rows.some((c) => c.rag === "yellow") ||
+          inventory.some((r) => r.rag === "yellow") ||
+          packing.some((r) => r.rag === "yellow") ||
+          outstandingTotal > 0.009
+        ? "yellow"
+        : "green";
   const overall = doc.overallStatus || overallAuto;
 
   const kpis: KpiRow[] = [
@@ -364,11 +490,25 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
       status: kpiStatus(cur.count, prev.count),
     },
     {
+      name: "Total Units Sourced / Procured",
+      current: fmtQty(sourced),
+      previous: fmtQty(sourcedPrev),
+      trend: trend(sourced, sourcedPrev),
+      status: kpiStatus(sourced, sourcedPrev),
+    },
+    {
       name: "Total Units Distributed",
       current: fmtQty(cur.units),
       previous: fmtQty(prev.units),
       trend: trend(cur.units, prev.units),
       status: kpiStatus(cur.units, prev.units),
+    },
+    {
+      name: "Closing Inventory On Hand",
+      current: fmtQty(closingNow),
+      previous: fmtQty(closingPrev),
+      trend: trend(closingNow, closingPrev),
+      status: kpiStatus(closingNow, closingPrev),
     },
     {
       name: "Weekly Sales Value (EGP)",
@@ -384,13 +524,21 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
       trend: "→",
       status: kpiStatus(outstandingTotal, 0, true),
     },
+    {
+      name: "On-Time Delivery Rate (%)",
+      current: fmtPct(onTime),
+      previous: fmtPct(onTimePrev),
+      trend: trend(onTime, onTimePrev),
+      status: onTime < 99.9 ? "yellow" : "green",
+    },
   ];
 
   const risks = doc.risks.some((r) => r.risk.trim() || r.action.trim())
     ? doc.risks
-    : autoRisks(rows, outstandingTotal);
+    : autoRisks(rows, inventory, packing, outstandingTotal);
 
   const preparedBy = doc.preparedBy.trim() || inputs.preparedByFallback || "";
+  const focus = doc.managementFocus.trim() || STATUS_FOCUS;
 
   return {
     weekStart: start,
@@ -399,18 +547,23 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
     preparedBy,
     overall,
     overallLabel: RAG_LABEL[overall],
-    focus: "Distribution • Church Engagement • Delivery • Collections",
+    focus,
     kpis,
     churches: rows,
+    inventory,
+    sourcing,
+    packing,
+    deliveries,
     risks,
     achievements: doc.achievements.trim() || autoAchievements(rows, cur.units, cur.sales),
-    challenges: doc.challenges.trim() || autoChallenges(rows, outstandingTotal),
-    nextPriorities: doc.nextPriorities.trim() || autoPriorities(rows, outstandingTotal),
+    challenges: doc.challenges.trim() || autoChallenges(rows, inventory, outstandingTotal),
+    nextPriorities:
+      doc.nextPriorities.trim() || autoPriorities(rows, inventory, packing, outstandingTotal),
   };
 }
 
 export function churchStatusCell(rag: Rag) {
-  if (rag === "green") return RAG_DOT.green;
-  if (rag === "yellow") return "🟡 At Risk";
+  if (rag === "green") return RAG_LABEL.green;
+  if (rag === "yellow") return RAG_LABEL.yellow;
   return RAG_LABEL.red;
 }

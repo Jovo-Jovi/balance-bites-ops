@@ -29,7 +29,7 @@ Native Library / Studio / Print house. Waves A–D on `main`. Do **not** copy st
 
 # Status slice
 
-Native Report tool matching the BalanceBytes weekly church Excel. Do **not** add a second customer book or invoice editor. `writeStatusKey` allows `bb_church_status` only. Do not seed Church A–D. Map: `docs/STATUS.md`.
+Native Report tool matching `Report_Upgraded.xlsx` (sourcing → payment). Do **not** add a second customer book, invoice editor, or stock CRUD. `writeStatusKey` allows `bb_church_status` only. Do not seed Church A–D. Map: `docs/STATUS.md`.
 
 # Finance slice
 

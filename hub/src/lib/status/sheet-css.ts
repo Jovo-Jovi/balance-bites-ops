@@ -1,4 +1,4 @@
-/** Matches BalanceBytes_Weekly_Church_Status_Report.xlsx fills, type, and column widths. */
+/** Matches Report_Upgraded.xlsx fills, type, and column widths. */
 export const SHEET_CSS = `
 .bb-sr {
   --sr-green: #0B4F3B;
@@ -19,14 +19,14 @@ export const SHEET_CSS = `
   border-collapse: collapse;
   table-layout: fixed;
 }
-.bb-sr col.cA { width: 12.94%; }
-.bb-sr col.cB { width: 10.59%; }
-.bb-sr col.cC { width: 11.18%; }
-.bb-sr col.cD { width: 11.18%; }
-.bb-sr col.cE { width: 9.41%; }
-.bb-sr col.cF { width: 9.41%; }
-.bb-sr col.cG { width: 16.47%; }
-.bb-sr col.cH { width: 18.82%; }
+.bb-sr col.cA { width: 15.29%; }
+.bb-sr col.cB { width: 12.74%; }
+.bb-sr col.cC { width: 8.28%; }
+.bb-sr col.cD { width: 8.28%; }
+.bb-sr col.cE { width: 11.46%; }
+.bb-sr col.cF { width: 8.28%; }
+.bb-sr col.cG { width: 16.56%; }
+.bb-sr col.cH { width: 19.11%; }
 .bb-sr th, .bb-sr td {
   border-bottom: 0.75pt solid var(--sr-line);
   padding: 4px 6px;
@@ -43,7 +43,6 @@ export const SHEET_CSS = `
   height: 32pt;
 }
 .bb-sr .brand {
-  font-style: italic;
   color: var(--sr-ink);
   text-align: center;
 }
@@ -78,6 +77,7 @@ export const SHEET_CSS = `
 .bb-sr .num { text-align: right; font-variant-numeric: tabular-nums; }
 .bb-sr .center { text-align: center; }
 .bb-sr .top { vertical-align: top; }
+.bb-sr .guide { margin-top: 28px; }
 @media print {
   .bb-sr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

@@ -118,7 +118,7 @@ Stock value is **cost**, not retail.
 
 ## D. Weekly church status — hub `/status`
 
-Not in the Desktop HTML. Native Report tool matching `BalanceBytes_Weekly_Church_Status_Report.xlsx`. Map: [STATUS.md](STATUS.md). Writes `bb_church_status` only.
+Not in the Desktop HTML. Native Report tool matching `Report_Upgraded.xlsx` (end-to-end ops weekly status). Map: [STATUS.md](STATUS.md). Writes `bb_church_status` only.
 
 ---
 

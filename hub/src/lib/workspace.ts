@@ -274,7 +274,7 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
     href: "/status",
     title: "الحالة الأسبوعية",
     en: "Weekly status",
-    subtitle: "كنائس · توزيع · تحصيل",
+    subtitle: "توريد · مخزون · توزيع",
     dir: "ltr",
     lang: "en",
     signOutLabel: "Sign out",
@@ -282,16 +282,16 @@ export const WORKSPACE_APPS: WorkspaceApp[] = [
       {
         id: "report",
         label: "Report",
-        en: "Church status",
+        en: "Ops status",
         summary:
-          "Weekly church distribution status in the BalanceBytes executive layout. KPIs from invoices; notes and RAG overrides save to bb_church_status.",
+          "Weekly PM and operations status matching Report_Upgraded.xlsx. KPIs and tables from invoices, stock, purchases, production and prep; notes save to bb_church_status.",
         actions: [
           { label: "Save" },
           { label: "Print" },
           { label: "Download Excel" },
         ],
         features: [
-          "Same sheet as BalanceBytes_Weekly_Church_Status_Report.xlsx",
+          "Eight sections: KPI, churches, inventory, sourcing, packing, delivery, risks, update",
           "Does not write invoices, customers, or stock",
         ],
       },
