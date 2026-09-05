@@ -167,7 +167,7 @@ type FinanceContextValue = {
   removeRecipe: (id: string) => void;
   savePurchase: (data: Omit<Purchase, "id" | "totalCost"> & { id?: string }) => Promise<Purchase>;
   removePurchase: (id: string) => void;
-  saveProduct: (data: Omit<Product, "id"> & { id?: string }) => void;
+  saveProduct: (data: Omit<Product, "id"> & { id?: string }, opts?: { silent?: boolean }) => void;
   removeProduct: (id: string) => void;
   saveCategory: (data: Omit<Category, "id"> & { id?: string }) => void;
   removeCategory: (id: string) => void;
@@ -701,29 +701,36 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     ));
   }, []);
 
-  const saveProduct = useCallback((data: Omit<Product, "id"> & { id?: string }) => {
-    const arr = readArr<Product>("bb_products");
-    const rec: Product = {
-      id: data.id || financeId("prd"),
-      name: data.name,
-      packType: data.packType || "",
-      weight: data.weight || "",
-      unitPrice: num(data.unitPrice),
-      categoryId: data.categoryId || null,
-      inactive: data.inactive,
-      active: data.active,
-    };
-    const idx = arr.findIndex((p) => p.id === rec.id);
-    if (idx >= 0) arr[idx] = rec;
-    else arr.unshift(rec);
-    flushSync(() => beginBusy("جاري الحفظ…"));
-    fireAndForget(writeFinanceKey("bb_products", arr)
-      .then(
-        () => toast.push("حُفظ المنتج", "ok"),
-        () => undefined,
-      )
-      .finally(endBusy));
-  }, [beginBusy, endBusy, toast]);
+  const saveProduct = useCallback(
+    (data: Omit<Product, "id"> & { id?: string }, opts?: { silent?: boolean }) => {
+      const arr = readArr<Product>("bb_products");
+      const rec: Product = {
+        id: data.id || financeId("prd"),
+        name: data.name,
+        packType: data.packType || "",
+        weight: data.weight || "",
+        unitPrice: num(data.unitPrice),
+        categoryId: data.categoryId || null,
+        inactive: data.inactive,
+        active: data.active,
+      };
+      const idx = arr.findIndex((p) => p.id === rec.id);
+      if (idx >= 0) arr[idx] = rec;
+      else arr.unshift(rec);
+      flushSync(() => beginBusy("جاري الحفظ…"));
+      fireAndForget(
+        writeFinanceKey("bb_products", arr)
+          .then(
+            () => {
+              if (!opts?.silent) toast.push("حُفظ المنتج", "ok");
+            },
+            () => undefined,
+          )
+          .finally(endBusy),
+      );
+    },
+    [beginBusy, endBusy, toast],
+  );
 
   const removeProduct = useCallback((id: string) => {
     fireAndForget(writeFinanceKey(
