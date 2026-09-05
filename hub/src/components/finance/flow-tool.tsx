@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { ActionBtn, Empty, Field, Select, TextInput } from "@/components/invoices/ui";
-import { fmt, fmtQty, catalogInactive, num, roundQty } from "@/lib/finance/helpers";
+import { fmt, fmtQty, catalogInactive, roundQty } from "@/lib/finance/helpers";
 import { PREP_PRINT_MODES } from "@/lib/finance/print-prep";
-import { calcPrepAggregate, recipeSellPrice } from "@/lib/finance/recipes";
+import { prepCustomersLabel, recipeToDraftItem } from "@/lib/finance/prep";
+import { calcPrepAggregate } from "@/lib/finance/recipes";
 import { prepBuyQty } from "@/lib/finance/reports";
 import type { Customer } from "@/lib/invoices/types";
 import type { ItemKind } from "./finance-context";
@@ -58,29 +59,16 @@ function PrepSection() {
     if (!recipeId) return;
     const u = roundQty(parseFloat(units) || 0);
     if (!(u > 0)) return;
-    const existing = app.prepLines.find((l) => l.recipeId === recipeId);
-    const next = existing
-      ? app.prepLines.map((l) => (l.recipeId === recipeId ? { ...l, units: roundQty(l.units + u) } : l))
-      : [...app.prepLines, { recipeId, units: u }];
-    app.setPrepLines(next);
+    app.addPrepLine(recipeId, u, customer);
   }
 
   function addToDraft() {
     if (!customer || !recipeId) return;
     const rec = app.recipes.find((r) => r.id === recipeId);
     if (!rec) return;
-    const p = rec.productId ? app.products.find((x) => x.id === rec.productId) : null;
     const u = roundQty(parseFloat(units) || 0);
     if (!(u > 0)) return;
-    app.addToCustomerDraft(customer, {
-      productId: p ? p.id : rec.productId || null,
-      name: p ? p.name : rec.name,
-      packType: p?.packType || "",
-      weight: p?.weight || rec.productWeight || "",
-      categoryId: p?.categoryId || rec.categoryId || null,
-      qty: u,
-      price: p ? num(p.unitPrice) : recipeSellPrice(rec, app.products),
-    });
+    app.addToCustomerDraft(customer, recipeToDraftItem(rec, app.products, u));
   }
 
   return (
@@ -113,14 +101,18 @@ function PrepSection() {
           <TextInput type="number" min={0} value={units} onChange={(e) => setUnits(e.target.value)} />
         </Field>
         <div className="flex flex-wrap items-end gap-2">
-          <ActionBtn onClick={addToDraft} disabled={!customer}>
-            إلى مسودة العميل
+          <ActionBtn onClick={addBoardLine}>
+            {customer ? `إلى اللوحة ومسودة ${customer.name}` : "إلى اللوحة"}
           </ActionBtn>
-          <ActionBtn tone="ghost" onClick={addBoardLine}>
-            إلى اللوحة
+          <ActionBtn tone="ghost" onClick={addToDraft} disabled={!customer}>
+            إلى مسودة العميل
           </ActionBtn>
         </div>
       </div>
+      <p className="text-xs text-[var(--bb-muted)]">
+        إذا اخترت عميلاً، «إلى اللوحة» تضيف الكمية للمطبخ ولمسودة ذلك العميل ويظهر اسمه تحت المنتج. «إلى مسودة
+        العميل فقط» تكتب الفاتورة دون اللوحة.
+      </p>
 
       <h2 className="text-sm text-[var(--bb-muted)]">لوحة التحضير</h2>
       {app.prepLines.length === 0 ? (
@@ -129,9 +121,13 @@ function PrepSection() {
         <ul className="flex flex-col gap-2">
           {app.prepLines.map((l) => {
             const rec = app.recipes.find((r) => r.id === l.recipeId);
+            const who = prepCustomersLabel(l);
             return (
               <li key={l.recipeId} className="bb-glass flex items-center gap-2 p-3">
-                <span className="flex-1">{rec?.name || l.recipeId}</span>
+                <span className="flex-1">
+                  {rec?.name || l.recipeId}
+                  {who ? <span className="mt-0.5 block text-xs text-[var(--bb-muted)]">{who}</span> : null}
+                </span>
                 <TextInput
                   className="w-24"
                   type="number"
@@ -335,9 +331,16 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
   return (
     <>
       <p className="text-sm text-[var(--bb-muted)]">
-        اعتماد الإنتاج يسجّل دورات ويخصم المكوّنات عبر دفتر المشتريات/الاستهلاك. مسودات الفاتورة لا تظهر هنا.
+        اعتماد الإنتاج يسجّل دورات ويخصم المكوّنات عبر دفتر المشتريات/الاستهلاك. مسودات الفاتورة ولوحة
+        التحضير لا تظهر هنا.
       </p>
       <h2 className="text-sm text-[var(--bb-muted)]">الطلب مقابل الإنتاج</h2>
+      <p className="text-xs text-[var(--bb-muted)]">
+        <b className="font-medium text-[var(--bb-title)]">فواتير</b> = كميات الفواتير المعتمدة قبل المرتجع.{" "}
+        <b className="font-medium text-[var(--bb-title)]">مباع</b> = بعد خصم المرتجعات المربوطة بفاتورة.{" "}
+        <b className="font-medium text-[var(--bb-title)]">ينقص</b> = فواتير − إنتاج (هل الإنتاج غطّى الطلب
+        الأصلي). الفرق بين فواتير ومباع هو المرتجع، وليس لوحة التحضير.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <ActionBtn
           onClick={() => {
@@ -360,11 +363,18 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
       ) : shownDemand.length === 0 ? (
         <Empty>لا يوجد نقص — الإنتاج يغطي الفواتير</Empty>
       ) : (
-        <FinanceTable minWidth="36rem">
+        <FinanceTable minWidth="42rem">
           <thead>
             <tr>
               <th className={thClass}>المنتج</th>
-              <th className={thClass}>مباع</th>
+              <th className={thClass}>
+                فواتير
+                <span className="mt-0.5 block text-[10px] font-normal text-[var(--bb-muted)]">قبل المرتجع</span>
+              </th>
+              <th className={thClass}>
+                مباع
+                <span className="mt-0.5 block text-[10px] font-normal text-[var(--bb-muted)]">بعد المرتجع</span>
+              </th>
               <th className={thClass}>مُنتَج</th>
               <th className={thClass}>ينقص</th>
               <th className={thClass} />
@@ -376,6 +386,9 @@ function ProdSection({ onGoPrep }: { onGoPrep: () => void }) {
                 <td className={tdClass}>{r.name}</td>
                 <td className={tdClass} dir="ltr">
                   {fmtQty(r.soldGross)}
+                </td>
+                <td className={tdClass} dir="ltr">
+                  {fmtQty(r.sold)}
                 </td>
                 <td className={tdClass} dir="ltr">
                   {fmtQty(r.produced)}

@@ -75,8 +75,10 @@ import {
   isInvoiceDraft,
   makePrepOrder,
   mergeDraftItem,
+  mergePrepCustomers,
   mergePrepLines,
   prepLinesToItems,
+  recipeToDraftItem,
 } from "@/lib/finance/prep";
 import { parseInvestorPlan } from "@/lib/finance/investors";
 import { ensureStickerInProductRecipe, removeStickerFromRecipes, resolveStickerTemplate } from "@/lib/finance/stickers";
@@ -191,7 +193,8 @@ type FinanceContextValue = {
   setPrepLines: (lines: PrepLine[]) => void;
   setPrepProdMode: (mode: "all" | "net") => void;
   setPrepPrintMode: (mode: PrepPrintMode) => void;
-  addToCustomerDraft: (customer: Customer, item: InvoiceLine) => void;
+  addToCustomerDraft: (customer: Customer, item: InvoiceLine, opts?: { silent?: boolean }) => void;
+  addPrepLine: (recipeId: string, units: number, customer?: Customer | null) => boolean;
   updateDraft: (id: string, patch: Partial<FinancePending>) => void;
   removePending: (id: string) => void;
   approveDraft: (id: string, opts?: { silent?: boolean }) => Promise<boolean>;
@@ -990,19 +993,56 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     fireAndForget(writeFinanceKey("bb_prep_print_mode", mode));
   }, []);
 
-  const addToCustomerDraft = useCallback((customer: Customer, item: InvoiceLine) => {
-    const all = readArr<FinancePending>("bb_pending_invoices");
-    let draft = findDraftByCustomer(all, customer.id);
-    if (!draft) {
-      draft = emptyInvoiceDraft(customer);
-      all.unshift(draft);
-    }
-    const items = mergeDraftItem(draft.items || [], item);
-    const next = all.map((p) =>
-      p.id === draft!.id ? { ...p, items, updatedAt: new Date().toISOString() } : p,
-    );
-    fireAndForget(writeFinanceKey("bb_pending_invoices", next));
-  }, []);
+  const addToCustomerDraft = useCallback(
+    (customer: Customer, item: InvoiceLine, opts?: { silent?: boolean }) => {
+      const all = readArr<FinancePending>("bb_pending_invoices");
+      let draft = findDraftByCustomer(all, customer.id);
+      if (!draft) {
+        draft = emptyInvoiceDraft(customer);
+        all.unshift(draft);
+      }
+      const items = mergeDraftItem(draft.items || [], item);
+      const next = all.map((p) =>
+        p.id === draft!.id ? { ...p, items, updatedAt: new Date().toISOString() } : p,
+      );
+      fireAndForget(writeFinanceKey("bb_pending_invoices", next));
+      if (!opts?.silent) toast.push(`أُضيف لمسودة ${customer.name || ""}`, "ok");
+    },
+    [toast],
+  );
+
+  const addPrepLine = useCallback(
+    (recipeId: string, units: number, customer?: Customer | null) => {
+      const u = roundQty(units);
+      if (!recipeId || !(u > 0)) {
+        toast.push("اختر وصفة وكمية", "warn");
+        return false;
+      }
+      const rec = readArr<Recipe>("bb_recipes").find((r) => r.id === recipeId);
+      if (!rec) {
+        toast.push("الوصفة غير موجودة", "warn");
+        return false;
+      }
+      const extra: PrepLine = {
+        recipeId,
+        units: u,
+        ...(customer ? { customers: [{ id: customer.id, name: customer.name || "" }] } : {}),
+      };
+      fireAndForget(
+        writeFinanceKey("bb_prep_lines", mergePrepLines([readArr<PrepLine>("bb_prep_lines"), [extra]])),
+      );
+      if (customer) {
+        addToCustomerDraft(customer, recipeToDraftItem(rec, readArr<Product>("bb_products"), u), {
+          silent: true,
+        });
+        toast.push(`أُضيف للوحة ومسودة ${customer.name || ""}`, "ok");
+      } else {
+        toast.push("أُضيف للوحة", "ok");
+      }
+      return true;
+    },
+    [addToCustomerDraft, toast],
+  );
 
   const updateDraft = useCallback((id: string, patch: Partial<FinancePending>) => {
     const next = readArr<FinancePending>("bb_pending_invoices").map((p) =>
@@ -1137,6 +1177,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         toast.push("لا توجد بيانات تحضير في هذا الطلب", "warn");
         return false;
       }
+      const withCust =
+        pend?.customerId
+          ? lines.map((l) => ({
+              ...l,
+              customers: mergePrepCustomers([
+                l.customers,
+                [{ id: pend.customerId as string, name: pend.customerName || "" }],
+              ]),
+            }))
+          : lines;
       const board = readArr<PrepLine>("bb_prep_lines").filter((l) => num(l.units) > 0);
       if (
         board.length &&
@@ -1146,7 +1196,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       ) {
         return false;
       }
-      fireAndForget(writeFinanceKey("bb_prep_lines", lines));
+      fireAndForget(writeFinanceKey("bb_prep_lines", withCust));
       toast.push(`${lines.length} منتج على اللوحة`, "ok");
       return true;
     },
@@ -1574,6 +1624,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setPrepProdMode,
       setPrepPrintMode,
       addToCustomerDraft,
+      addPrepLine,
       updateDraft,
       removePending,
       approveDraft,
@@ -1669,6 +1720,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setPrepProdMode,
       setPrepPrintMode,
       addToCustomerDraft,
+      addPrepLine,
       updateDraft,
       removePending,
       approveDraft,

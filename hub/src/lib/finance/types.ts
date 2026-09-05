@@ -116,7 +116,9 @@ export type LedgerRow = {
   source: "invoices" | "production" | "—";
 };
 
-export type PrepLine = { recipeId: string; units: number };
+export type PrepCustomer = { id: string; name: string };
+
+export type PrepLine = { recipeId: string; units: number; customers?: PrepCustomer[] };
 
 export type FinancePending = PendingInvoice & {
   prepLines?: PrepLine[];

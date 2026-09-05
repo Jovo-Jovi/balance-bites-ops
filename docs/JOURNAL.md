@@ -529,6 +529,12 @@ Fourth hub card **الحالة الأسبوعية** (`/status`). Native LTR shee
 
 ---
 
+## 2026-09-05 — FG sold columns + prep board customer
+
+Stock منتجات جاهزة and production الطلب مقابل الإنتاج now both show **فواتير** (invoice qty before returns) and **مباع** (after invoice-linked returns), with a line explaining ينقص / رصيد. Prep **إلى اللوحة** / **إلى مسودة العميل** with a customer selected write the kitchen board *and* that customer’s invoice draft, and the customer name sits on the board row (`customers[]` on `bb_prep_lines`). Board-only still works with no customer. Gap formula unchanged (فواتير − إنتاج).
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump
