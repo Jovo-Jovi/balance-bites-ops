@@ -710,9 +710,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         packType: data.packType || "",
         weight: data.weight || "",
         unitPrice: num(data.unitPrice),
-        categoryId: data.categoryId || null,
-        inactive: data.inactive,
-        active: data.active,
+        categoryId: data.categoryId ?? null,
+        ...(data.inactive === true || data.inactive === false ? { inactive: data.inactive } : {}),
+        ...(data.active === true || data.active === false ? { active: data.active } : {}),
       };
       const idx = arr.findIndex((p) => p.id === rec.id);
       if (idx >= 0) arr[idx] = rec;
