@@ -21,10 +21,11 @@ export function RecipeModal({
 
 function RecipeModalForm({ recipe, onClose }: { recipe: Recipe | null; onClose: () => void }) {
   const app = useFinanceApp();
+  const linked = recipe?.productId ? app.products.find((p) => p.id === recipe.productId) : null;
   const [name, setName] = useState(recipe?.name || "");
   const [batchSize, setBatch] = useState(String(recipe?.batchSize || 1));
   const [productId, setProductId] = useState(recipe?.productId || "");
-  const [unitPrice, setPrice] = useState(String(recipe?.unitPrice || 0));
+  const [unitPrice, setPrice] = useState(String(linked?.unitPrice ?? recipe?.unitPrice ?? 0));
   const [ings, setIngs] = useState<RecipeIngredient[]>(
     recipe?.ingredients?.length ? recipe.ingredients.map((i) => ({ ...i })) : [],
   );
@@ -47,6 +48,7 @@ function RecipeModalForm({ recipe, onClose }: { recipe: Recipe | null; onClose: 
             onClick={() => {
               if (!name.trim()) return;
               const prod = app.products.find((p) => p.id === productId);
+              const price = num(unitPrice);
               app.saveRecipe({
                 id: recipe?.id || financeId("rec"),
                 name: name.trim(),
@@ -54,9 +56,12 @@ function RecipeModalForm({ recipe, onClose }: { recipe: Recipe | null; onClose: 
                 ingredients: ings.filter((i) => i.itemId && num(i.qty) > 0),
                 productId,
                 productWeight: prod?.weight || recipe?.productWeight || "",
-                unitPrice: prod ? num(prod.unitPrice) : num(unitPrice),
+                unitPrice: price,
                 categoryId: prod?.categoryId || recipe?.categoryId || "",
               });
+              if (prod && Math.abs(num(prod.unitPrice) - price) > 0.0001) {
+                app.saveProduct({ ...prod, unitPrice: price }, { silent: true });
+              }
               onClose();
             }}
           >
@@ -95,12 +100,12 @@ function RecipeModalForm({ recipe, onClose }: { recipe: Recipe | null; onClose: 
             ))}
           </Select>
         </Field>
-        <Field label="سعر البيع (إن لم يُربط منتج)">
+        <Field label={product ? "سعر البيع" : "سعر البيع (إن لم يُربط منتج)"}>
           <TextInput
             type="number"
             step="0.01"
-            value={product ? String(product.unitPrice) : unitPrice}
-            disabled={!!product}
+            min={0}
+            value={unitPrice}
             onChange={(e) => setPrice(e.target.value)}
           />
         </Field>

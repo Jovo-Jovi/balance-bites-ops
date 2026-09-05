@@ -138,7 +138,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | الملصقات | Swatch cards; tap opens Studio via `bb_label_open`; ok/low/crit + usage filters | [x] |
 | الكتالوج | Products, categories, inactive | [x] |
 | بطاقات المنتج | BOM cards | [x] |
-| الوصفات | BOM, batch, product link | [x] |
+| الوصفات | BOM, batch, product link; sell price editable (writes catalog `unitPrice` when linked) | [x] |
 | التحضير | Board first (save/send/print); unsent list; drafts; شراء; BOM print; اعتماد الكل; إلى اللوحة with a customer also writes that draft and shows the name on the board | [x] |
 | الإنتاج | Runs; gap table فواتير + مباع + produced + ينقص (فواتير − إنتاج); تجهيز الناقص; load/delete unsent / awaiting | [x] |
 | المرتجعات | Restock vs expired / hawalek | [x] |
