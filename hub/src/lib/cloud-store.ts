@@ -132,6 +132,12 @@ function decodeCloudData(data: unknown): unknown {
   }
 }
 
+/** Firestore rejects `undefined` in `setDoc`. JSON clone drops those keys. */
+function cloneForFirestore(value: unknown): unknown {
+  if (value === undefined) return null;
+  return JSON.parse(JSON.stringify(value));
+}
+
 function applyRemote(key: string, data: unknown) {
   writeLocal(key, decodeCloudData(data));
   notify(key);
@@ -359,7 +365,7 @@ async function persist(key: string, value: unknown, prevWriteId = ""): Promise<v
       basedOn = prevWriteId || lastAppliedWriteId.get(key) || (await readStoredWriteId(key));
       pendingWriteIds.add(clientWriteId);
       await setDoc(keyDocRef(key), {
-        data: value,
+        data: cloneForFirestore(value),
         updatedAt: serverTimestamp(),
         updatedBy: uid,
         clientWriteId,
