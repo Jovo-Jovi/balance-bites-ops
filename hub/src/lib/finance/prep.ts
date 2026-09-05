@@ -2,7 +2,7 @@ import type { Customer, Invoice, InvoiceLine, Product } from "@/lib/invoices/typ
 import { calcTotals } from "@/lib/invoices/helpers";
 import { financeId, num, roundQty, todayISO } from "./helpers";
 import { recipeSellPrice } from "./recipes";
-import type { FinancePending, PrepLine, Recipe } from "./types";
+import type { FinancePending, PrepCustomer, PrepLine, Recipe } from "./types";
 
 export function isInvoiceDraft(p: FinancePending | null | undefined) {
   return !!(p && p.kind === "invoice_draft");
@@ -25,21 +25,25 @@ export function findDraftByCustomer(all: FinancePending[], customerId: string) {
   return getInvoiceDrafts(all).find((p) => p.customerId === customerId) || null;
 }
 
+export function recipeToDraftItem(rec: Recipe, products: Product[], qty: number): InvoiceLine {
+  const p = rec.productId ? products.find((x) => x.id === rec.productId) : null;
+  return {
+    productId: p ? p.id : rec.productId || null,
+    name: p ? p.name : rec.name,
+    packType: p ? p.packType || "" : "",
+    weight: p ? p.weight || "" : rec.productWeight || "",
+    categoryId: p ? p.categoryId || null : rec.categoryId || null,
+    qty: roundQty(qty),
+    price: p ? num(p.unitPrice) : recipeSellPrice(rec, products),
+  };
+}
+
 export function prepLinesToItems(prepLines: PrepLine[], recipes: Recipe[], products: Product[]): InvoiceLine[] {
   const items: InvoiceLine[] = [];
   (prepLines || []).forEach((line) => {
     const rec = recipes.find((r) => r.id === line.recipeId);
     if (!rec) return;
-    const p = rec.productId ? products.find((x) => x.id === rec.productId) : null;
-    items.push({
-      productId: p ? p.id : rec.productId || null,
-      name: p ? p.name : rec.name,
-      packType: p ? p.packType || "" : "",
-      weight: p ? p.weight || "" : rec.productWeight || "",
-      categoryId: p ? p.categoryId || null : rec.categoryId || null,
-      qty: roundQty(line.units),
-      price: p ? num(p.unitPrice) : recipeSellPrice(rec, products),
-    });
+    items.push(recipeToDraftItem(rec, products, line.units));
   });
   return items;
 }
@@ -111,15 +115,38 @@ export function draftToInvoice(pend: FinancePending, invNum: string): Invoice {
   };
 }
 
+export function mergePrepCustomers(groups: (PrepCustomer[] | undefined)[]): PrepCustomer[] | undefined {
+  const by = new Map<string, string>();
+  (groups || []).forEach((g) => {
+    (g || []).forEach((c) => {
+      if (!c?.id) return;
+      by.set(c.id, c.name || by.get(c.id) || "");
+    });
+  });
+  if (!by.size) return undefined;
+  return [...by.entries()].map(([id, name]) => ({ id, name }));
+}
+
+export function prepCustomersLabel(line: PrepLine): string {
+  return (line.customers || []).map((c) => c.name || c.id).filter(Boolean).join(" · ");
+}
+
 export function mergePrepLines(groups: PrepLine[][]): PrepLine[] {
-  const by: Record<string, number> = {};
+  const by: Record<string, { units: number; customers: PrepCustomer[] }> = {};
   (groups || []).forEach((g) => {
     (g || []).forEach((l) => {
       if (!l?.recipeId || num(l.units) <= 0) return;
-      by[l.recipeId] = roundQty((by[l.recipeId] || 0) + roundQty(l.units));
+      const cur = by[l.recipeId] || { units: 0, customers: [] };
+      cur.units = roundQty(cur.units + roundQty(l.units));
+      cur.customers = mergePrepCustomers([cur.customers, l.customers]) || [];
+      by[l.recipeId] = cur;
     });
   });
-  return Object.keys(by).map((recipeId) => ({ recipeId, units: by[recipeId] }));
+  return Object.keys(by).map((recipeId) => ({
+    recipeId,
+    units: by[recipeId].units,
+    ...(by[recipeId].customers.length ? { customers: by[recipeId].customers } : {}),
+  }));
 }
 
 export function makePrepOrder(

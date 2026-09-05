@@ -218,12 +218,26 @@ function StockReport() {
         {app.productSummary.length === 0 ? (
           <Empty>لا بيانات — اربط الفواتير وسجّل الإنتاج</Empty>
         ) : (
-          <FinanceTable minWidth="40rem">
+          <>
+          <p className="mb-2 text-xs text-[var(--bb-muted)]">
+            <b className="font-medium text-[var(--bb-title)]">فواتير</b> = كميات الفواتير المعتمدة قبل المرتجع.{" "}
+            <b className="font-medium text-[var(--bb-title)]">مباع</b> = بعد خصم المرتجعات المربوطة بفاتورة.{" "}
+            الرصيد = إنتاج − فواتير + مرتجع أُعيد للمخزون − حوالك. لوحة التحضير والمسودات لا تدخل هنا. القيمة =
+            تكلفة الوحدة × أكبر الرقمين (الرصيد، صفر).
+          </p>
+          <FinanceTable minWidth="48rem">
             <thead>
               <tr>
                 <th className={thClass}>المنتج</th>
                 <th className={thClass}>إنتاج</th>
-                <th className={thClass}>مباع</th>
+                <th className={thClass}>
+                  فواتير
+                  <span className="mt-0.5 block text-[10px] font-normal text-[var(--bb-muted)]">قبل المرتجع</span>
+                </th>
+                <th className={thClass}>
+                  مباع
+                  <span className="mt-0.5 block text-[10px] font-normal text-[var(--bb-muted)]">بعد المرتجع</span>
+                </th>
                 <th className={thClass}>رصيد</th>
                 <th className={thClass}>تكلفة وحدة</th>
                 <th className={thClass}>قيمة</th>
@@ -241,6 +255,9 @@ function StockReport() {
                   </td>
                   <td className={tdClass} dir="ltr">
                     {fmtQty(row.produced)}
+                  </td>
+                  <td className={tdClass} dir="ltr">
+                    {fmtQty(row.soldGross)}
                   </td>
                   <td className={tdClass} dir="ltr">
                     {fmtQty(row.sold)}
@@ -265,6 +282,7 @@ function StockReport() {
               ))}
             </tbody>
           </FinanceTable>
+          </>
         )}
       </Accordion>
       <Accordion title="مواد خام" hint={`${app.materials.length}`} defaultOpen>

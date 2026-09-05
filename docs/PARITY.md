@@ -131,7 +131,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | COGS | Recipe unit cost vs sell / margin | [x] |
 | الأرباح | P&L = sales − COGS of **sold** − opex − hawalek (not leftover stock); from/to window + print | [x] |
 | المستثمرون | WC diary peak (lag / journal placement); join-date profit; NAV × toward/peak; copy cash shortfall | [x] |
-| المخزون | Ledger qty × cost + finished goods | [x] |
+| المخزون | Ledger qty × cost + finished goods; FG table فواتير (gross) + مباع (net) | [x] |
 | المشتريات | Buy-ins; ledger source of qty | [x] |
 | المواد الخام | Catalog + inline qty; ok/low/crit + usage filters | [x] |
 | التغليف | Catalog + inline qty; ok/low/crit + usage filters | [x] |
@@ -139,8 +139,8 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | الكتالوج | Products, categories, inactive | [x] |
 | بطاقات المنتج | BOM cards | [x] |
 | الوصفات | BOM, batch, product link | [x] |
-| التحضير | Board first (save/send/print); unsent list; drafts; شراء; BOM print; اعتماد الكل | [x] |
-| الإنتاج | Runs; gap table defaults to ينقص; تجهيز الناقص; load/delete unsent / awaiting | [x] |
+| التحضير | Board first (save/send/print); unsent list; drafts; شراء; BOM print; اعتماد الكل; إلى اللوحة with a customer also writes that draft and shows the name on the board | [x] |
+| الإنتاج | Runs; gap table فواتير + مباع + produced + ينقص (فواتير − إنتاج); تجهيز الناقص; load/delete unsent / awaiting | [x] |
 | المرتجعات | Restock vs expired / hawalek | [x] |
 | تكاليف التشغيل | Rent, wages, compensation (negative OK) | [x] |
 
@@ -160,8 +160,9 @@ Also:
    - Stock → cash: liquid = paid + pending + stock **at cost**; P&L = liquid − spent  
    - Stock → loss: liquid = paid + pending; P&L = liquid − spent  
    Keep the words ربح / خسارة (not color alone).
-4. **Prep invoices:** pick customer → that customer’s items → another customer. Drafts `kind: 'invoice_draft'`. Approve writes `#INV-`. Combined sheet uses BOM component totals. شراء opens purchase modal with shortfall (needed − stock; user may increase).
+4. **Prep invoices:** pick customer → that customer’s items → another customer. Drafts `kind: 'invoice_draft'`. Approve writes `#INV-`. Combined sheet uses BOM component totals. شراء opens purchase modal with shortfall (needed − stock; user may increase). **إلى اللوحة** with a customer selected also merges into that customer’s draft and stores `customers[]` on the board line.
 5. Do not mix prep-approve with production-approve.
+6. **Finished goods qty:** فواتير (`soldGross`) = approved invoice qty. مباع (`sold`) = after invoice-linked returns. On-hand = produced − فواتير + restock − hawalek. Production ينقص = max(0, فواتير − produced). Prep board / drafts are not in these columns.
 
 `report.md` documents duplicate formulas and save races — copy **intended** rules, not the silent FileStore fail.
 

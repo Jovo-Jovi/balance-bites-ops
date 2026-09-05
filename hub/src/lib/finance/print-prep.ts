@@ -3,6 +3,7 @@ import { openPrintWindow } from "@/lib/invoices/print";
 import type { InvoiceLine } from "@/lib/invoices/types";
 import { typeLabel } from "./helpers";
 import { num, roundQty } from "./helpers";
+import { prepCustomersLabel } from "./prep";
 import { findRecipeForItem } from "./recipe-match";
 import { calcPrepAggregate } from "./recipes";
 import type { FinancePending, LedgerRow, PrepLine, Recipe, StockItem } from "./types";
@@ -111,12 +112,18 @@ function section(title: string, inner: string) {
   return `<h3>${esc(title)}</h3>${inner}`;
 }
 
-function buildPrepBoardHtml(agg: PrepAgg, mode: PrepPrintMode) {
+function buildPrepBoardHtml(agg: PrepAgg, mode: PrepPrintMode, prepLines: PrepLine[]) {
   const modeLbl = agg.prodMode === "net" ? "بعد خصم الجاهز" : "الكمية كاملة";
+  const whoByRec: Record<string, string> = {};
+  prepLines.forEach((l) => {
+    const who = prepCustomersLabel(l);
+    if (who) whoByRec[l.recipeId] = who;
+  });
   const prodRows = agg.productRows.map((row) => {
     const p = row.prep;
+    const who = whoByRec[row.recipeId];
     return [
-      esc(row.rec.name),
+      esc(row.rec.name) + (who ? `<div class="muted" style="margin:0">${esc(who)}</div>` : ""),
       `${row.units} مطلوب`,
       `${row.onHand} جاهز`,
       `${row.unitsToProduce} للإنتاج`,
@@ -208,7 +215,7 @@ export function printPrepBoard(opts: {
 }) {
   if (!opts.prepLines.length) return false;
   const agg = calcPrepAggregate(opts.prepLines, opts.recipes, opts.aggOpts);
-  const built = buildPrepBoardHtml(agg, opts.mode);
+  const built = buildPrepBoardHtml(agg, opts.mode, opts.prepLines);
   const css = `${BASE_CSS}@media print{@page{size:A4 portrait;margin:12mm;}}`;
   return openPrintWindow(
     built.title,
