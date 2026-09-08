@@ -67,7 +67,7 @@ function reportTotal(
   if (!invoices.length) {
     return { empty: "لا يوجد فواتير في هذه الفترة", stats: [], sections: [] };
   }
-  const enriched = invoices.map((inv) => enrichInvoice(returns, inv));
+  const enriched = invoices.map((inv) => enrichInvoice(returns, inv, invoices));
   const sold = salesOnly(enriched);
   const fullRetN = enriched.filter((e) => e.salesStatus === "full").length;
   const partRetN = enriched.filter((e) => e.salesStatus === "partial").length;
@@ -142,7 +142,7 @@ function reportCustomer(
   if (!invoices.length) {
     return { empty: "لا يوجد فواتير لهذا العميل", stats: [], sections: [] };
   }
-  const enriched = invoices.map((inv) => enrichInvoice(returns, inv));
+  const enriched = invoices.map((inv) => enrichInvoice(returns, inv, invoices));
   const sold = salesOnly(enriched);
   const totalRev = sold.reduce((s, e) => s + e.net, 0);
   const avgInv = sold.length ? totalRev / sold.length : 0;
@@ -193,7 +193,7 @@ function reportTopProducts(
   const invIds = invoices.map((i) => i.id);
   const prodMap: Record<string, { name: string; qty: number; rev: number; count: number }> =
     {};
-  salesOnly(invoices.map((inv) => enrichInvoice(returns, inv))).forEach((e) => {
+  salesOnly(invoices.map((inv) => enrichInvoice(returns, inv, invoices))).forEach((e) => {
     (e.inv.items || []).forEach((it) => {
       const key = it.productId || it.name;
       if (!prodMap[key]) {
@@ -262,7 +262,7 @@ function reportProduct(
   let totalRev = 0;
 
   invoices.forEach((inv) => {
-    const e = enrichInvoice(returns, inv);
+    const e = enrichInvoice(returns, inv, invoices);
     if (e.salesStatus === "full") return;
     let hit = false;
     let lineQty = 0;

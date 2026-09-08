@@ -91,15 +91,15 @@ function trend(current: number, previous: number): KpiRow["trend"] {
   return "→";
 }
 
-function netUnits(inv: Invoice, returns: ReturnRecord[]) {
-  const e = enrichInvoice(returns, inv);
+function netUnits(inv: Invoice, returns: ReturnRecord[], invoices: Invoice[]) {
+  const e = enrichInvoice(returns, inv, invoices);
   if (e.salesStatus === "full") return 0;
   const qty = (inv.items || []).reduce((s, it) => s + num(it.qty), 0);
   return Math.max(0, qty - (e.returnInfo?.totalQty || 0));
 }
 
-function netSales(inv: Invoice, returns: ReturnRecord[]) {
-  return enrichInvoice(returns, inv).net;
+function netSales(inv: Invoice, returns: ReturnRecord[], invoices: Invoice[]) {
+  return enrichInvoice(returns, inv, invoices).net;
 }
 
 function churchId(inv: { customerId?: string | null; customerName?: string }, customer?: Customer | null) {
@@ -324,12 +324,12 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
   });
 
   function weekStats(list: Invoice[]) {
-    const sold = list.filter((inv) => enrichInvoice(inputs.returns, inv).salesStatus !== "full");
+    const sold = list.filter((inv) => enrichInvoice(inputs.returns, inv, inputs.invoices).salesStatus !== "full");
     const churches = new Set(
       sold.map((inv) => churchId(inv)).filter((id) => id && id !== "_none"),
     );
-    const units = sold.reduce((s, inv) => s + netUnits(inv, inputs.returns), 0);
-    const sales = sold.reduce((s, inv) => s + netSales(inv, inputs.returns), 0);
+    const units = sold.reduce((s, inv) => s + netUnits(inv, inputs.returns, inputs.invoices), 0);
+    const sales = sold.reduce((s, inv) => s + netSales(inv, inputs.returns, inputs.invoices), 0);
     return { churches, units, sales, count: churches.size };
   }
 
@@ -337,7 +337,7 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
   const prev = weekStats(prevWeekInv);
   const activeIds = new Set(
     activeInv
-      .filter((inv) => enrichInvoice(inputs.returns, inv).salesStatus !== "full")
+      .filter((inv) => enrichInvoice(inputs.returns, inv, inputs.invoices).salesStatus !== "full")
       .map((inv) => churchId(inv))
       .filter((id) => id && id !== "_none"),
   );
@@ -361,8 +361,8 @@ export function buildChurchReport(inputs: StatusInputs, doc: ChurchStatusDoc): C
     const prevList = prevWeekInv.filter((inv) => churchId(inv) === id);
     const servedThisWeek = weekStats(weekList).count > 0;
     const servedPrevWeek = weekStats(prevList).count > 0;
-    const units = weekList.reduce((s, inv) => s + netUnits(inv, inputs.returns), 0);
-    const sales = weekList.reduce((s, inv) => s + netSales(inv, inputs.returns), 0);
+    const units = weekList.reduce((s, inv) => s + netUnits(inv, inputs.returns, inputs.invoices), 0);
+    const sales = weekList.reduce((s, inv) => s + netSales(inv, inputs.returns, inputs.invoices), 0);
     const card = ledger.byCustomer[id];
     const outstanding = card?.remaining ?? 0;
     const weekRemaining = weekList.reduce((s, inv) => {

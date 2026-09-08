@@ -76,7 +76,7 @@ export function HistoryTool() {
       ) : (
         <ul className="flex flex-col gap-3">
           {list.map((inv) => {
-            const e = enrichInvoice(app.returns, inv);
+            const e = enrichInvoice(app.returns, inv, app.invoices);
             const pay = invoicePayStatus(app.payments, inv.id);
             return (
               <li

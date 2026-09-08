@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceLine, InvoicePayments, Product, ReturnRecord } from "@/lib/invoices/types";
-import { getReturnLineTotal } from "@/lib/invoices/returns";
+import { effectiveReturnInvoiceId, getReturnLineTotal } from "@/lib/invoices/returns";
 import { invoicePayStatus } from "@/lib/invoices/payments";
 import type {
   CustomerPayment,
@@ -48,10 +48,12 @@ function applyReturnDeductionsToSales(
   result: SalesAgg,
   returns: ReturnRecord[],
   payments: InvoicePayments,
+  invoices: Invoice[],
 ) {
   returns.forEach((ret) => {
-    if (!ret.invoiceId) return;
-    const status = paymentStatus(payments, ret.invoiceId);
+    const invoiceId = effectiveReturnInvoiceId(ret, invoices);
+    if (!invoiceId) return;
+    const status = paymentStatus(payments, invoiceId);
     (ret.items || []).forEach((it) => {
       const key = it.productId || `name:${it.name || "?"}`;
       const qty = num(it.qty);
@@ -121,6 +123,7 @@ export function aggregateSales(
     { byProduct, totalRevenue, totalPaid, totalPending, totalQty },
     returns,
     payments,
+    invoices,
   );
   const led = buildCustomerLedger(invoices, returns, payments, customerPayments);
   result.totalPaid = led.totals.paid;

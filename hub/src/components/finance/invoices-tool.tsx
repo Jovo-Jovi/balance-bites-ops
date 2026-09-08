@@ -22,6 +22,7 @@ import {
   type LedgerInvoiceRow,
 } from "@/lib/finance/customer-ledger";
 import { invoicePayBadgeClass } from "@/lib/invoices/payments";
+import { latestInvoiceForCustomer } from "@/lib/invoices/returns";
 import { useFinanceApp } from "./finance-context";
 import { FinanceTable, StatCard, tdClass, thClass } from "./section-chips";
 
@@ -683,10 +684,15 @@ function CustomerDetailModal({
             <StatCard label="مدفوع" value={`${fmt(c.paid)} EGP`} />
             <StatCard label="متبقي" value={`${fmt(c.remaining)} EGP`} />
           </div>
+          {c.unappliedReturns > 0.009 ? (
+            <p className="text-xs text-[var(--bb-warn)]">
+              مرتجع {fmt(c.unappliedReturns)} EGP لم يُخصم من فاتورة (الفواتير مسددة).
+            </p>
+          ) : null}
           {c.remaining > 0.009 ? (
             <p className="text-xs text-[var(--bb-muted)]">
               المتبقي {fmt(c.remaining)} EGP = الفواتير {fmt(c.gross)} − مرتجع{" "}
-              {fmt(c.returned + (c.extraReturns || 0))} − مدفوع {fmt(c.paid)}.
+              {fmt(c.returned + (c.extraReturns || 0) - (c.unappliedReturns || 0))} − مدفوع {fmt(c.paid)}.
             </p>
           ) : null}
           <h3 className="text-xs tracking-[0.14em] text-[var(--bb-gold)] uppercase">فواتير</h3>
@@ -775,7 +781,11 @@ function CustomerDetailModal({
               {rets.slice(0, 20).map((r) => (
                 <li key={r.id} className="flex justify-between gap-2">
                   <span>
-                    {r.date || "—"} · {r.invoiceNumber || "أصناف"} · {r.reason || ""}
+                    {r.date || "—"} · {r.invoiceNumber ||
+                      latestInvoiceForCustomer(app.invoices, r.customerId, r.customerName)
+                        ?.invoiceNumber ||
+                      "أصناف"}{" "}
+                    · {r.reason || ""}
                   </span>
                   <span className="text-[var(--bb-bad)]" dir="ltr">
                     −{fmt(r.amount || 0)}

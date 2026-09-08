@@ -89,6 +89,7 @@ import {
 } from "@/lib/finance/backups";
 import { normalizeDisposition } from "@/lib/finance/returns-live";
 import { nextInvoiceNumber, draftFromInvoice } from "@/lib/invoices/helpers";
+import { latestInvoiceForCustomer } from "@/lib/invoices/returns";
 import { printInvoiceDocument, printInvoiceDocuments } from "@/lib/invoices/print";
 import { parseInv2, parsePrintLookId, printLookLabel, resolvePrintTheme, type PrintLookId } from "@/lib/invoices/look";
 import { parseMargins, parsePageSize, type PrintMargins, type PrintPageSize } from "@/lib/invoices/print-layout";
@@ -767,13 +768,28 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       lineTotal: num(it.lineTotal) || num(it.qty) * num(it.price),
       disposition: it.disposition === "expired" ? "expired" : "restock",
     }));
+    let invoiceId = String(data.invoiceId || "").trim();
+    let invoiceNumber = data.invoiceNumber || "";
+    const customerId = String(data.customerId || "").trim();
+    const customerName = data.customerName || "";
+    if (!invoiceId && (customerId || customerName)) {
+      const latest = latestInvoiceForCustomer(readArr<Invoice>("bb_invoices"), customerId, customerName);
+      if (latest) {
+        invoiceId = latest.id;
+        invoiceNumber = latest.invoiceNumber || invoiceNumber;
+      }
+    }
     const rec: ReturnRecord = {
       ...data,
       id: data.id || financeId("ret"),
       date: data.date || todayISO(),
+      invoiceId,
+      invoiceNumber,
+      customerId: customerId || data.customerId,
+      customerName,
       amount: num(data.amount) || items.reduce((s, it) => s + num(it.lineTotal), 0),
       items,
-      source: data.source === "items" || (!data.invoiceId && data.source !== "invoice") ? "items" : "invoice",
+      source: invoiceId ? "invoice" : "items",
       disposition: normalizeDisposition(items),
     };
     const arr = readArr<ReturnRecord>("bb_returns");
@@ -782,7 +798,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     else arr.unshift(rec);
     fireAndForget(writeFinanceKey("bb_returns", arr));
     if (rec.customerId) fireAndForget(writeFinanceKey("bb_ret_last_customer", rec.customerId));
-    toast.push("حُفظ المرتجع", "ok");
+    toast.push(
+      invoiceNumber ? `حُفظ المرتجع على ${invoiceNumber}` : "حُفظ المرتجع",
+      "ok",
+    );
   }, [toast]);
 
   const removeReturn = useCallback((id: string) => {
