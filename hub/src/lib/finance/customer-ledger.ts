@@ -3,7 +3,7 @@ import type {
   InvoicePayments,
   ReturnRecord,
 } from "@/lib/invoices/types";
-import { getReturnLineTotal } from "@/lib/invoices/returns";
+import { getReturnLineTotal, getInvoiceReturnInfo, effectiveReturnInvoiceId } from "@/lib/invoices/returns";
 import { invoicePayStatus } from "@/lib/invoices/payments";
 import type { CustomerPayment } from "./types";
 import { num } from "./helpers";
@@ -59,28 +59,6 @@ export type CustomerLedger = {
   totals: { gross: number; returned: number; paid: number; remaining: number };
 };
 
-function invoiceReturnInfo(
-  returns: ReturnRecord[],
-  invoiceId: string,
-  invoice: Invoice,
-) {
-  const recs = returns.filter((r) => r.invoiceId === invoiceId);
-  if (!recs.length) return null;
-  let totalQty = 0;
-  let totalRevenue = 0;
-  let fullReturn = false;
-  recs.forEach((ret) => {
-    if (ret.fullReturn) fullReturn = true;
-    (ret.items || []).forEach((it) => {
-      totalQty += num(it.qty);
-      totalRevenue += getReturnLineTotal(it);
-    });
-  });
-  const invQty = (invoice.items || []).reduce((s, it) => s + num(it.qty), 0);
-  if (totalQty >= invQty - 0.0001) fullReturn = true;
-  return { totalQty, totalRevenue, fullReturn };
-}
-
 export function buildCustomerLedger(
   invoices: Invoice[],
   returns: ReturnRecord[],
@@ -119,7 +97,7 @@ export function buildCustomerLedger(
   invoices.forEach((inv) => {
     const key = invCustKey(inv) || "_none";
     const c = ensureCust(key, inv.customerName, inv.customerPhone);
-    const info = invoiceReturnInfo(returns, inv.id, inv);
+    const info = getInvoiceReturnInfo(returns, inv.id, inv, invoices);
     const gross = num(inv.total);
     const returned = info ? info.totalRevenue : 0;
     const net = Math.max(0, gross - returned);
@@ -142,7 +120,7 @@ export function buildCustomerLedger(
   });
 
   returns.forEach((ret) => {
-    if (ret.invoiceId) return;
+    if (effectiveReturnInvoiceId(ret, invoices)) return;
     if (ret.skipCustomerCredit) return;
     const amt = (ret.items && ret.items.length)
       ? ret.items.reduce((s, it) => {
@@ -189,8 +167,9 @@ export function buildCustomerLedger(
       .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
       .forEach((er) => {
         let left = num(er.amount);
-        c.invoices.forEach((row) => {
+        [...c.invoices].reverse().forEach((row) => {
           if (left <= 0.009) return;
+          if (invoicePayStatus(payments, row.inv.id) === "paid") return;
           if (paidBeforeReturn(row.inv.id, er.date)) return;
           const take = Math.min(remainMap[row.inv.id], left);
           if (take <= 0.009) return;

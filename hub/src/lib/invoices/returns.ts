@@ -14,7 +14,45 @@ function getReturnLineTotal(it: { lineTotal?: number; qty?: number; price?: numb
   return (parseFloat(String(it.qty)) || 0) * (parseFloat(String(it.price)) || 0);
 }
 
-function aggregateReturnedDeductions(returns: ReturnRecord[]) {
+function partyKey(id?: string | null, name?: string | null) {
+  if (id && String(id).indexOf("name:") === 0) return String(id);
+  if (id) return String(id);
+  if (name) return `name:${String(name).trim()}`;
+  return "";
+}
+
+export function latestInvoiceForCustomer(
+  invoices: Invoice[],
+  customerId?: string | null,
+  customerName?: string | null,
+): Invoice | null {
+  const key = partyKey(customerId, customerName);
+  const name = String(customerName || "").trim();
+  const rows = (invoices || []).filter((inv) => {
+    const ik = partyKey(inv.customerId, inv.customerName);
+    if (key && ik === key) return true;
+    if (customerId && inv.customerId === customerId) return true;
+    if (name && String(inv.customerName || "").trim() === name) return true;
+    return false;
+  });
+  if (!rows.length) return null;
+  rows.sort(
+    (a, b) =>
+      (a.date || "").localeCompare(b.date || "") ||
+      String(a.invoiceNumber || "").localeCompare(String(b.invoiceNumber || "")),
+  );
+  return rows[rows.length - 1];
+}
+
+/** Empty invoiceId is treated as missing. أصناف with a customer attach to that customer's latest invoice. */
+export function effectiveReturnInvoiceId(ret: ReturnRecord, invoices: Invoice[]): string {
+  const id = String(ret.invoiceId || "").trim();
+  if (id) return id;
+  if (ret.skipCustomerCredit) return "";
+  return latestInvoiceForCustomer(invoices, ret.customerId, ret.customerName)?.id || "";
+}
+
+function aggregateReturnedDeductions(returns: ReturnRecord[], invoices: Invoice[] = []) {
   const byInvoice: Record<
     string,
     {
@@ -27,9 +65,12 @@ function aggregateReturnedDeductions(returns: ReturnRecord[]) {
   > = {};
 
   returns.forEach((ret) => {
-    if (!ret.invoiceId) return;
-    if (!byInvoice[ret.invoiceId]) {
-      byInvoice[ret.invoiceId] = {
+    const invoiceId = invoices.length
+      ? effectiveReturnInvoiceId(ret, invoices)
+      : String(ret.invoiceId || "").trim();
+    if (!invoiceId) return;
+    if (!byInvoice[invoiceId]) {
+      byInvoice[invoiceId] = {
         records: [],
         totalQty: 0,
         totalRevenue: 0,
@@ -37,7 +78,7 @@ function aggregateReturnedDeductions(returns: ReturnRecord[]) {
         fullReturn: false,
       };
     }
-    const info = byInvoice[ret.invoiceId];
+    const info = byInvoice[invoiceId];
     info.records.push(ret);
     if (ret.fullReturn) info.fullReturn = true;
     info.totalExpiredAmt += parseFloat(String(ret.amount)) || 0;
@@ -66,8 +107,9 @@ export function getInvoiceReturnInfo(
   returns: ReturnRecord[],
   invoiceId: string,
   invoice: Invoice,
+  invoices: Invoice[] = [],
 ): ReturnInfo | null {
-  const info = aggregateReturnedDeductions(returns)[invoiceId];
+  const info = aggregateReturnedDeductions(returns, invoices)[invoiceId];
   if (!info) return null;
   return {
     records: info.records,
@@ -78,8 +120,12 @@ export function getInvoiceReturnInfo(
   };
 }
 
-export function enrichInvoice(returns: ReturnRecord[], inv: Invoice): EnrichedInvoice {
-  const info = getInvoiceReturnInfo(returns, inv.id, inv);
+export function enrichInvoice(
+  returns: ReturnRecord[],
+  inv: Invoice,
+  invoices: Invoice[] = [],
+): EnrichedInvoice {
+  const info = getInvoiceReturnInfo(returns, inv.id, inv, invoices);
   const gross = parseFloat(String(inv.total)) || 0;
   if (!info) {
     return { inv, gross, net: gross, returnInfo: null, salesStatus: "active" };
@@ -109,7 +155,8 @@ export function subtractReturnsFromProdMap(
 ) {
   const idSet = new Set(invoiceIds);
   returns.forEach((ret) => {
-    if (!ret.invoiceId || !idSet.has(ret.invoiceId)) return;
+    const invId = String(ret.invoiceId || "").trim();
+    if (!invId || !idSet.has(invId)) return;
     (ret.items || []).forEach((it) => {
       const key = it.productId || it.name || "";
       if (!prodMap[key]) return;

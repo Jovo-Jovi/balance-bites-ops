@@ -84,7 +84,7 @@ export function CustomerBrief({
     return app.invoices
       .filter((i) => i.customerId === customerId)
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-      .map((inv) => enrichInvoice(app.returns, inv));
+      .map((inv) => enrichInvoice(app.returns, inv, app.invoices));
   }, [app.invoices, app.returns, customerId]);
   const pendingDrafts = useMemo(() => {
     if (!customerId) return [];

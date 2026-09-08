@@ -22,7 +22,7 @@ export function EditorTool() {
   const saved = draft.loadedInvoiceId
     ? app.invoices.find((i) => i.id === draft.loadedInvoiceId)
     : null;
-  const enriched = saved ? enrichInvoice(app.returns, saved) : null;
+  const enriched = saved ? enrichInvoice(app.returns, saved, app.invoices) : null;
   const breakdown = getItemReturnBreakdown(
     app.returns,
     draft.loadedInvoiceId,

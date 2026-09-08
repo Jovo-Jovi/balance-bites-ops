@@ -200,7 +200,7 @@ export function buildInvoicePageHtml(opts: {
   const saved = draft.loadedInvoiceId
     ? invoices.find((i) => i.id === draft.loadedInvoiceId)
     : null;
-  const enriched = saved ? enrichInvoice(returns, saved) : null;
+  const enriched = saved ? enrichInvoice(returns, saved, invoices) : null;
   const showNet = mode === "net" && enriched && enriched.salesStatus !== "active";
   const due = showNet && enriched ? enriched.net : totals.total;
   const retAmt = showNet && enriched?.returnInfo ? enriched.returnInfo.totalRevenue : 0;

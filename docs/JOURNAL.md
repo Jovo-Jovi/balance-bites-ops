@@ -535,6 +535,8 @@ Stock منتجات جاهزة and production الطلب مقابل الإنتا�
 
 Recipe **سعر البيع** is editable even when a product is linked; Save writes `bb_products.unitPrice` (same catalog price invoices and prep read). Unlinked recipes still store `bb_recipes.unitPrice` only. Product writes omit undefined `inactive`/`active` (Firestore `setDoc` reject). CloudStore persist JSON-clones payloads so undefined keys cannot reach `setDoc`.
 
+Customer **أصناف** returns (no invoice picked) attach to that customer’s latest invoice so remaining / print للدفع drop by the return amount. Existing unlinked returns use the same latest-invoice rule in the ledger.
+
 ---
 
 ## Still not done (do not tick as shipped)

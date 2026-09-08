@@ -141,7 +141,7 @@ Native hub app (`docs/DESIGN.md`). Three tools: Library, Studio (`?tab=atelier`)
 | الوصفات | BOM, batch, product link; sell price editable (writes catalog `unitPrice` when linked) | [x] |
 | التحضير | Board first (save/send/print); unsent list; drafts; شراء; BOM print; اعتماد الكل; إلى اللوحة with a customer also writes that draft and shows the name on the board | [x] |
 | الإنتاج | Runs; gap table فواتير + مباع + produced + ينقص (فواتير − إنتاج); تجهيز الناقص; load/delete unsent / awaiting | [x] |
-| المرتجعات | Restock vs expired / hawalek | [x] |
+| المرتجعات | Restock vs expired / hawalek; customer أصناف credit the latest invoice remaining | [x] |
 | تكاليف التشغيل | Rent, wages, compensation (negative OK) | [x] |
 
 Also:
@@ -163,6 +163,7 @@ Also:
 4. **Prep invoices:** pick customer → that customer’s items → another customer. Drafts `kind: 'invoice_draft'`. Approve writes `#INV-`. Combined sheet uses BOM component totals. شراء opens purchase modal with shortfall (needed − stock; user may increase). **إلى اللوحة** with a customer selected also merges into that customer’s draft and stores `customers[]` on the board line.
 5. Do not mix prep-approve with production-approve.
 6. **Finished goods qty:** فواتير (`soldGross`) = approved invoice qty. مباع (`sold`) = after invoice-linked returns. On-hand = produced − فواتير + restock − hawalek. Production ينقص = max(0, فواتير − produced). Prep board / drafts are not in these columns.
+7. **Customer returns:** أصناف with a customer attach to that customer’s **latest** invoice (remaining, print للدفع, ledger). Unlinked leftovers apply newest-unpaid first.
 
 `report.md` documents duplicate formulas and save races — copy **intended** rules, not the silent FileStore fail.
 

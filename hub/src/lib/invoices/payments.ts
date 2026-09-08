@@ -38,6 +38,6 @@ export function customerPendingCount(
   return invoices.filter((inv) => {
     if (inv.customerId !== customerId) return false;
     if (invoicePayStatus(payments, inv.id) === "paid") return false;
-    return enrichInvoice(returns, inv).salesStatus !== "full";
+    return enrichInvoice(returns, inv, invoices).salesStatus !== "full";
   }).length;
 }

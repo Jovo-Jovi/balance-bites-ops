@@ -194,11 +194,11 @@ export function printCustomerList(opts: {
   const pendingOf = (id: string) =>
     customerInvoices(id).filter((inv) => {
       if (paymentStatus(opts.payments, inv.id) === "paid") return false;
-      return enrichInvoice(opts.returns, inv).salesStatus !== "full";
+      return enrichInvoice(opts.returns, inv, opts.invoices).salesStatus !== "full";
     });
 
   const formatAmt = (inv: Invoice) => {
-    const e = enrichInvoice(opts.returns, inv);
+    const e = enrichInvoice(opts.returns, inv, opts.invoices);
     if (e.salesStatus === "full") {
       return `<span style="opacity:.55;text-decoration:line-through">${esc(fmt(e.gross))} ${esc(S.cur)}</span>`;
     }
