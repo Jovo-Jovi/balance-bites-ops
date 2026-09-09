@@ -6,6 +6,7 @@ import { useToast } from "@/components/toast";
 import { FLAVOR_PACKS } from "@/lib/design/colors";
 import { productForTemplate } from "@/lib/design/product-match";
 import { DESIGN_SPECS } from "@/lib/design/specs";
+import { sortLibraryTemplates, type LibrarySort } from "@/lib/design/templates";
 import type { DesignType } from "@/lib/design/types";
 import { productOptions, useDesignApp } from "./design-context";
 import { LibraryThumb } from "./library-thumb-img";
@@ -15,6 +16,7 @@ export function LibraryTool() {
   const toast = useToast();
   const [q, setQ] = useState("");
   const [family, setFamily] = useState("");
+  const [sort, setSort] = useState<LibrarySort>("name");
   const [creating, setCreating] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -25,13 +27,14 @@ export function LibraryTool() {
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return app.templates.filter((t) => {
+    const filtered = app.templates.filter((t) => {
       if (family && t.designType !== family) return false;
       if (!needle) return true;
       const product = productForTemplate(t, app.products)?.name || "";
       return [t.name, t.flavorKey, t.designType, product].join(" ").toLowerCase().includes(needle);
     });
-  }, [app.templates, app.products, q, family]);
+    return sortLibraryTemplates(filtered, sort);
+  }, [app.templates, app.products, q, family, sort]);
 
   const products = productOptions(app.products, draftProduct);
 
@@ -84,6 +87,18 @@ export function LibraryTool() {
               {s.label}
             </option>
           ))}
+        </select>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as LibrarySort)}
+          aria-label="Sort templates"
+          className="bb-glass-input min-h-11 w-full px-3 text-[var(--bb-text)] sm:max-w-52"
+        >
+          <option value="name">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="family">Family</option>
         </select>
       </div>
       {visible.length === 0 ? (

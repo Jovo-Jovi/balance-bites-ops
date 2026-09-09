@@ -521,6 +521,10 @@ Studio **Blocks** drop **Curved text** (Layers / Color **Curvature** −100…10
 
 Studio Pack art **Kids** gains four kawaii RGBA icons in the same trim as Chicken face / Pizza face: Chicken puffs, Pizza puffs, Ketchup puffs (Faces), Mystery toy mix (Toys). Solid filled characters — no snack window, no edge badge. Repo `hub/public/design-presets/bb-*-puffs.png` and `bb-mystery-toy-mix.png`. Not Firestore.
 
+**Kids toys.** Pack art Toys also has seven filled kawaii items in the same RGBA trim: Car, Truck, Horn, Plane, Ball, Train, Blocks (`bb-kids-car.png` … `bb-kids-blocks.png`). No snack window, no edge badge. Not Firestore.
+
+**Library sort.** Design Library cards sort by Name A–Z (default), Z–A, Newest, Oldest, or Family. Filter/search still apply first. Session only — no new `bb_*` key.
+
 ---
 
 ## 2026-08-31 — Weekly church status (`feat/church-status`)
@@ -551,4 +555,4 @@ Customer **أصناف** returns (no invoice picked) attach to that customer’s 
 - Merge `feat/finance` → `main` when Waves A–E are confirmed
 - **T14** year-shard `bb_invoices` when the 1 MiB document is near (~730 invoices) — after T7 CAS; not Spark quotas. Follow **Standing — Firestore rules deploy order** (transitional rules published → client → tighten).
 - **O1** CSP: keep `script-src` Report-Only; optional `https://apis.google.com` in that policy; do not enforce `'self'` until Next bootstrap has a nonce
-- **O2** Pack art rail lazy thumbs (37 PNG; `loading="lazy"` + 160 px previews)
+- **O2** Pack art rail lazy thumbs (44 PNG; `loading="lazy"` + 160 px previews)

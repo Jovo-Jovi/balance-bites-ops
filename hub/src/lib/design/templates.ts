@@ -1,5 +1,5 @@
 import { asArray, genId } from "@/lib/invoices/helpers";
-import { getDesignSpec, parseDesignType } from "./specs";
+import { DESIGN_SPECS, getDesignSpec, parseDesignType } from "./specs";
 import type {
   CompositeBlob,
   DesignType,
@@ -401,6 +401,35 @@ export function isInlineAsset(key: string, value: unknown) {
     !value.startsWith(ASSET_PREFIX) &&
     !value.startsWith(R2_PREFIX)
   );
+}
+
+export type LibrarySort = "name" | "name-desc" | "newest" | "oldest" | "family";
+
+const NAME_LOCALES: Intl.LocalesArgument = ["ar", "en"];
+
+function compareTemplateName(a: LabelTemplate, b: LabelTemplate) {
+  return (
+    a.name.localeCompare(b.name, NAME_LOCALES, { numeric: true, sensitivity: "base" }) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+function familyRank(id: string) {
+  const i = DESIGN_SPECS.findIndex((s) => s.id === id);
+  return i < 0 ? DESIGN_SPECS.length : i;
+}
+
+/** Library grid order. Does not write Firestore. */
+export function sortLibraryTemplates(rows: LabelTemplate[], sort: LibrarySort) {
+  const next = rows.slice();
+  next.sort((a, b) => {
+    if (sort === "name-desc") return compareTemplateName(b, a);
+    if (sort === "newest") return (b.updatedAt || "").localeCompare(a.updatedAt || "") || compareTemplateName(a, b);
+    if (sort === "oldest") return (a.updatedAt || "").localeCompare(b.updatedAt || "") || compareTemplateName(a, b);
+    if (sort === "family") return familyRank(a.designType) - familyRank(b.designType) || compareTemplateName(a, b);
+    return compareTemplateName(a, b);
+  });
+  return next;
 }
 
 export function parseImportedJson(raw: unknown): LabelTemplate[] {
