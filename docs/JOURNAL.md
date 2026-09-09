@@ -517,12 +517,6 @@ Studio **Blocks** drop **Curved text** (Layers / Color **Curvature** −100…10
 
 ---
 
-## 2026-09-09 — Pack art: puff mascots
-
-Studio Pack art **Kids** gains four trimmed RGBA stickers from the puff sheet (captions left off the PNG): Chicken puffs, Pizza puffs, Ketchup puffs (Faces), Mystery toy mix (Toys). Repo files `hub/public/design-presets/bb-*-puffs.png` and `bb-mystery-toy-mix.png`. Not Firestore. Old simple pizza/chicken/ketchup faces stay.
-
----
-
 ## 2026-08-31 — Weekly church status (`feat/church-status`)
 
 Fourth hub card **الحالة الأسبوعية** (`/status`). Native LTR sheet that prints and downloads the BalanceBytes weekly church distribution report with the same sections, column order, header green `#0B4F3B`, and RAG row fills as the Excel template. KPIs and church rows come from invoices, returns, the customer ledger, and the pending queue. Staff notes, RAG overrides, and risks save to `bb_church_status` only — no Church A–D seed, no invoice writes. Map: [STATUS.md](STATUS.md). **Rules:** `bb_church_status` added to `isKnownKey` (additive). Publish Firestore rules before the first Save on a preview that uses production Firebase.
@@ -551,4 +545,4 @@ Customer **أصناف** returns (no invoice picked) attach to that customer’s 
 - Merge `feat/finance` → `main` when Waves A–E are confirmed
 - **T14** year-shard `bb_invoices` when the 1 MiB document is near (~730 invoices) — after T7 CAS; not Spark quotas. Follow **Standing — Firestore rules deploy order** (transitional rules published → client → tighten).
 - **O1** CSP: keep `script-src` Report-Only; optional `https://apis.google.com` in that policy; do not enforce `'self'` until Next bootstrap has a nonce
-- **O2** Pack art rail lazy thumbs (37 PNG; `loading="lazy"` + 160 px previews)
+- **O2** Pack art rail lazy thumbs (33 PNG / 12.1 MB; `loading="lazy"` + 160 px previews)
