@@ -141,7 +141,7 @@ export function buildStockValueReport(opts: {
   opts.stickers.forEach((i) => addInvItem("ملصقات", i, "bb_stickers"));
 
   summary.forEach((r) => {
-    const qty = r.onHand || 0;
+    const qty = r.onHand;
     const cpu = r.cogsPerUnit || 0;
     const val = Math.max(0, qty) * cpu;
     const activity = stockActivity(null, "", r.productId, opts.recipes, opts.products, opts.stickers);

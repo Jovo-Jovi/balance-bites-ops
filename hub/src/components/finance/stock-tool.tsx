@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
 import { LibraryThumb } from "@/components/design/library-thumb-img";
-import { fmt, fmtQty, INV_TYPES, itemKey, todayISO, typeLabel } from "@/lib/finance/helpers";
+import { fmt, fmtQty, INV_TYPES, itemKey, parseQty, todayISO, typeLabel } from "@/lib/finance/helpers";
 import { calcCOGS, recipeSellPrice } from "@/lib/finance/recipes";
 import { itemUsage, inventoryUsageLabel, matchesInventoryUsageFilter } from "@/lib/finance/analytics";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/lib/finance/stickers";
 import type { Category, Product } from "@/lib/invoices/types";
 import type { Recipe, StockItem } from "@/lib/finance/types";
+import { useToast } from "@/components/toast";
 import { useFinanceApp, type ItemKind } from "./finance-context";
 import { ItemModal } from "./item-modal";
 import { FinanceTable, SectionChips, StatCard, tdClass, thClass } from "./section-chips";
@@ -222,8 +223,9 @@ function StockReport() {
           <p className="mb-2 text-xs text-[var(--bb-muted)]">
             <b className="font-medium text-[var(--bb-title)]">فواتير</b> = كميات الفواتير المعتمدة قبل المرتجع.{" "}
             <b className="font-medium text-[var(--bb-title)]">مباع</b> = بعد خصم المرتجعات المربوطة بفاتورة.{" "}
-            الرصيد = إنتاج − فواتير + مرتجع أُعيد للمخزون − حوالك. لوحة التحضير والمسودات لا تدخل هنا. القيمة =
-            تكلفة الوحدة × أكبر الرقمين (الرصيد، صفر).
+            الرصيد = إنتاج − فواتير + مرتجع أُعيد للمخزون − حوالك. تعديل الرصيد إلى صفر يثبت إن ما فيش جاهز على الرف —
+            المكونات تتبع الفواتير والمشتريات، والكمية الجاهزة الموجبة تخصم من الدفتر حسب الوصفة. لوحة التحضير
+            والمسودات لا تدخل هنا. القيمة = تكلفة الوحدة × أكبر الرقمين (الرصيد، صفر).
           </p>
           <FinanceTable minWidth="48rem">
             <thead>
@@ -267,8 +269,8 @@ function StockReport() {
                       value={row.onHand}
                       name={row.name}
                       onCommit={(v) => {
-                        if (!row.productId || !row.recipeId) return;
-                        void app.applyProductStock(row.productId, row.recipeId, v);
+                        if (!row.productId || !row.recipeId) return false;
+                        return app.applyProductStock(row.productId, row.recipeId, v);
                       }}
                     />
                   </td>
@@ -308,22 +310,55 @@ function InlineQty({
 }: {
   name: string;
   value: number;
-  onCommit: (v: number) => void;
+  onCommit: (v: number) => void | boolean | Promise<boolean | void>;
 }) {
+  const toast = useToast();
+  const [text, setText] = useState(() => String(value));
+  const [shown, setShown] = useState(value);
+  const saving = useRef(false);
+  if (value !== shown) {
+    setShown(value);
+    setText(String(value));
+  }
+
+  function revert() {
+    setText(String(value));
+  }
+
+  function commit() {
+    if (saving.current) return;
+    const v = parseQty(text);
+    if (Number.isNaN(v)) {
+      toast.push("كمية غير صحيحة", "warn");
+      revert();
+      return;
+    }
+    if (Math.abs(v - value) < 0.0001) {
+      revert();
+      return;
+    }
+    if (!confirmQtyChange(name, value, v)) {
+      revert();
+      return;
+    }
+    saving.current = true;
+    void Promise.resolve(onCommit(v)).finally(() => {
+      saving.current = false;
+    }).then((ok) => {
+      if (ok === false) revert();
+    });
+  }
+
   return (
     <TextInput
       className="w-28 text-base"
-      key={String(value)}
-      defaultValue={String(value)}
-      onBlur={(e) => {
-        const v = parseFloat(String(e.target.value).replace(/,/g, ""));
-        if (Number.isNaN(v)) return;
-        if (Math.abs(v - value) < 0.0001) return;
-        if (!confirmQtyChange(name, value, v)) {
-          e.target.value = String(value);
-          return;
-        }
-        onCommit(v);
+      dir="ltr"
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
       }}
     />
   );
@@ -366,7 +401,11 @@ function ReportItemTable({
               <td className={tdClass}>{item.name}</td>
               <td className={tdClass}>{item.unit}</td>
               <td className={tdClass}>
-                <InlineQty value={qty} name={item.name} onCommit={(v) => void app.applyTruthStock(kind, item.id, v)} />
+                <InlineQty
+                  value={qty}
+                  name={item.name}
+                  onCommit={(v) => app.applyTruthStock(kind, item.id, v)}
+                />
               </td>
               <td className={`${tdClass} text-lg`} dir="ltr">
                 {fmt(item.costPerUnit)}
@@ -535,21 +574,7 @@ function ItemRow({
         <span className={st === "crit" ? "text-[var(--bb-bad)]" : st === "low" ? "text-[var(--bb-warn)]" : ""}>
           كمية
         </span>
-        <TextInput
-          className="w-28 text-base"
-          key={`${item.id}-${qty}`}
-          defaultValue={String(qty)}
-          onBlur={(e) => {
-            const v = parseFloat(String(e.target.value).replace(/,/g, ""));
-            if (Number.isNaN(v)) return;
-            if (Math.abs(v - qty) < 0.0001) return;
-            if (!confirmQtyChange(item.name, qty, v)) {
-              e.target.value = String(qty);
-              return;
-            }
-            void app.applyTruthStock(type, item.id, v);
-          }}
-        />
+        <InlineQty value={qty} name={item.name} onCommit={(v) => app.applyTruthStock(type, item.id, v)} />
       </label>
       <span className="text-lg text-[var(--bb-title)]" dir="ltr">
         {fmtQty(qty)} {item.unit}
@@ -945,21 +970,15 @@ function BomCard({ recipe: r }: { recipe: Recipe }) {
         <div className="border-t border-[var(--bb-line)]/50 px-4 pb-4 pt-3">
           <label className="flex flex-wrap items-center gap-2 text-sm">
             تعديل الجاهز
-            <TextInput
-              className="w-28 text-base"
-              defaultValue={String(onHand)}
-              key={`${r.productId}-${onHand}`}
-              onBlur={(e) => {
-                const v = parseFloat(e.target.value);
-                if (Number.isNaN(v) || !r.productId) return;
-                if (Math.abs(v - onHand) < 0.0001) return;
-                if (!confirmQtyChange(r.name, onHand, v)) {
-                  e.target.value = String(onHand);
-                  return;
-                }
-                void app.applyProductStock(r.productId, r.id, v);
-              }}
-            />
+            {r.productId ? (
+              <InlineQty
+                value={onHand}
+                name={r.name}
+                onCommit={(v) => app.applyProductStock(r.productId, r.id, v)}
+              />
+            ) : (
+              <span dir="ltr">{fmtQty(onHand)}</span>
+            )}
           </label>
           {ings.length === 0 ? (
             <Empty>لا أصناف في الوصفة</Empty>

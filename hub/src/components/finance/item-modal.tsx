@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionBtn, Field, Modal, Select, TextArea, TextInput } from "@/components/invoices/ui";
 import { useFinanceApp, type ItemKind } from "./finance-context";
-import { INV_TYPES, fmtQty } from "@/lib/finance/helpers";
+import { INV_TYPES, fmtQty, parseQty } from "@/lib/finance/helpers";
+import { useToast } from "@/components/toast";
 import type { StockItem } from "@/lib/finance/types";
 
 export function ItemModal({
@@ -32,6 +33,7 @@ function ItemModalForm({
   onClose: () => void;
 }) {
   const app = useFinanceApp();
+  const toast = useToast();
   const router = useRouter();
   const opened = item ? app.qtyOf(type, item.id, item) : 0;
   const [name, setName] = useState(item?.name || "");
@@ -57,7 +59,11 @@ function ItemModalForm({
         <>
           <ActionBtn
             onClick={() => {
-              const nextQty = parseFloat(String(stock).replace(/,/g, "")) || 0;
+              const nextQty = parseQty(stock);
+              if (Number.isNaN(nextQty)) {
+                toast.push("كمية غير صحيحة", "warn");
+                return;
+              }
               if (Math.abs(nextQty - openedStock) > 0.0001) {
                 if (
                   !window.confirm(
@@ -109,7 +115,7 @@ function ItemModalForm({
           <TextInput type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
         </Field>
         <Field label="الكمية (من الدفتر — تُكتب تسوية فقط إذا تغيّرت)">
-          <TextInput value={stock} onChange={(e) => setStock(e.target.value)} inputMode="decimal" />
+          <TextInput value={stock} onChange={(e) => setStock(e.target.value)} inputMode="decimal" dir="ltr" />
         </Field>
         <Field label="حد أدنى">
           <TextInput type="number" value={minStock} onChange={(e) => setMin(e.target.value)} />

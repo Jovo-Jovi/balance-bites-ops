@@ -21,6 +21,7 @@ import {
   emptyStockItem,
   financeId,
   fmt,
+  leftoverOnHandDelta,
   num,
   roundQty,
   todayISO,
@@ -46,6 +47,7 @@ import {
   buildLedgerMap,
   computeItemLedger,
   displayStock,
+  leftoverByRecipeFromSummary,
 } from "@/lib/finance/ledger";
 import { calcPrep, calcPrepAggregate } from "@/lib/finance/recipes";
 import {
@@ -291,33 +293,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [materials, packages, stickers],
   );
 
-  const ledger = useMemo(
-    () =>
-      buildLedgerMap({
-        purchases,
-        invoices,
-        recipes,
-        production,
-        returns,
-        materials,
-        packages,
-        stickers,
-      }),
-    [purchases, invoices, recipes, production, returns, materials, packages, stickers],
-  );
-
-  const qtyOf = useCallback(
-    (type: string, id: string, item?: StockItem | null) =>
-      displayStock(ledger, type, id, item || findItem(type, id)),
-    [ledger, findItem],
-  );
-
-  const sales = useMemo(
-    () =>
-      buildMoneyCycleSummary(invoices, purchases, opCosts, returns, payments, customerPayments),
-    [invoices, purchases, opCosts, returns, payments, customerPayments],
-  );
-
   const productSummary = useMemo(
     () =>
       buildProductSummary(
@@ -330,6 +305,49 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         findItem,
       ),
     [invoices, recipes, production, returns, payments, customerPayments, findItem],
+  );
+
+  const leftoverByRecipe = useMemo(
+    () => leftoverByRecipeFromSummary(productSummary),
+    [productSummary],
+  );
+
+  const ledger = useMemo(
+    () =>
+      buildLedgerMap({
+        purchases,
+        invoices,
+        recipes,
+        production,
+        returns,
+        materials,
+        packages,
+        stickers,
+        leftoverByRecipe,
+      }),
+    [
+      purchases,
+      invoices,
+      recipes,
+      production,
+      returns,
+      materials,
+      packages,
+      stickers,
+      leftoverByRecipe,
+    ],
+  );
+
+  const qtyOf = useCallback(
+    (type: string, id: string, item?: StockItem | null) =>
+      displayStock(ledger, type, id, item || findItem(type, id)),
+    [ledger, findItem],
+  );
+
+  const sales = useMemo(
+    () =>
+      buildMoneyCycleSummary(invoices, purchases, opCosts, returns, payments, customerPayments),
+    [invoices, purchases, opCosts, returns, payments, customerPayments],
   );
 
   const stockReport = useMemo(
@@ -493,6 +511,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         recipes: readArr<Recipe>("bb_recipes"),
         production: readArr<ProductionRun>("bb_production"),
         returns: readArr<ReturnRecord>("bb_returns"),
+        leftoverByRecipe,
       });
       const delta = roundQty(truth - led.balance);
       const next = currentList(type).map((i) => (i.id === id ? { ...i, currentStock: truth } : i));
@@ -514,12 +533,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           );
         }
         await Promise.all(writes);
+        return true;
+      } catch {
+        return false;
       } finally {
         endBusy();
       }
-      return true;
     },
-    [beginBusy, currentList, endBusy, savePurchase],
+    [beginBusy, currentList, endBusy, leftoverByRecipe, savePurchase],
   );
 
   const saveItem = useCallback(
@@ -612,6 +633,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         toast.push("لا توجد وصفة — أضف وصفة مربوطة بالمنتج", "warn");
         return false;
       }
+      const nextOnHand = roundQty(truthOnHand);
       const rows = buildProductSummary(
         readArr<Invoice>("bb_invoices"),
         readArr<Recipe>("bb_recipes"),
@@ -627,50 +649,43 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return false;
       }
       const current = row.onHand;
-      const delta = num(truthOnHand) - current;
-      if (Math.abs(delta) < 0.0001) return true;
+      const prodDelta = roundQty(nextOnHand - current);
+      const packDelta = leftoverOnHandDelta(current, nextOnHand);
+      if (Math.abs(prodDelta) < 0.0001) return true;
+      if (packDelta > 0.0001) {
+        const prep = calcPrep(rec, packDelta, (t, id) => findItem(t, id), ledger);
+        if (!prep.stockOk) {
+          if (
+            !window.confirm(
+              "⚠ المخزون لا يكفي لبعض المكونات (مواد/تغليف/ملصقات).\n\nالمتابعة سيُظهر عجزاً في المخزون.",
+            )
+          ) {
+            return false;
+          }
+        }
+      }
       flushSync(() => beginBusy("جاري الحفظ…"));
       try {
-        const prep = calcPrep(rec, Math.abs(delta), (t, id) => findItem(t, id), ledger);
-        const writes: Promise<unknown>[] = [];
-        const added = addRun(rec.id, delta, `مخزون يدوي · ${row.name}: ${current} → ${truthOnHand}`);
-        if (added) writes.push(added.written);
-        for (const l of prep.lines) {
-          const ing = findItem(l.type, l.itemId);
-          const cpu = ing ? num(ing.costPerUnit) : 0;
-          const led = computeItemLedger({
-            itemType: l.type as ItemKind,
-            itemId: l.itemId,
-            purchases: readArr<Purchase>("bb_purchases"),
-            invoices: readArr<Invoice>("bb_invoices"),
-            recipes: readArr<Recipe>("bb_recipes"),
-            production: readArr<ProductionRun>("bb_production"),
-            returns: readArr<ReturnRecord>("bb_returns"),
-          });
-          const qtyAdj = delta > 0 ? -l.needed : l.needed;
-          writes.push(
-            savePurchase({
-              itemType: l.type as ItemKind,
-              itemId: l.itemId,
-              itemName: l.name,
-              qty: qtyAdj,
-              costPerUnit: cpu,
-              supplier: "تسوية جرد",
-              date: todayISO(),
-              notes: `استخدام إنتاج · ${row.name} · دفتر ${led.balance}`,
-            }),
-          );
+        const added = addRun(rec.id, prodDelta, `مخزون يدوي · ${row.name}: ${current} → ${nextOnHand}`);
+        if (!added) {
+          toast.push("تعذر تسجيل الإنتاج", "warn");
+          return false;
         }
-        await Promise.all(writes);
-        toast.push("تم تحديث مخزون المنتج", "ok");
+        await added.written;
+        toast.push(
+          packDelta > 0.0001
+            ? "تم تحديث الرصيد — المكونات تخصم للكمية الجاهزة على الرف"
+            : "تم تحديث الرصيد — المكونات حسب الفواتير والمشتريات",
+          "ok",
+        );
+        return true;
       } catch {
-        /* persist already toasts the write error */
+        return false;
       } finally {
         endBusy();
       }
-      return true;
     },
-    [beginBusy, endBusy, findItem, ledger, savePurchase, toast],
+    [beginBusy, currentList, endBusy, findItem, ledger, toast],
   );
 
   const saveRecipe = useCallback((data: Recipe) => {
