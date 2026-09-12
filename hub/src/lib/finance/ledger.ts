@@ -8,55 +8,16 @@ import type {
   Recipe,
   StockItem,
 } from "./types";
-import { adjSupplier, itemKey, num, roundQty } from "./helpers";
+import { itemKey, num, roundQty } from "./helpers";
 import { isExpiredDisp } from "./returns-live";
 import { findRecipeForItem } from "./recipe-match";
-
-/** Live FG-count edits wrote fake purchases. Usage now includes leftover packs instead. */
-export function isFgIngredientAdj(p: Purchase) {
-  return adjSupplier(p.supplier || "") && String(p.notes || "").includes("استخدام إنتاج");
-}
 
 export function purchasedQty(purchases: Purchase[], itemType: string, itemId: string) {
   let sum = 0;
   purchases.forEach((p) => {
-    if (p.itemType !== itemType || p.itemId !== itemId) return;
-    if (isFgIngredientAdj(p)) return;
-    sum += roundQty(p.qty);
+    if (p.itemType === itemType && p.itemId === itemId) sum += roundQty(p.qty);
   });
   return roundQty(sum);
-}
-
-export function leftoverByRecipeFromSummary(rows: { recipeId: string; onHand: number }[]) {
-  const map: Record<string, number> = {};
-  rows.forEach((r) => {
-    if (!r.recipeId) return;
-    map[r.recipeId] = Math.max(0, roundQty(r.onHand));
-  });
-  return map;
-}
-
-export function leftoverPackUsage(recipes: Recipe[], leftoverByRecipe: Record<string, number>) {
-  const usage: Record<string, number> = {};
-  recipes.forEach((rec) => {
-    const leftover = leftoverByRecipe[rec.id] || 0;
-    if (leftover < 0.0001) return;
-    const batchSize = Math.max(1, parseInt(String(rec.batchSize), 10) || 1);
-    const ratio = leftover / batchSize;
-    (rec.ingredients || []).forEach((ing) => {
-      const k = itemKey(ing.itemType, ing.itemId);
-      usage[k] = (usage[k] || 0) + num(ing.qty) * ratio;
-    });
-  });
-  return usage;
-}
-
-function mergeUsage(a: Record<string, number>, b: Record<string, number>) {
-  const out = { ...a };
-  Object.keys(b).forEach((k) => {
-    out[k] = (out[k] || 0) + b[k];
-  });
-  return out;
 }
 
 export function calcIngredientUsageFromInvoices(
@@ -122,15 +83,11 @@ export function computeItemLedger(opts: {
   recipes: Recipe[];
   production: ProductionRun[];
   returns: ReturnRecord[];
-  leftoverByRecipe?: Record<string, number>;
 }): LedgerRow {
   const purchased = purchasedQty(opts.purchases, opts.itemType, opts.itemId);
   const useInv = opts.invoices.length > 0;
   const usedMap = useInv
-    ? mergeUsage(
-        calcIngredientUsageFromInvoices(opts.invoices, opts.recipes, opts.returns),
-        leftoverPackUsage(opts.recipes, opts.leftoverByRecipe || {}),
-      )
+    ? calcIngredientUsageFromInvoices(opts.invoices, opts.recipes, opts.returns)
     : calcIngredientUsageFromProduction(opts.recipes, opts.production);
   const used = roundQty(usedMap[itemKey(opts.itemType, opts.itemId)] || 0);
   return {
@@ -150,7 +107,6 @@ export function buildLedgerMap(opts: {
   materials: StockItem[];
   packages: StockItem[];
   stickers: StockItem[];
-  leftoverByRecipe?: Record<string, number>;
 }) {
   const map: Record<string, LedgerRow> = {};
   const pairs: [InvItemType, StockItem[]][] = [
@@ -168,7 +124,6 @@ export function buildLedgerMap(opts: {
         recipes: opts.recipes,
         production: opts.production,
         returns: opts.returns,
-        leftoverByRecipe: opts.leftoverByRecipe,
       });
     });
   });

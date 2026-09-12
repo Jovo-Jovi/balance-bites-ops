@@ -154,7 +154,7 @@ Also:
 
 ### Intended formulas (do not “fix” unless asked)
 
-1. **On-hand** (`getDisplayStock` / `computeItemLedgerSync`): `sum(purchase qty) − BOM usage from invoices − BOM of leftover finished packs (max(0, FG رصيد))`. Skip old `تسوية جرد` rows whose notes are `استخدام إنتاج` (those were a live workaround). If `bb_invoices` is empty, usage is from **production**. `currentStock` is a cache. Manual ingredient counts still write `تسوية جرد`.
+1. **On-hand** (`getDisplayStock` / `computeItemLedgerSync`): `sum(purchase qty) − BOM usage from invoices`. If `bb_invoices` is empty, usage is from **production**. `currentStock` is a cache. A finished-goods count edit writes `تسوية جرد` (`استخدام إنتاج`) so those purchases are in the sum.
 2. **Profit / صافي الربح:** sales − COGS of sold − opex − hawalek. Leftover stock is `قيمة المخزون` (asset). Dashboard / investor NAV **includes** stock.
 3. **Shutdown** (pending always collected):  
    - Stock → cash: liquid = paid + pending + stock **at cost**; P&L = liquid − spent  
@@ -162,7 +162,7 @@ Also:
    Keep the words ربح / خسارة (not color alone).
 4. **Prep invoices:** pick customer → that customer’s items → another customer. Drafts `kind: 'invoice_draft'`. Approve writes `#INV-`. Combined sheet uses BOM component totals. شراء opens purchase modal with shortfall (needed − stock; user may increase). **إلى اللوحة** with a customer selected also merges into that customer’s draft and stores `customers[]` on the board line.
 5. Do not mix prep-approve with production-approve.
-6. **Finished goods qty:** فواتير (`soldGross`) = approved invoice qty. مباع (`sold`) = after invoice-linked returns. On-hand = produced − فواتير + restock − hawalek. Editing رصيد to 0 (or any count) writes a production adjustment so that formula matches; **0 is a valid count** (Arabic ٠ included). Ingredient stock does not get a second `تسوية` for closing a negative gap — invoices already consumed those units. Positive leftover packs lock their recipe BOM in the component ledger. Production ينقص = max(0, فواتير − produced). Prep board / drafts are not in these columns.
+6. **Finished goods qty:** فواتير (`soldGross`) = approved invoice qty. مباع (`sold`) = after invoice-linked returns. On-hand = produced − فواتير + restock − hawalek. Editing رصيد writes a production adjustment **and** deducts/returns recipe ingredients for that delta. Closing −23 → 0 increases إنتاج by 23 and takes 23 × BOM from المواد/التغليف/الملصقات. **0 is a valid count** (Arabic ٠ included). Production ينقص = max(0, فواتير − produced). Prep board / drafts are not in these columns.
 7. **Customer returns:** أصناف with a customer attach to that customer’s **latest** invoice (remaining, print للدفع, ledger). Unlinked leftovers apply newest-unpaid first.
 
 `report.md` documents duplicate formulas and save races — copy **intended** rules, not the silent FileStore fail.

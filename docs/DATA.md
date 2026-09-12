@@ -42,7 +42,7 @@ Stock Costs treats `bb_invoices` / `bb_customers` as **read-only** in FileStore 
 
 | Number | Stored? | Formula |
 |---|---|---|
-| On-hand component qty | Cached on item, overwritten | purchases − invoice BOM − leftover FG BOM |
+| On-hand component qty | Cached on item, overwritten | sum(purchase qty) − BOM usage from invoices |
 | Finished-goods on-hand | No | produced − sold (+ returns rules) |
 | Stock value | No | max(0, qty) × last unit cost (+ FG × COGS) |
 | Shutdown liquid (stock as cash) | No | paid + pending + stock value |

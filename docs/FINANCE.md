@@ -61,7 +61,7 @@ Empty cloud must **not** dump default catalogs, recipes, or gold themes.
 
 Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report.md` bugs.
 
-1. On-hand = sum(purchase qty) − BOM usage from invoices − BOM of leftover finished packs. Skip `استخدام إنتاج` تسوية rows. If no invoices, usage from production. `currentStock` is a cache.
+1. On-hand = sum(purchase qty) − BOM usage from invoices; if no invoices, usage from production. `currentStock` is a cache. Finished-goods count edits write `تسوية جرد` (`استخدام إنتاج`) into that sum.
 2. Skip `تسوية جرد` when the typed count equals the ledger.
 3. After a real purchase, bump the in-memory ledger immediately.
 4. Last purchase `costPerUnit` (including adjustments).
@@ -69,7 +69,7 @@ Ported in `hub/src/lib/finance/`. Copy [PARITY.md](PARITY.md), not `costs/report
 6. Shutdown: pending always collected. Stock-as-cash vs stock-as-loss. Words ربح / خسارة.
 7. Do not mix prep-approve with production-approve.
 8. Investors: peak = max running balance in the working-capital diary (invoice adj COGS out, paid collections in after `collectionLag` days, leftover stock on the live journal window or today, hawalek, opex). Pending invoices never become تحصيل. toward/overflow from capitalAssignment; NAV share = nav × (toward / peak); profit split by join date. «نسخ عجز السيولة» copies `cashHole` into `investorTarget.needed`. «تعيين كرأس مال المستثمرين» uses the diary peak, not spent − sales.
-9. Finished goods: **فواتير** (`soldGross`) = approved invoice qty. **مباع** (`sold`) = after invoice-linked returns. On-hand = produced − فواتير + restocked returns − hawalek. Editing رصيد writes a production adjustment (zero is valid). Component stock follows invoices, purchases, and leftover packs via the recipe — not a second `استخدام إنتاج` purchase. Production **ينقص** = max(0, فواتير − produced). Prep board / drafts are not in these columns. Prep **إلى اللوحة** with a customer also writes that customer’s invoice draft and stores their name on the board line.
+9. Finished goods: **فواتير** (`soldGross`) = approved invoice qty. **مباع** (`sold`) = after invoice-linked returns. On-hand = produced − فواتير + restocked returns − hawalek. Editing رصيد writes a production adjustment and deducts/returns the recipe BOM for that delta (negative leftover → 0 raises إنتاج and takes ingredients). Production **ينقص** = max(0, فواتير − produced). Prep board / drafts are not in these columns. Prep **إلى اللوحة** with a customer also writes that customer’s invoice draft and stores their name on the board line.
 
 ## Cloud seed
 
