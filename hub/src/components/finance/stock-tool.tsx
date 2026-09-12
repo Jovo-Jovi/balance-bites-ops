@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionBtn, Accordion, Empty, Field, Modal, Select, TextInput } from "@/components/invoices/ui";
 import { LibraryThumb } from "@/components/design/library-thumb-img";
@@ -314,10 +314,12 @@ function InlineQty({
 }) {
   const toast = useToast();
   const [text, setText] = useState(() => String(value));
+  const [shown, setShown] = useState(value);
   const saving = useRef(false);
-  useEffect(() => {
+  if (value !== shown) {
+    setShown(value);
     setText(String(value));
-  }, [value]);
+  }
 
   function revert() {
     setText(String(value));
