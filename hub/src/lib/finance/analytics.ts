@@ -134,12 +134,19 @@ export function aggregateSales(
 export function aggregateProduction(recipes: Recipe[], production: ProductionRun[]) {
   const byRecipe: Record<string, number> = {};
   const byProduct: Record<string, number> = {};
-  production.forEach((run) => {
-    byRecipe[run.recipeId] = (byRecipe[run.recipeId] || 0) + num(run.unitsProduced);
-  });
+  const recipeById = new Map<string, Recipe>();
   recipes.forEach((rec) => {
-    if (!rec.productId) return;
-    byProduct[rec.productId] = (byProduct[rec.productId] || 0) + (byRecipe[rec.id] || 0);
+    if (rec.id && !recipeById.has(rec.id)) recipeById.set(rec.id, rec);
+  });
+  production.forEach((run) => {
+    const rid = run.recipeId;
+    if (!rid) return;
+    const units = num(run.unitsProduced);
+    byRecipe[rid] = (byRecipe[rid] || 0) + units;
+    const rec = recipeById.get(rid);
+    if (rec?.productId) {
+      byProduct[rec.productId] = (byProduct[rec.productId] || 0) + units;
+    }
   });
   return { byRecipe, byProduct };
 }

@@ -225,8 +225,10 @@ type FinanceContextValue = {
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
 
-function readArr<T>(key: Parameters<typeof CloudStore.get>[0]) {
-  return asArray<T>(CloudStore.get(key, []));
+function readArr<T>(key: Parameters<typeof CloudStore.get>[0], fallback: T[] = []) {
+  const stored = asArray<T>(CloudStore.get(key, []));
+  const src = stored.length === 0 && fallback.length > 0 ? fallback : stored;
+  return src.slice();
 }
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
@@ -434,9 +436,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     };
     return {
       run,
-      written: writeFinanceKey("bb_production", [run, ...readArr<ProductionRun>("bb_production")]),
+      written: writeFinanceKey("bb_production", [run, ...readArr<ProductionRun>("bb_production", production)]),
     };
-  }, [findItem]);
+  }, [findItem, production]);
 
   const syncItemCost = useCallback((pur: Purchase) => {
     const list = currentList(pur.itemType);
@@ -465,25 +467,25 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         supplier: data.supplier || "",
         notes: data.notes || "",
       };
-      const arr = readArr<Purchase>("bb_purchases");
+      const arr = readArr<Purchase>("bb_purchases", purchases);
       const idx = arr.findIndex((p) => p.id === pur.id);
       if (idx >= 0) arr[idx] = pur;
       else arr.unshift(pur);
       const written = writeFinanceKey("bb_purchases", arr).then(() => {
-        if (!adjSupplier(pur.supplier) || Math.abs(qty) > 0.0001) {
+        if (!adjSupplier(pur.supplier) && Math.abs(qty) > 0.0001) {
           syncItemCost(pur);
         }
         return pur;
       });
       return written;
     },
-    [syncItemCost],
+    [purchases, syncItemCost],
   );
 
   const savePurchases = useCallback(
     (rows: Array<Omit<Purchase, "id" | "totalCost"> & { id?: string }>) => {
       if (!rows.length) return Promise.resolve([] as Purchase[]);
-      const arr = readArr<Purchase>("bb_purchases");
+      const arr = readArr<Purchase>("bb_purchases", purchases);
       const created: Purchase[] = [];
       rows.forEach((data) => {
         const qty = roundQty(data.qty);
@@ -507,14 +509,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       });
       return writeFinanceKey("bb_purchases", arr).then(() => {
         created.forEach((pur) => {
-          if (!adjSupplier(pur.supplier) || Math.abs(pur.qty) > 0.0001) {
+          if (!adjSupplier(pur.supplier) && Math.abs(pur.qty) > 0.0001) {
             syncItemCost(pur);
           }
         });
         return created;
       });
     },
-    [syncItemCost],
+    [purchases, syncItemCost],
   );
 
   const applyTruthStock = useCallback(
@@ -525,11 +527,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const led = computeItemLedger({
         itemType: type,
         itemId: id,
-        purchases: readArr<Purchase>("bb_purchases"),
-        invoices: readArr<Invoice>("bb_invoices"),
-        recipes: readArr<Recipe>("bb_recipes"),
-        production: readArr<ProductionRun>("bb_production"),
-        returns: readArr<ReturnRecord>("bb_returns"),
+        purchases: readArr<Purchase>("bb_purchases", purchases),
+        invoices: readArr<Invoice>("bb_invoices", invoices),
+        recipes: readArr<Recipe>("bb_recipes", recipes),
+        production: readArr<ProductionRun>("bb_production", production),
+        returns: readArr<ReturnRecord>("bb_returns", returns),
       });
       const delta = roundQty(truth - led.balance);
       const next = currentList(type).map((i) => (i.id === id ? { ...i, currentStock: truth } : i));
@@ -558,7 +560,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         endBusy();
       }
     },
-    [beginBusy, currentList, endBusy, savePurchase],
+    [beginBusy, currentList, endBusy, invoices, production, purchases, recipes, returns, savePurchase],
   );
 
   const saveItem = useCallback(
@@ -644,21 +646,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const applyProductStock = useCallback(
     async (productId: string, recipeId: string, truthOnHand: number) => {
-      const rec = recipeId
-        ? readArr<Recipe>("bb_recipes").find((r) => r.id === recipeId)
-        : readArr<Recipe>("bb_recipes").find((r) => r.productId === productId);
+      const list = readArr<Recipe>("bb_recipes", recipes);
+      const rec =
+        list.find((r) => r.id === recipeId && r.productId === productId) ||
+        list.find((r) => r.productId === productId);
       if (!rec) {
         toast.push("لا توجد وصفة — أضف وصفة مربوطة بالمنتج", "warn");
         return false;
       }
       const nextOnHand = roundQty(truthOnHand);
       const rows = buildProductSummary(
-        readArr<Invoice>("bb_invoices"),
-        readArr<Recipe>("bb_recipes"),
-        readArr<ProductionRun>("bb_production"),
-        readArr<ReturnRecord>("bb_returns"),
+        readArr<Invoice>("bb_invoices", invoices),
+        readArr<Recipe>("bb_recipes", recipes),
+        readArr<ProductionRun>("bb_production", production),
+        readArr<ReturnRecord>("bb_returns", returns),
         asRecord<InvoicePayments>(CloudStore.get("bb_invoice_payments", {})),
-        readArr<CustomerPayment>("bb_customer_payments"),
+        readArr<CustomerPayment>("bb_customer_payments", customerPayments),
         (type, id) => currentList(type as ItemKind).find((i) => i.id === id) || null,
       );
       const row = rows.find((r) => r.productId === productId);
@@ -669,6 +672,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       const current = row.onHand;
       const prodDelta = roundQty(nextOnHand - current);
       if (Math.abs(prodDelta) < 0.0001) return true;
+      const prodBase = readArr<ProductionRun>("bb_production", production);
+      if (prodBase.length === 0 && Math.abs(row.produced) > 0.0001) {
+        toast.push("سجل الإنتاج غير جاهز — لن يُحفظ حتى لا تُمسح دورات المنتجات الأخرى", "warn");
+        return false;
+      }
       const prep = calcPrep(rec, Math.abs(prodDelta), (t, id) => findItem(t, id), ledger);
       if (prodDelta > 0 && !prep.stockOk) {
         if (
@@ -702,28 +710,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         });
         const writes: Promise<unknown>[] = [added.written];
         if (purchaseRows.length) writes.push(savePurchases(purchaseRows));
-        const adjByType = new Map<ItemKind, Map<string, number>>();
-        purchaseRows.forEach((p) => {
-          let byId = adjByType.get(p.itemType);
-          if (!byId) {
-            byId = new Map();
-            adjByType.set(p.itemType, byId);
-          }
-          byId.set(p.itemId, (byId.get(p.itemId) || 0) + p.qty);
-        });
-        adjByType.forEach((byId, type) => {
-          const next = currentList(type).map((i) => {
-            const adj = byId.get(i.id);
-            if (adj == null) return i;
-            return { ...i, currentStock: roundQty(displayStock(ledger, type, i.id, i) + adj) };
-          });
-          writes.push(writeFinanceKey(type, next));
-        });
         await Promise.all(writes);
         toast.push(
           prodDelta > 0
-            ? `زاد الإنتاج ${Math.abs(prodDelta)} وخصم المكونات حسب الوصفة`
-            : `نقص الإنتاج ${Math.abs(prodDelta)} وأُرجعت المكونات حسب الوصفة`,
+            ? `زاد إنتاج «${row.name}» ${Math.abs(prodDelta)} وخصم مكونات الوصفة فقط`
+            : `نقص إنتاج «${row.name}» ${Math.abs(prodDelta)} وأُرجعت مكونات الوصفة فقط`,
           "ok",
         );
         return true;
@@ -733,7 +724,21 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         endBusy();
       }
     },
-    [addRun, beginBusy, currentList, endBusy, findItem, ledger, savePurchases, toast],
+    [
+      addRun,
+      beginBusy,
+      currentList,
+      customerPayments,
+      endBusy,
+      findItem,
+      invoices,
+      ledger,
+      production,
+      recipes,
+      returns,
+      savePurchases,
+      toast,
+    ],
   );
 
   const saveRecipe = useCallback((data: Recipe) => {

@@ -553,7 +553,7 @@ Customer **أصناف** returns (no invoice picked) attach to that customer’s 
 
 Typing **0 / ٠** on منتجات جاهزة رصيد now saves (Arabic-Indic digits parse; empty is invalid, not silently ignored).
 
-Closing a negative رصيد (مارشميلو −23 → 0) **increases إنتاج** by the gap and **deducts recipe ingredients** (`تسوية جرد` / `استخدام إنتاج`) in one purchases write. Counting leftover down returns those ingredients. Invoices stay the sold source; the count edit is extra production plus BOM.
+Closing a negative رصيد (مارشميلو −23 → 0) **increases إنتاج** by the gap for **that product only** and **deducts that recipe’s ingredients**. A count edit never rewrites the whole production or purchase book from an empty read (that wiped other SKUs). Catalog `currentStock` is not rewritten on FG count. Real buys still update last cost; `تسوية جرد` does not. Each production run maps to one recipe / one productId.
 
 ---
 
