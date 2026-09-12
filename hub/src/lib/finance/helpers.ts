@@ -8,8 +8,43 @@ export { todayISO } from "@/lib/invoices/helpers";
 export { fmt, fmtQty, genId, asArray, asRecord } from "@/lib/invoices/helpers";
 export { isInactiveProduct } from "@/lib/invoices/helpers";
 
+const INDIC_DIGITS: Record<string, string> = {
+  "٠": "0",
+  "١": "1",
+  "٢": "2",
+  "٣": "3",
+  "٤": "4",
+  "٥": "5",
+  "٦": "6",
+  "٧": "7",
+  "٨": "8",
+  "٩": "9",
+  "۰": "0",
+  "۱": "1",
+  "۲": "2",
+  "۳": "3",
+  "۴": "4",
+  "۵": "5",
+  "۶": "6",
+  "۷": "7",
+  "۸": "8",
+  "۹": "9",
+};
+
+/** Typed qty: Latin, Arabic-Indic, Persian digits, and Arabic decimal ٫. Empty → NaN. */
+export function parseQty(raw: unknown): number {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : NaN;
+  let s = String(raw ?? "").trim();
+  if (!s) return NaN;
+  s = s.replace(/[٠-٩۰-۹]/g, (ch) => INDIC_DIGITS[ch] ?? ch);
+  s = s.replace(/٫/g, ".").replace(/٬/g, "").replace(/,/g, "");
+  s = s.replace(/[−–—]/g, "-");
+  const v = parseFloat(s);
+  return Number.isFinite(v) ? v : NaN;
+}
+
 export function roundQty(n: unknown) {
-  const v = parseFloat(String(n));
+  const v = typeof n === "number" && Number.isFinite(n) ? n : parseQty(n);
   if (Number.isNaN(v)) return 0;
   if (Math.abs(v) < 1e-9) return 0;
   const r = Math.round(v * 1e6) / 1e6;
@@ -17,12 +52,18 @@ export function roundQty(n: unknown) {
   return r;
 }
 
+/** Extra finished packs on the shelf (negative leftover does not lock ingredients). */
+export function leftoverOnHandDelta(fromOnHand: number, toOnHand: number) {
+  return roundQty(Math.max(0, roundQty(toOnHand)) - Math.max(0, roundQty(fromOnHand)));
+}
+
 export function round2(n: unknown) {
   return Math.round((parseFloat(String(n)) || 0) * 100) / 100;
 }
 
 export function num(n: unknown) {
-  const v = parseFloat(String(n));
+  if (typeof n === "number") return Number.isFinite(n) ? n : 0;
+  const v = parseQty(n);
   return Number.isNaN(v) ? 0 : v;
 }
 

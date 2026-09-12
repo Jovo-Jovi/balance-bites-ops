@@ -549,6 +549,14 @@ Customer **أصناف** returns (no invoice picked) attach to that customer’s 
 
 ---
 
+## 2026-09-12 — FG count zero + recipe-linked ingredients
+
+Typing **0 / ٠** on منتجات جاهزة رصيد now saves (Arabic-Indic digits parse; empty is invalid, not silently ignored). جيلي كولا −30 → 0 writes a production adjustment so الرصيد matches the shelf count instead of bouncing back to إنتاج − فواتير.
+
+Ingredient stock = purchases − invoice BOM − leftover finished packs (max(0, رصيد) × recipe). Old `تسوية جرد` rows tagged `استخدام إنتاج` are ignored so they do not double-count. Closing a negative gap does not consume extra materials — invoices already did. Positive leftover packs lock their BOM until sold or counted down.
+
+---
+
 ## Still not done (do not tick as shipped)
 
 - Zip of every commercial character; Jelly Kids Firestore dump

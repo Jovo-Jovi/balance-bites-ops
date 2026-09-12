@@ -9,6 +9,7 @@ import {
 import {
   calcIngredientUsageFromInvoices,
   calcIngredientUsageFromProduction,
+  isFgIngredientAdj,
 } from "@/lib/finance/ledger";
 import { stockStatus } from "@/lib/finance/analytics";
 import {
@@ -154,7 +155,7 @@ export function buildInventoryRows(
     );
     const purchasedBefore = roundQty(
       purchasesBefore
-        .filter((p) => p.itemType === type && p.itemId === item.id)
+        .filter((p) => p.itemType === type && p.itemId === item.id && !isFgIngredientAdj(p))
         .reduce((s, p) => s + qty(p.qty), 0),
     );
     const distributed = roundQty(usedWeek[k] || 0);
