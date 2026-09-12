@@ -52,11 +52,6 @@ export function roundQty(n: unknown) {
   return r;
 }
 
-/** Extra finished packs on the shelf (negative leftover does not lock ingredients). */
-export function leftoverOnHandDelta(fromOnHand: number, toOnHand: number) {
-  return roundQty(Math.max(0, roundQty(toOnHand)) - Math.max(0, roundQty(fromOnHand)));
-}
-
 export function round2(n: unknown) {
   return Math.round((parseFloat(String(n)) || 0) * 100) / 100;
 }

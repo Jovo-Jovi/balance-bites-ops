@@ -551,9 +551,9 @@ Customer **أصناف** returns (no invoice picked) attach to that customer’s 
 
 ## 2026-09-12 — FG count zero + recipe-linked ingredients
 
-Typing **0 / ٠** on منتجات جاهزة رصيد now saves (Arabic-Indic digits parse; empty is invalid, not silently ignored). جيلي كولا −30 → 0 writes a production adjustment so الرصيد matches the shelf count instead of bouncing back to إنتاج − فواتير.
+Typing **0 / ٠** on منتجات جاهزة رصيد now saves (Arabic-Indic digits parse; empty is invalid, not silently ignored).
 
-Ingredient stock = purchases − invoice BOM − leftover finished packs (max(0, رصيد) × recipe). Old `تسوية جرد` rows tagged `استخدام إنتاج` are ignored so they do not double-count. Closing a negative gap does not consume extra materials — invoices already did. Positive leftover packs lock their BOM until sold or counted down.
+Closing a negative رصيد (مارشميلو −23 → 0) **increases إنتاج** by the gap and **deducts recipe ingredients** (`تسوية جرد` / `استخدام إنتاج`) in one purchases write. Counting leftover down returns those ingredients. Invoices stay the sold source; the count edit is extra production plus BOM.
 
 ---
 
