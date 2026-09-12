@@ -223,9 +223,8 @@ function StockReport() {
           <p className="mb-2 text-xs text-[var(--bb-muted)]">
             <b className="font-medium text-[var(--bb-title)]">فواتير</b> = كميات الفواتير المعتمدة قبل المرتجع.{" "}
             <b className="font-medium text-[var(--bb-title)]">مباع</b> = بعد خصم المرتجعات المربوطة بفاتورة.{" "}
-            الرصيد = إنتاج − فواتير + مرتجع أُعيد للمخزون − حوالك. تعديل الرصيد (حتى الصفر) يزيد أو ينقص الإنتاج
-            ويخصم أو يُرجع مكونات الوصفة. لوحة التحضير والمسودات لا تدخل هنا. القيمة = تكلفة الوحدة × أكبر الرقمين
-            (الرصيد، صفر).
+            <b className="font-medium text-[var(--bb-title)]">رصيد</b> = العد على الرف (عدّله هنا).{" "}
+            <b className="font-medium text-[var(--bb-title)]">إنتاج</b> يُضبط لهذا المنتج فقط: إنتاج = فواتير − مرتجع مخزون + حوالك + الرصيد. صفر رصيد يعني الإنتاج يغطي المباع بلا زيادة على الرف. يخصم/يرجع مكونات هذه الوصفة فقط — باقي المنتجات لا تتغير. القيمة = تكلفة الوحدة × أكبر الرقمين (الرصيد، صفر).
           </p>
           <FinanceTable minWidth="48rem">
             <thead>
@@ -247,7 +246,7 @@ function StockReport() {
             </thead>
             <tbody>
               {app.productSummary.map((row) => (
-                <tr key={row.productId || row.recipeId}>
+                <tr key={`${row.productId}:${row.recipeId}`}>
                   <td className={tdClass}>
                     {row.name}
                     {row.weight ? ` · ${row.weight}` : ""}
